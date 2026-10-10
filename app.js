@@ -1576,7 +1576,7 @@ function movePlayer(dx, dy) {
     if (!canStepBetween({ x, y }, { x: nx, y: ny })) {
       if (state.run.terrain[tileIndex(nx, ny)] === "door" || closedDoorOnDiagonal({ x, y }, { x: nx, y: ny })) {
         stoppedAtClosedDoor = true;
-        showToast("The doorway is closed. Interact nearby to open it.");
+        interactWithDoor(doorway);
       }
       break;
     }
@@ -3288,9 +3288,6 @@ function dungeonInteractionLabel(nearbyHazard) {
     x: targetRoom.anchorX ?? targetRoom.mapX + Math.floor(targetRoom.mapW / 2),
     y: targetRoom.anchorY ?? targetRoom.mapY + Math.floor(targetRoom.mapH / 2)
   };
-  if (targetRoom && distanceInSquares(targetPosition, state.run.player) === 1) {
-    return targetRoom.type === "exit" ? "Approach the exit" : "Return to entrance";
-  }
   const nearbyDoor = nearbyDungeonDoor();
   if (!nearbyDoor) return "Nothing nearby";
   if (state.run.openDoors.includes(nearbyDoor.index)) return "Close nearby doorway";
