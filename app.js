@@ -2855,10 +2855,6 @@ function interact() {
     drawWaterAtDungeonWell(well);
     return;
   }
-  if (state.run.treasures.some((item) => distanceInSquares(item, state.run.player) === 1)) {
-    showToast("Move onto the treasure to collect it.");
-    return;
-  }
   const doorway = nearbyDungeonDoor();
   if (doorway) {
     interactWithDoor(doorway);
@@ -2871,10 +2867,6 @@ function interact() {
     x: targetRoom.anchorX ?? targetRoom.mapX + Math.floor(targetRoom.mapW / 2),
     y: targetRoom.anchorY ?? targetRoom.mapY + Math.floor(targetRoom.mapH / 2)
   };
-  if (targetPosition && distanceInSquares(targetPosition, state.run.player) === 1) {
-    showToast("Walk onto the stair or exit tile to use it; Interact won't move you.");
-    return;
-  }
   showToast("Nothing nearby to interact with. Move to a doorway, treasure, revealed trap, or creature.");
 }
 
