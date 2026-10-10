@@ -1,4 +1,3 @@
-"use strict";
 
 const {
   food: FOOD_ITEMS,
@@ -1574,9 +1573,13 @@ function movePlayer(dx, dy) {
     const nx = x + dx;
     const ny = y + dy;
     if (!canStepBetween({ x, y }, { x: nx, y: ny })) {
-      if (state.run.terrain[tileIndex(nx, ny)] === "door" || closedDoorOnDiagonal({ x, y }, { x: nx, y: ny })) {
+      if (state.run.terrain[tileIndex(nx, ny)] === "door") {
         stoppedAtClosedDoor = true;
-        interactWithDoor(doorway);
+        const doorIndex = tileIndex(nx, ny);
+        const door = { x: nx, y: ny, index: doorIndex };
+        interactWithDoor(door);
+      } else if (closedDoorOnDiagonal({ x, y }, { x: nx, y: ny })) {
+        stoppedAtClosedDoor = true;
       }
       break;
     }
@@ -2443,8 +2446,9 @@ function moveTownPlayer(dx, dy) {
   const x = position.x + dx;
   const y = position.y + dy;
   const npc = townNpcAt(x, y);
-  if (npc && townDistance(position, npc) === 1) {
-    talkToTownNpc(npc.id);
+  // Movement never triggers interaction: stop at occupied NPC tiles.
+  if (npc) {
+    showToast(`Speak with ${npc.name} using Interact while standing nearby.`);
     return;
   }
   if (!townCanOccupy(x, y)) {
@@ -2855,8 +2859,12 @@ function interact() {
     showToast("Move onto the treasure to collect it.");
     return;
   }
-  const entrance = state.run.rooms.find((room) => room.type === "entrance");
   const doorway = nearbyDungeonDoor();
+  if (doorway) {
+    interactWithDoor(doorway);
+    return;
+  }
+  const entrance = state.run.rooms.find((room) => room.type === "entrance");
   const exit = state.run.rooms.find((room) => room.type === "exit");
   const targetRoom = exit || entrance;
   const targetPosition = targetRoom && {
@@ -2864,11 +2872,7 @@ function interact() {
     y: targetRoom.anchorY ?? targetRoom.mapY + Math.floor(targetRoom.mapH / 2)
   };
   if (targetPosition && distanceInSquares(targetPosition, state.run.player) === 1) {
-    showToast("Move onto the stair or exit tile to use it.");
-    return;
-  }
-  if (doorway) {
-    interactWithDoor(doorway);
+    showToast("Walk onto the stair or exit tile to use it; Interact won't move you.");
     return;
   }
   showToast("Nothing nearby to interact with. Move to a doorway, treasure, revealed trap, or creature.");
@@ -5344,12 +5348,12 @@ function connectEvents() {
     const npc = townNpcAt(x, y);
     if (isTownWellAt(x, y)) {
       if (townDistance(state.run.townPosition, TOWN_WELL) <= 1) drawWaterAtTownWell();
-      else moveTowardTownNpc(TOWN_WELL);
+      else showToast("Walk beside the Ceiba Well, then interact to draw water.");
       return;
     }
     if (npc) {
       if (townDistance(state.run.townPosition, npc) <= 1) talkToTownNpc(npc.id);
-      else moveTowardTownNpc(npc);
+      else showToast(`Walk beside ${npc.name}, then interact to speak.`);
       return;
     }
     const dx = x - state.run.townPosition.x;
@@ -5650,4 +5654,4 @@ window.cryptsLocale.ready.then(start).catch((error) => {
   notice.setAttribute("role", "alert");
   notice.textContent = `The language catalogs could not be loaded: ${escapeMessage(error)}`;
   document.body.append(notice);
-});
+});"
