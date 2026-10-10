@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#d8c69d">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Crypts & Creatures">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="description" content="Explore a forbidden tomb, manage your supplies, and return to Chiltomatlan to prepare for another descent.">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icon.png" type="image/png" sizes="512x512">
+    <link rel="stylesheet" href="./styles.css?v=202">
+    <title>Crypts &amp; Creatures</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" data-i18n="A custom-world jungle tomb expedition">A custom-world jungle tomb expedition</p>
+          <h1><span class="brand-full">Crypts <i>&amp;</i> Creatures</span><span class="brand-compact">C&amp;C</span></h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="portrait-button hidden" id="character-button" type="button" aria-label="Open character card" aria-haspopup="dialog" data-i18n-attr="aria-label:Open character card">
+            <span id="header-character-portrait" class="header-character-portrait" aria-hidden="true"></span>
+          </button>
+          <div id="header-resources" class="header-resources hidden" aria-label="Expedition supplies" data-i18n-attr="aria-label:Expedition supplies">
+            <span class="topbar-resource" title="Gold" aria-label="Gold" data-i18n-attr="aria-label:Gold;title:Gold">
+              <img class="resource-glyph gold-glyph" src="./resources/items/coin-pile.png?v=77" alt="" aria-hidden="true">
+              <span class="resource-copy"><strong id="header-gold">0 gp</strong><small id="header-at-risk">Secured: 0 gp</small></span>
+            </span>
+            <div class="topbar-meter-resource health-meter-resource" title="Current hit points" data-i18n-attr="title:Current hit points">
+              <span class="resource-glyph health-glyph" aria-hidden="true">♥</span>
+              <div class="topbar-meter-copy">
+                <div class="topbar-meter-label"><strong>HP <span id="header-health">0 / 0</span></strong></div>
+                <div id="header-health-meter" class="supply-meter-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Hit points" data-i18n-attr="aria-label:Hit points">
+                  <span id="header-health-fill"></span>
+                </div>
+              </div>
+            </div>
+            <div class="topbar-meter-resource food-meter-resource" title="Food drains during dungeon turns" data-i18n-attr="title:Food drains during dungeon turns">
+              <img src="./resources/items/ration.png?v=77" alt="" aria-hidden="true">
+              <div class="topbar-meter-copy">
+                <div class="topbar-meter-label"><strong>Food <span id="header-food">100%</span></strong><small><span id="header-rations">0</span> meals</small></div>
+                <div id="header-food-meter" class="supply-meter-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Food meter">
+                  <span id="header-food-fill"></span>
+                </div>
+              </div>
+            </div>
+            <div class="topbar-meter-resource water-meter-resource" title="Water drains during dungeon turns" data-i18n-attr="title:Water drains during dungeon turns">
+              <img src="./resources/items/water.png?v=77" alt="" aria-hidden="true">
+              <div class="topbar-meter-copy">
+                <div class="topbar-meter-label"><strong>Water <span id="header-water">100%</span></strong><small><span id="header-water-stock">0</span> gourds</small></div>
+                <div id="header-water-meter" class="supply-meter-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Water meter">
+                  <span id="header-water-fill"></span>
+                </div>
+              </div>
+            </div>
+            <div id="header-expedition-kit" class="expedition-kit-strip hidden" aria-label="Carried expedition tools" data-i18n-attr="aria-label:Carried expedition tools"></div>
+            <button id="header-spell-slots" class="spell-slot-resource hidden" type="button"
+              aria-label="Open spellbook" title="Open spellbook" data-i18n-attr="aria-label:Open spellbook;title:Open spellbook">
+              <span class="spell-slot-label">Slots <strong id="header-spell-slot-count">0 / 0</strong></span>
+              <span id="header-spell-slot-pips" class="spell-slot-pips" aria-hidden="true"></span>
+            </button>
+            <span class="topbar-resource clock-resource" title="Expedition time" data-i18n-attr="title:Expedition time">
+              <span class="resource-glyph clock-glyph" aria-hidden="true">◷</span>
+              <strong id="header-clock">Day 1 · 08:00</strong>
+            </span>
+          </div>
+          <button id="party-toggle" class="quiet-button utility-toggle hidden" type="button" aria-expanded="false" aria-controls="side-drawer">
+            <span class="utility-icon" aria-hidden="true">♟</span> Party
+          </button>
+          <button id="journal-toggle" class="quiet-button utility-toggle hidden" type="button" aria-expanded="false" aria-controls="side-drawer">
+            <span class="utility-icon" aria-hidden="true">▤</span> Journal
+          </button>
+        </div>
+      </header>
+
+      <section id="start-screen" class="title-screen panel" aria-labelledby="start-heading">
+        <div class="title-content">
+          <p class="eyebrow" data-i18n="THE TOMB BENEATH CHILTOMATLAN">THE TOMB BENEATH CHILTOMATLAN</p>
+          <h2 id="start-heading" data-i18n="The Unnamed King">The Unnamed King</h2>
+          <p class="title-copy" data-i18n="The Empire sealed this nameless ruler's tomb a century ago. Now its outer halls have opened again. Explore, bring treasure home, and return to Chiltomatlan whenever you need to recover.">The Empire sealed this nameless ruler's tomb a century ago. Now its outer halls have opened again. Explore, bring treasure home, and return to Chiltomatlan whenever you need to recover.</p>
+          <div class="title-actions">
+            <button id="continue-game" class="button" type="button" disabled data-i18n="Continue">Continue</button>
+            <button id="new-game" class="button secondary" type="button" data-i18n="New Game">New Game</button>
+            <button id="open-settings" class="button secondary" type="button" aria-haspopup="dialog" data-i18n="Settings">Settings</button>
+          </div>
+          <p id="continue-hint" class="title-hint" aria-live="polite" data-i18n="No saved game on this device.">No saved game on this device.</p>
+        </div>
+        <img class="title-art" src="./resources/ui/title-temple.png?v=79" alt="" aria-hidden="true">
+      </section>
+
+      <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-heading">
+        <div class="settings-heading">
+          <div>
+            <p class="eyebrow" data-i18n="GAME OPTIONS">GAME OPTIONS</p>
+            <h2 id="settings-heading" data-i18n="Settings">Settings</h2>
+          </div>
+          <button class="quiet-button close-settings" id="close-settings" type="button" aria-label="Close settings" data-i18n-attr="aria-label:Close settings">×</button>
+        </div>
+        <label for="language-select" data-i18n="Language">Language</label>
+        <select id="language-select" name="language">
+          <option value="en" data-i18n="English">English</option>
+          <option value="es" data-i18n="Spanish">Spanish</option>
+        </select>
+        <p class="muted" data-i18n="Choose the language used throughout the game.">Choose the language used throughout the game.</p>
+        <label for="dark-mode-toggle" class="settings-toggle">
+          <span data-i18n="Dark mode">Dark mode</span>
+          <input id="dark-mode-toggle" name="darkMode" type="checkbox">
+        </label>
+        <p class="muted" data-i18n="Use dark surfaces with brighter, easier-to-read text.">Use dark surfaces with brighter, easier-to-read text.</p>
+      </dialog>
+
+      <dialog id="character-dialog" class="character-dialog" aria-labelledby="character-dialog-heading">
+        <form id="character-form">
+          <div class="settings-heading">
+            <div>
+              <p class="eyebrow" data-i18n="YOUR ADVENTURER">YOUR ADVENTURER</p>
+              <h2 id="character-dialog-heading" data-i18n="Create your character">Create your character</h2>
+            </div>
+            <button class="quiet-button close-settings" id="close-character" type="button" aria-label="Close character builder" data-i18n-attr="aria-label:Close character builder">×</button>
+          </div>
+          <div class="character-flow">
+            <p id="character-intro" class="character-intro" data-i18n="The innkeeper sets a cup of cacao by the fire and asks what name to write beside your place.">The innkeeper sets a cup of cacao by the fire and asks what name to write beside your place.</p>
+            <div class="creation-progress" aria-live="polite">
+              <div class="creation-progress-copy"><span id="creation-step-label" data-i18n="Your arrival">Your arrival</span><span id="creation-step-track">1 / 4</span></div>
+              <div id="creation-progress-bar" class="creation-progress-bar" role="progressbar" aria-label="Character creation progress" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" data-i18n-attr="aria-label:Character creation progress"><span id="creation-progress-fill"></span></div>
+              <div class="creation-step-names" aria-hidden="true"><span data-i18n="Your arrival">Your arrival</span><span data-i18n="Your strengths">Your strengths</span><span data-i18n="Your kit">Your kit</span><span data-i18n="Your look">Your look</span></div>
+            </div>
+            <p id="new-game-warning" class="builder-note start-over-note hidden"></p>
+            <div class="appearance-preview character-live-preview" aria-label="Live character preview" data-i18n-attr="aria-label:Live character preview">
+              <div id="character-preview" class="character-preview" role="img" aria-label="Character sprite preview" data-i18n-attr="aria-label:Character sprite preview"></div>
+              <div id="character-summary" class="character-summary"></div>
+            </div>
+            <div class="character-builder">
+              <section class="builder-section" data-creation-step="0">
+                <div data-creation-subpage="0"><p class="eyebrow" data-i18n="ARRIVAL IN CHILTOMATLAN">ARRIVAL IN CHILTOMATLAN</p><h3 data-i18n="What do they call you?">What do they call you?</h3><p class="builder-note" data-i18n="The innkeeper makes room by the fire. The name you give is the one Chiltomatlan will remember.">The innkeeper makes room by the fire. The name you give is the one Chiltomatlan will remember.</p></div>
+                <label data-creation-subpage="0"><span data-i18n="Your name">Your name</span><input id="character-name" name="name" maxlength="24" autocomplete="off" required></label>
+                <div class="builder-two" data-creation-subpage="0">
+                  <label><span data-i18n="People">People</span><select id="character-race" name="race"></select></label>
+                </div>
+                <label><span data-i18n="Calling">Calling</span><select id="character-class" name="class"></select></label>
+                <details class="optional-character-details">
+                  <summary data-i18n="Shape your past · optional">Shape your past &middot; optional</summary>
+                  <div class="optional-character-fields">
+                    <label data-creation-subpage="2"><span data-i18n="Background">Background</span><select id="character-background" name="background"></select></label>
+                    <p id="background-description" class="builder-note" data-creation-subpage="2"></p>
+                    <label data-creation-subpage="2">Heritage<select id="character-heritage" name="heritage"></select></label>
+                    <label data-creation-subpage="2">Pronouns / gender<select id="character-gender" name="gender">
+                      <option value="man" data-i18n="He / him">He / him</option><option value="woman" data-i18n="She / her">She / her</option><option value="other" data-i18n="They / them">They / them</option>
+                    </select></label>
+                    <div id="half-elf-bonuses" class="builder-two hidden" data-creation-subpage="2">
+                      <label>First ability bonus<select id="half-elf-bonus-one"></select></label>
+                      <label>Second ability bonus<select id="half-elf-bonus-two"></select></label>
+                    </div>
+                  </div>
+                </details>
+                <p id="race-description" class="builder-note" data-creation-subpage="0"></p>
+                <p id="class-description" class="builder-note" data-creation-subpage="1"></p>
+              </section>
+
+              <section class="builder-section" data-creation-step="1">
+                <div class="builder-section-heading" data-creation-subpage="0">
+                  <div><p class="eyebrow" data-i18n="A LITTLE FATE">A LITTLE FATE</p><h3 data-i18n="The dice reveal your strengths">The dice reveal your strengths</h3><p class="builder-note" data-i18n="Your scores are rolled and placed for you. Swap any two if you want a different feel.">Your scores are rolled and placed for you. Swap any two if you want a different feel.</p></div>
+                  <label class="method-label">Want a different approach?<select id="score-method" name="scoreMethod">
+                    <option value="rolled" data-i18n="Roll for me · recommended">Roll for me · recommended</option>
+                    <option value="standard" data-i18n="Use a suggested set">Use a suggested set</option>
+                    <option value="point-buy" data-i18n="Customize every score">Customize every score</option>
+                  </select></label>
+                </div>
+                <p id="score-method-note" class="builder-note" data-creation-subpage="0"></p>
+                <div id="ability-score-fields" class="ability-score-fields" data-creation-subpage="0,1"></div>
+                <fieldset id="class-skills-fieldset" class="class-skills-fieldset">
+                  <legend>Choose trained skills <span id="class-skill-count"></span></legend>
+                  <div id="class-skill-choices" class="class-skill-choices"></div>
+                  <p id="class-skill-note" class="builder-note"></p>
+                </fieldset>
+                <div class="score-tools" data-creation-subpage="1">
+                  <button id="roll-scores" class="button secondary hidden" type="button" data-i18n="Roll a new set">Roll a new set</button>
+                  <span id="point-buy-remaining" class="muted small"></span>
+                </div>
+                <p id="ability-bonus-note" class="builder-note" data-creation-subpage="1"></p>
+              </section>
+
+              <section class="builder-section" data-creation-step="2">
+                <div data-creation-subpage="0"><p class="eyebrow" data-i18n="BEFORE THE DESCENT">BEFORE THE DESCENT</p><h3 data-i18n="Your kit is ready">Your kit is ready</h3><p class="builder-note" data-i18n="The keeper prepares a practical starting kit for your role. You can head straight out, or adjust it if you want.">The keeper prepares a practical starting kit for your role. You can head straight out, or adjust it if you want.</p></div>
+                <div id="starter-kit-summary" class="starter-kit-summary" aria-live="polite" data-creation-subpage="0"></div>
+                <details class="optional-character-details" data-creation-subpage="1,2">
+                  <summary>Customize starting gear &middot; optional</summary>
+                  <div class="optional-character-fields builder-two">
+                    <label data-creation-subpage="1">Weapon<select id="character-weapon" name="weapon"></select></label>
+                    <label data-creation-subpage="1">Armor<select id="character-armor" name="armor"></select></label>
+                    <label data-creation-subpage="2">Shield<select id="character-shield" name="shield"><option value="no" data-i18n="No shield">No shield</option><option value="yes" data-i18n="Feathered wood-and-hide shield (+2 AC)">Feathered wood-and-hide shield (+2 AC)</option></select></label>
+                    <label data-creation-subpage="2">Cloak<select id="character-cloak" name="cloak"><option value="no" data-i18n="No cloak">No cloak</option><option value="yes" data-i18n="Feathered travel mantle">Feathered travel mantle</option></select></label>
+                  </div>
+                </details>
+                <p id="equipment-note" class="builder-note" data-creation-subpage="2"></p>
+              </section>
+
+              <section class="builder-section appearance-section" data-creation-step="3">
+                <div data-creation-subpage="0"><p class="eyebrow" data-i18n="ONE LAST DETAIL">ONE LAST DETAIL</p><h3 data-i18n="Make them yours">Make them yours</h3><p class="builder-note" data-i18n="A look for the road ahead. None of these choices change how your adventurer plays.">A look for the road ahead. None of these choices change how your adventurer plays.</p></div>
+                <div class="builder-two" data-creation-subpage="0">
+                  <label>Skin tone<select id="character-skin" name="skin"></select></label>
+                  <label>Hair style<select id="character-hair-style" name="hairStyle">
+                    <option value="short" data-i18n="Short">Short</option><option value="long" data-i18n="Long">Long</option><option value="braids" data-i18n="Braids">Braids</option>
+                    <option value="crest" data-i18n="Crest">Crest</option><option value="topknot" data-i18n="Topknot">Topknot</option><option value="shaved-sides" data-i18n="Shaved sides">Shaved sides</option>
+                  </select></label>
+                </div>
+                <div class="builder-two" data-creation-subpage="1">
+                  <label>Hair color<select id="character-hair" name="hair">
+                    <option value="#211a17" data-i18n="Black">Black</option><option value="#59402b" data-i18n="Brown">Brown</option><option value="#a87a42" data-i18n="Copper">Copper</option><option value="#d8c58c" data-i18n="Pale gold">Pale gold</option><option value="#8b8d8c" data-i18n="Silver">Silver</option>
+                  </select></label>
+                  <label>Clothing color<select id="character-tunic" name="tunic">
+                    <option value="#334d78" data-i18n="Indigo">Indigo</option><option value="#28685e" data-i18n="Jade">Jade</option><option value="#9c4935" data-i18n="Terracotta">Terracotta</option><option value="#8a7137" data-i18n="Ochre">Ochre</option><option value="#5d5b59" data-i18n="Ash gray">Ash gray</option>
+                  </select></label>
+                </div>
+                <div class="builder-two" data-creation-subpage="1">
+                  <label>Garment<select id="character-garment" name="garment">
+                    <option value="woven-tunic" data-i18n="Woven tunic">Woven tunic</option><option value="cotton-wrap" data-i18n="Cotton wrap">Cotton wrap</option>
+                    <option value="feather-mantle" data-i18n="Feather mantle">Feather mantle</option><option value="hide-vest" data-i18n="Hide vest">Hide vest</option>
+                  </select></label>
+                  <label>Adornment<select id="character-adornment" name="adornment">
+                    <option value="none" data-i18n="None">None</option><option value="jade-beads" data-i18n="Jade beads">Jade beads</option>
+                    <option value="shell-beads" data-i18n="Shell beads">Shell beads</option><option value="feather-trim" data-i18n="Feather trim">Feather trim</option>
+                  </select></label>
+                </div>
+                <div class="builder-two" data-creation-subpage="2">
+                  <label>Headwear<select id="character-headwear" name="headwear">
+                    <option value="feather-band" data-i18n="Feather band">Feather band</option><option value="none" data-i18n="None">None</option>
+                    <option value="cotton-wrap" data-i18n="Cotton headwrap">Cotton headwrap</option><option value="jade-circlet" data-i18n="Jade circlet">Jade circlet</option>
+                  </select></label>
+                  <label>Face paint<select id="character-face-paint" name="facePaint">
+                    <option value="none" data-i18n="None">None</option><option value="jade-lines" data-i18n="Jade lines">Jade lines</option>
+                    <option value="terracotta-marks" data-i18n="Terracotta marks">Terracotta marks</option>
+                  </select></label>
+                </div>
+                <p class="builder-note" data-creation-subpage="2" data-i18n="Appearance is cosmetic; it does not change your abilities.">Appearance is cosmetic; it does not change your abilities.</p>
+              </section>
+            </div>
+            <p id="character-error" class="character-error" role="alert" aria-live="assertive"></p>
+          </div>
+          <div class="character-form-actions">
+            <button class="button secondary character-exit" id="cancel-character" type="button" data-i18n="Exit setup">Exit setup</button>
+            <button class="button secondary hidden" id="character-back" type="button" data-i18n="Back">Back</button>
+            <button class="button" id="character-next" type="button" data-i18n="Continue">Continue</button>
+            <button id="character-submit" class="button hidden" type="submit" data-i18n="Begin adventure">Begin adventure</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="character-card-dialog" class="character-card-dialog" aria-labelledby="character-heading">
+        <section class="panel character-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ADVENTURER CARD</p>
+              <h2 id="character-heading">Iztli</h2>
+              <p id="character-subtitle" class="character-subtitle">Human Fighter</p>
+            </div>
+            <div class="sidebar-character-tools">
+              <span id="level-badge" class="level-badge">LV 1</span>
+              <div id="character-portrait" class="sidebar-portrait" aria-hidden="true"></div>
+              <button id="close-character-card-top" class="quiet-button character-card-close-top" type="button" aria-label="Close adventurer card" data-i18n-attr="aria-label:Close adventurer card">×</button>
+            </div>
+          </div>
+          <div class="health-summary">
+            <div class="health-label"><span data-i18n="Hit points">Hit points</span><strong id="player-hp">18 / 18</strong></div>
+            <div class="health-track player-track"><span id="player-health-fill"></span></div>
+          </div>
+          <div class="character-tabs" role="tablist" aria-label="Adventurer details" data-i18n-attr="aria-label:Adventurer details">
+            <button id="tab-equipment" class="character-tab" type="button" role="tab" aria-selected="true" aria-controls="panel-equipment" tabindex="0" data-character-tab="equipment" data-i18n="Equipment">Equipment</button>
+            <button id="tab-gear" class="character-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-gear" tabindex="-1" data-character-tab="gear" data-i18n="Pack">Pack</button>
+            <button id="tab-info" class="character-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-info" tabindex="-1" data-character-tab="info" data-i18n="Character">Character</button>
+            <button id="tab-abilities" class="character-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-abilities" tabindex="-1" data-character-tab="abilities" data-i18n="Abilities">Abilities</button>
+          </div>
+          <section id="panel-equipment" class="character-tab-panel" role="tabpanel" aria-labelledby="tab-equipment" tabindex="0">
+            <p id="character-equipment" class="character-equipment"></p>
+            <section class="inventory-block" aria-labelledby="equipment-heading">
+              <div class="inventory-heading"><strong id="equipment-heading" data-i18n="Worn & ready">Worn &amp; ready</strong><span data-i18n="Tap to change">Tap to change</span></div>
+              <ul id="equipment-list" class="inventory-list"></ul>
+              <nav class="menu-list-pager" data-list-pager="equipment" aria-label="Equipment pages" hidden>
+                <button class="quiet-button" type="button" data-page-list="equipment" data-page-direction="-1" aria-label="Previous equipment page">←</button>
+                <span data-page-indicator></span>
+                <button class="quiet-button" type="button" data-page-list="equipment" data-page-direction="1" aria-label="Next equipment page">→</button>
+              </nav>
+            </section>
+          </section>
+          <section id="panel-gear" class="character-tab-panel" role="tabpanel" aria-labelledby="tab-gear" tabindex="0" hidden>
+            <section class="inventory-block" aria-labelledby="inventory-heading">
+              <div class="inventory-heading"><strong id="inventory-heading" data-i18n="Pack">Pack</strong><span id="inventory-load"></span></div>
+              <p id="inventory-security" class="inventory-security" aria-live="polite"></p>
+              <div id="inventory-filters" class="inventory-filters" role="group" aria-label="Filter backpack contents" data-i18n-attr="aria-label:Filter backpack contents">
+                <button type="button" data-inventory-filter="all" aria-pressed="true" data-i18n="All">All</button>
+                <button type="button" data-inventory-filter="supplies" aria-pressed="false" data-i18n="Food & water">Food &amp; water</button>
+                <button type="button" data-inventory-filter="gear" aria-pressed="false" data-i18n="Gear">Gear</button>
+                <button type="button" data-inventory-filter="valuables" aria-pressed="false" data-i18n="Treasures">Treasures</button>
+              </div>
+              <ul id="inventory-list" class="inventory-list"></ul>
+              <nav class="menu-list-pager" data-list-pager="inventory" aria-label="Pack pages" hidden>
+                <button class="quiet-button" type="button" data-page-list="inventory" data-page-direction="-1" aria-label="Previous pack page">←</button>
+                <span data-page-indicator></span>
+                <button class="quiet-button" type="button" data-page-list="inventory" data-page-direction="1" aria-label="Next pack page">→</button>
+              </nav>
+            </section>
+          </section>
+          <section id="panel-info" class="character-tab-panel" role="tabpanel" aria-labelledby="tab-info" tabindex="0" hidden>
+            <section class="character-class-guide" aria-labelledby="class-guide-heading">
+              <p class="eyebrow" data-i18n="YOUR CALLING">YOUR CALLING</p>
+              <h3 id="class-guide-heading"></h3>
+              <p id="class-guide-copy"></p>
+              <p id="class-training-copy" class="character-guide-note"></p>
+            </section>
+            <div class="character-progress-line">
+              <span id="character-level-progress"></span>
+              <span id="xp-line">0 experience</span>
+            </div>
+            <div class="stat-grid character-stat-grid">
+              <div><span data-i18n="Hit points">Hit points</span><strong id="player-hp-stat">12 / 12</strong></div>
+              <div><span data-i18n="Armor">Armor</span><strong id="player-ac">15</strong></div>
+              <div><span data-i18n="Attack">Attack</span><strong id="player-attack">+4</strong></div>
+              <div><span data-i18n="Pack limit">Pack limit</span><strong id="character-carry-capacity">210 lb</strong></div>
+            </div>
+            <div id="character-stat-details" class="character-stat-details" aria-label="Attributes and what they affect" data-i18n-attr="aria-label:Attributes and what they affect"></div>
+            <p id="character-equipment-bonus" class="character-equipment-bonus"></p>
+            <nav class="menu-list-pager character-info-pager" data-list-pager="characterInfo" aria-label="Character details pages">
+              <button class="quiet-button" type="button" data-page-list="characterInfo" data-page-direction="-1" aria-label="Previous character details page">←</button>
+              <span data-page-indicator></span>
+              <button class="quiet-button" type="button" data-page-list="characterInfo" data-page-direction="1" aria-label="Next character details page">→</button>
+            </nav>
+          </section>
+          <section id="panel-abilities" class="character-tab-panel" role="tabpanel" aria-labelledby="tab-abilities" tabindex="0" hidden>
+            <div>
+              <p class="eyebrow" data-i18n="FIELD GUIDE">FIELD GUIDE</p>
+              <h3 class="character-guide-title" data-i18n="Your abilities">Your abilities</h3>
+              <p id="ability-guide-note" class="character-guide-note"></p>
+            </div>
+            <div id="ability-guide-list" class="ability-guide-list"></div>
+            <nav class="menu-list-pager ability-guide-pager" data-list-pager="abilities" aria-label="Field guide pages">
+              <button class="quiet-button" type="button" data-page-list="abilities" data-page-direction="-1" aria-label="Previous field guide page">←</button>
+              <span data-page-indicator></span>
+              <button class="quiet-button" type="button" data-page-list="abilities" data-page-direction="1" aria-label="Next field guide page">→</button>
+            </nav>
+          </section>
+          <button class="button secondary close-character-card" id="close-character-card" type="button" data-i18n="Back to game">Back to game</button>
+        </section>
+      </dialog>
+
+      <div id="game-layout" class="game-layout hidden">
+        <section class="play-column">
+          <section id="city-screen" class="town-screen hidden" aria-labelledby="city-heading">
+            <div class="panel town-banner">
+              <p class="eyebrow" data-i18n="CHILTOMATLAN · THE EDGE OF THE EMPIRE">CHILTOMATLAN · THE EDGE OF THE EMPIRE</p>
+              <h2 id="city-heading" data-i18n="Chiltomatlan">Chiltomatlan</h2>
+              <p class="town-intro" data-i18n="A century ago, the Empire sealed the nameless king's tomb beyond this small town and forbade entry. Its broken seal has drawn treasure-seekers back to Chiltomatlan. Rest, trade, prepare, and descend when you are ready.">A century ago, the Empire sealed the nameless king's tomb beyond this small town and forbade entry. Its broken seal has drawn treasure-seekers back to Chiltomatlan. Rest, trade, prepare, and descend when you are ready.</p>
+              <p class="town-safe-notice"><span aria-hidden="true">✦</span> Safe haven · No hunger, thirst, or attacks while in Chiltomatlan</p>
+            </div>
+            <section class="panel town-walk-panel" aria-labelledby="town-walk-heading">
+              <div class="section-heading">
+                <div><p class="eyebrow" data-i18n="THE TOWN STREETS">THE TOWN STREETS</p><h3 id="town-walk-heading" data-i18n="Find your way around">Find your way around</h3></div>
+                <button id="town-interact-button" class="context-action-button" type="button">
+                  <span id="town-interact-label" data-i18n="Interact">Interact</span><kbd>E</kbd>
+                </button>
+              </div>
+              <p id="town-location-copy" class="town-location-copy" aria-live="polite">You arrive in the shaded plaza. The keeper waves you over from the travelers' house.</p>
+              <p class="town-controls-hint">Move with arrows, Q / Z / C, or numpad · <kbd>E</kbd> interact</p>
+              <div id="town-map" class="town-map" role="group" aria-label="Walkable streets of Chiltomatlan"></div>
+              <nav class="town-touch-dpad touch-dpad" aria-label="Town movement controls">
+                <button type="button" data-town-move="-1,-1" aria-label="Move northwest" data-i18n-attr="aria-label:Move northwest">↖</button>
+                <button type="button" data-town-move="0,-1" aria-label="Move north" data-i18n-attr="aria-label:Move north">↑</button>
+                <button type="button" data-town-move="1,-1" aria-label="Move northeast" data-i18n-attr="aria-label:Move northeast">↗</button>
+                <button type="button" data-town-move="-1,0" aria-label="Move west" data-i18n-attr="aria-label:Move west">←</button>
+                <span class="dpad-center" aria-hidden="true"></span>
+                <button type="button" data-town-move="1,0" aria-label="Move east" data-i18n-attr="aria-label:Move east">→</button>
+                <button type="button" data-town-move="-1,1" aria-label="Move southwest" data-i18n-attr="aria-label:Move southwest">↙</button>
+                <button type="button" data-town-move="0,1" aria-label="Move south" data-i18n-attr="aria-label:Move south">↓</button>
+                <button type="button" data-town-move="1,1" aria-label="Move southeast" data-i18n-attr="aria-label:Move southeast">↘</button>
+              </nav>
+              <p class="keyboard-hint" data-i18n="Walk one tile at a time. Tap a nearby neighbor or press E to talk; step onto the southern road to enter the forbidden tomb.">Walk one tile at a time. Tap a nearby neighbor or press E to talk; step onto the southern road to enter the forbidden tomb.</p>
+              <div class="town-legend" aria-label="Town map key" data-i18n-attr="aria-label:Town map key">
+                <span><i>⌂</i> Ceiba House</span><span><i>▤</i> Market</span>
+                <span><i>N/T/X/P</i> Townsfolk</span><span><i>W</i> Ceiba Well</span><span><i>↟</i> Tomb road</span>
+              </div>
+            </section>
+          </section>
+
+          <section id="store-screen" class="store-screen hidden" data-store-view="buy" aria-labelledby="store-heading">
+            <div class="panel store-panel">
+              <p class="eyebrow" data-i18n="CHILTOMATLAN MARKET · SAFE ZONE">CHILTOMATLAN MARKET · SAFE ZONE</p>
+              <h2 id="store-heading" data-i18n="The Market Stalls">The Market Stalls</h2>
+              <p class="town-intro" data-i18n="Stock up for the road, compare each item's cost and use, or trade what you can spare.">Stock up for the road, compare each item's cost and use, or trade what you can spare.</p>
+              <p id="store-carry-load" class="inventory-load"></p>
+              <div class="store-tabs" role="group" aria-label="Market inventory">
+                <button id="store-buy-tab" type="button" aria-pressed="true" data-store-tab="buy" data-i18n="Buy supplies">Buy supplies</button>
+                <button id="store-sell-tab" type="button" aria-pressed="false" data-store-tab="sell" data-i18n="Sell from pack">Sell from pack</button>
+              </div>
+              <div class="store-categories" role="group" aria-label="Items for sale">
+                <button type="button" data-store-category="supplies" aria-pressed="true" data-i18n="Supplies">Supplies</button>
+                <button type="button" data-store-category="consumables" aria-pressed="false" data-i18n="Consumables">Consumables</button>
+                <button type="button" data-store-category="equipment" aria-pressed="false" data-i18n="Equipment">Equipment</button>
+                <button type="button" data-store-category="miscellaneous" aria-pressed="false" data-i18n="Misc.">Misc.</button>
+              </div>
+              <section id="store-buy-panel" class="store-trade-panel" aria-labelledby="store-buy-heading">
+                <h3 id="store-buy-heading" class="store-subheading">Supplies · food, water &amp; trail gear</h3>
+                <div id="store-buy-list" class="store-list"></div>
+                <nav class="menu-list-pager" data-list-pager="storeBuy" aria-label="Items for sale pages" hidden>
+                  <button class="quiet-button" type="button" data-page-list="storeBuy" data-page-direction="-1" aria-label="Previous items page">←</button>
+                  <span data-page-indicator></span>
+                  <button class="quiet-button" type="button" data-page-list="storeBuy" data-page-direction="1" aria-label="Next items page">→</button>
+                </nav>
+              </section>
+              <section id="store-sell-panel" class="store-trade-panel" aria-labelledby="store-sell-heading">
+                <h3 id="store-sell-heading" class="store-subheading">Sell from your pack</h3>
+                <div id="store-sell-list" class="store-list"></div>
+                <nav class="menu-list-pager" data-list-pager="storeSell" aria-label="Items to sell pages" hidden>
+                  <button class="quiet-button" type="button" data-page-list="storeSell" data-page-direction="-1" aria-label="Previous items page">←</button>
+                  <span data-page-indicator></span>
+                  <button class="quiet-button" type="button" data-page-list="storeSell" data-page-direction="1" aria-label="Next items page">→</button>
+                </nav>
+              </section>
+              <p id="shop-message" class="muted small" aria-live="polite">Choose a stall item to trade.</p>
+              <button id="return-to-city" class="button secondary" type="button">Back to Chiltomatlan</button>
+            </div>
+          </section>
+
+          <section id="dungeon-screen" class="dungeon-screen hidden" aria-label="Dungeon exploration" data-i18n-attr="aria-label:Dungeon exploration">
+            <section class="panel map-panel" aria-labelledby="map-heading">
+            <div class="dungeon-controls" aria-label="Dungeon controls">
+            <section id="action-panel" class="action-panel" aria-label="Dungeon actions">
+              <div class="section-heading">
+                <div><p class="eyebrow" data-i18n="YOUR TURN">YOUR TURN</p><h2 id="actions-heading" data-i18n="Choose your next move">Choose your next move</h2></div>
+                <span id="turn-status" class="turn-status" aria-live="polite" data-i18n="Choose a move">Choose a move</span>
+                <span id="action-mode" class="action-mode" aria-live="polite"></span>
+                <button class="button secondary hidden" id="return-after-delving" type="button" data-i18n="Return to Chiltomatlan">Return to Chiltomatlan</button>
+              </div>
+              <button class="ability-guide-shortcut" id="open-ability-guide" type="button" aria-label="Open ability guide" title="Read about your abilities" data-i18n-attr="aria-label:Open ability guide">?</button>
+              <div id="action-buttons" class="action-buttons">
+                <div id="action-primary" class="action-primary" aria-label="Current interaction"></div>
+                <button id="look-toggle" class="button secondary look-toggle" type="button"
+                  aria-pressed="false" aria-label="Inspect a tile" title="Inspect a tile">
+                  <img src="./resources/items/tool.png?v=77" alt="" aria-hidden="true">
+                  <span class="action-label" data-i18n="Inspect">Inspect</span>
+                </button>
+                <div class="action-groups" aria-label="Other actions">
+                  <details class="action-group" id="action-group-combat">
+                    <summary><img src="./resources/items/weapon.png?v=77" alt="" aria-hidden="true"><span data-i18n="Combat">Combat</span><span class="action-category-mark"></span></summary>
+                    <div id="action-combat" class="action-category-actions"></div>
+                  </details>
+                  <details class="action-group" id="action-group-explore">
+                    <summary><img src="./resources/items/tool.png?v=77" alt="" aria-hidden="true"><span data-i18n="Explore">Explore</span><span class="action-category-mark"></span></summary>
+                    <div id="action-explore" class="action-category-actions"></div>
+                  </details>
+                  <details class="action-group" id="action-group-supplies">
+                    <summary><img src="./resources/items/water.png?v=77" alt="" aria-hidden="true"><span data-i18n="Supplies">Supplies</span><span class="action-category-mark"></span></summary>
+                    <div id="action-supplies" class="action-category-actions"></div>
+                  </details>
+                </div>
+              </div>
+              <p class="keyboard-hint">Move: arrows · Q/Z/C + numpad diagonals · E interacts · Numpad 5 waits · Esc pauses</p>
+            </section>
+            <nav class="touch-dpad" aria-label="Touch movement controls" data-i18n-attr="aria-label:Touch movement controls">
+              <button type="button" data-move="-1,-1" aria-label="Move northwest" title="Move northwest" data-i18n-attr="aria-label:Move northwest;title:Move northwest">↖</button>
+              <button type="button" data-move="0,-1" aria-label="Move north" title="Move north" data-i18n-attr="aria-label:Move north;title:Move north">↑</button>
+              <button type="button" data-move="1,-1" aria-label="Move northeast" title="Move northeast" data-i18n-attr="aria-label:Move northeast;title:Move northeast">↗</button>
+              <button type="button" data-move="-1,0" aria-label="Move west" title="Move west" data-i18n-attr="aria-label:Move west;title:Move west">←</button>
+              <button type="button" id="wait-dpad-button" class="dpad-wait" aria-label="Wait one turn" title="Wait one turn" data-i18n-attr="aria-label:Wait one turn;title:Wait one turn">WAIT</button>
+              <button type="button" data-move="1,0" aria-label="Move east" title="Move east" data-i18n-attr="aria-label:Move east;title:Move east">→</button>
+              <button type="button" data-move="-1,1" aria-label="Move southwest" title="Move southwest" data-i18n-attr="aria-label:Move southwest;title:Move southwest">↙</button>
+              <button type="button" data-move="0,1" aria-label="Move south" title="Move south" data-i18n-attr="aria-label:Move south;title:Move south">↓</button>
+              <button type="button" data-move="1,1" aria-label="Move southeast" title="Move southeast" data-i18n-attr="aria-label:Move southeast;title:Move southeast">↘</button>
+            </nav>
+            </div>
+            <div class="battle-hud" aria-label="Combat status" data-i18n-attr="aria-label:Combat status">
+              <div id="combat-feedback" class="combat-feedback" aria-hidden="true"></div>
+              <section id="player-combatant" class="combatant-card player-combatant" aria-label="Your adventurer" data-i18n-attr="aria-label:Your adventurer">
+                <div id="combat-player-portrait" class="combatant-art" aria-hidden="true"></div>
+                <div class="combatant-info">
+                  <div class="combatant-title"><strong id="combat-character-name">Iztli</strong><span>LV <span id="combat-level">1</span></span></div>
+                  <div class="health-label"><span data-i18n="Hit points">Hit points</span><strong id="combat-player-hp">18 / 18</strong></div>
+                  <div class="health-track player-track"><span id="combat-player-health-fill"></span></div>
+                  <span class="combatant-detail">AC <span id="combat-player-ac">15</span> <i></i>ATK <span id="combat-player-attack">+4</span> <i></i><span id="combat-potions">2</span> tonics</span>
+                </div>
+              </section>
+              <div id="encounter" class="combatant-card enemy-combatant hidden" aria-live="polite">
+                <div id="enemy-portrait" class="combatant-art" aria-hidden="true"></div>
+                <div class="combatant-info">
+                  <div class="combatant-title"><strong id="enemy-name" data-i18n="Creature">Creature</strong><span data-i18n="HOSTILE">HOSTILE</span></div>
+                  <div class="health-label"><span id="enemy-health">12 / 12 HP</span><span id="enemy-distance"></span></div>
+                  <div class="health-track"><span id="enemy-health-fill"></span></div>
+                  <span id="enemy-description" class="combatant-detail"></span>
+                </div>
+              </div>
+            </div>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">UNDER THE JUNGLE</p>
+                <h2 id="map-heading" data-i18n="Dungeon entrance">Dungeon entrance</h2>
+              </div>
+              <span class="map-hint" data-i18n="Tap a tile to move · tap yourself to interact">Tap a tile to move · tap yourself to interact</span>
+            </div>
+            <p id="delve-objectives" class="delve-objectives"></p>
+            <div id="dungeon-map-viewport" class="dungeon-map-viewport" role="region" aria-label="Dungeon map; scroll to explore nearby tiles" tabindex="0" data-i18n-attr="aria-label:Dungeon map; scroll to explore nearby tiles">
+              <div id="dungeon-map" class="dungeon-map" role="group" aria-label="Nearby dungeon tiles" data-i18n-attr="aria-label:Nearby dungeon tiles"></div>
+            </div>
+            <section id="look-inspector" class="look-inspector" aria-live="polite" hidden>
+              <strong id="look-title"></strong>
+              <p id="look-description"></p>
+            </section>
+            <ol id="compact-log" class="compact-log" aria-label="Recent events" aria-live="polite" data-i18n-attr="aria-label:Recent events"></ol>
+            <details class="map-legend">
+              <summary data-i18n="Map key">Map key</summary>
+              <div class="map-legend-items" aria-label="Map key" data-i18n-attr="aria-label:Map key">
+                <span><i class="legend-wall"></i>Wall</span>
+                <span><i class="legend-floor"></i>Floor</span>
+                <span><i class="legend-player"></i>You</span>
+                <span><i class="legend-companion"></i>Ally</span>
+                <span><i class="legend-enemy"></i>Creature</span>
+                <span><i class="legend-hazard"></i>Hazard</span>
+                <span><i class="legend-exit"></i>Entrance / exit</span>
+                <span><i class="legend-map-sign">□</i>Old tomb marking</span>
+              </div>
+            </details>
+            </section>
+
+          </section>
+        </section>
+
+        <aside id="side-drawer" class="side-column" aria-label="Expedition details" aria-hidden="true" data-i18n-attr="aria-label:Expedition details">
+          <div class="side-drawer-heading">
+            <div>
+              <p class="eyebrow" data-i18n="EXPEDITION">EXPEDITION</p>
+              <h2 id="side-drawer-title" data-i18n="Party">Party</h2>
+            </div>
+            <button id="log-toggle" class="quiet-button utility-toggle hidden" type="button" aria-expanded="false" aria-controls="side-drawer" data-i18n="Log">Log</button>
+            <button id="close-side-drawer" class="quiet-button" type="button" aria-label="Close expedition details" data-i18n-attr="aria-label:Close expedition details">×</button>
+          </div>
+          <section id="town-party-panel" class="panel party-panel" aria-labelledby="party-heading" hidden>
+            <div class="section-heading">
+              <div><p class="eyebrow" data-i18n="YOUR CREW">YOUR CREW</p><h3 id="party-heading">Party · <span id="party-count">1 / 4</span></h3></div>
+            </div>
+            <div id="town-party-list" class="party-list"></div>
+            <p id="party-message" class="muted small" aria-live="polite" data-i18n="Companions you meet in the world may join you in a future expedition.">Companions you meet in the world may join you in a future expedition.</p>
+          </section>
+          <section id="dungeon-party-panel" class="panel party-status-panel" aria-labelledby="dungeon-party-heading" hidden>
+            <div class="section-heading">
+              <div><p class="eyebrow" data-i18n="TRAVEL NEEDS">TRAVEL NEEDS</p><h2 id="dungeon-party-heading" data-i18n="Party">Party</h2></div>
+            </div>
+            <div id="dungeon-party-list" class="party-list"></div>
+          </section>
+          <section id="dungeon-context-rail" class="dungeon-context-rail" hidden>
+            <section class="panel room-panel" aria-live="polite">
+              <div class="room-heading">
+                <div>
+                  <p class="eyebrow" id="room-type">ENTRANCE</p>
+                  <h2 id="room-name">The threshold</h2>
+                </div>
+                <span id="room-status" class="status-pill" data-i18n="Ready">Ready</span>
+              </div>
+              <p id="room-description" class="room-description"></p>
+            </section>
+          </section>
+          <section id="journal-panel" class="journal-panel" hidden>
+            <details class="panel quest-panel" open>
+              <summary>Quest · <span id="quest-title" data-i18n="The Deep Pulse">The Deep Pulse</span></summary>
+              <p id="town-story" class="town-story"></p>
+            </details>
+            <section class="panel factions-panel" aria-labelledby="factions-heading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="CHILTOMATLAN & THE JUNGLE ROAD">CHILTOMATLAN &amp; THE JUNGLE ROAD</p>
+                  <h2 id="factions-heading" data-i18n="Factions">Factions</h2>
+                </div>
+              </div>
+              <div id="faction-list" class="faction-list" aria-live="polite"></div>
+            </section>
+            <section id="log-drawer-panel" class="log-drawer-panel panel" aria-labelledby="log-heading" hidden>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow" data-i18n="RECENT EVENTS">RECENT EVENTS</p>
+                  <h2 id="log-heading" data-i18n="Expedition log">Expedition log</h2>
+                </div>
+              </div>
+              <ol id="event-log" class="event-log" aria-live="polite"></ol>
+            </section>
+          </section>
+
+        </aside>
+      </div>
+      <footer><span data-i18n="Local autosave">Local autosave</span><span id="save-state" data-i18n="Ready">Ready</span></footer>
+    </main>
+    <dialog id="pause-dialog" class="pause-dialog" aria-labelledby="pause-heading">
+      <section class="pause-panel panel">
+        <p class="eyebrow" data-i18n="SAFE TO STEP AWAY">SAFE TO STEP AWAY</p>
+        <h2 id="pause-heading" data-i18n="Paused">Paused</h2>
+        <p>Time only advances when you act. Your run is saved on this device.</p>
+        <button class="button" id="resume-game" type="button" data-i18n="Resume">Resume</button>
+        <button class="button secondary" id="return-to-title" type="button" data-i18n="Title screen">Title screen</button>
+      </section>
+    </dialog>
+    <dialog id="level-up-dialog" class="pause-dialog" aria-labelledby="level-up-heading">
+      <section class="pause-panel panel">
+        <p class="eyebrow">ABILITY SCORE IMPROVEMENT</p>
+        <h2 id="level-up-heading">Choose your training</h2>
+        <p id="level-up-copy"></p>
+        <label>First ability<select id="level-up-one"></select></label>
+        <label id="level-up-two-label">Second ability<select id="level-up-two"></select></label>
+        <label id="level-up-mode">Improvement
+          <select id="level-up-mode-select"><option value="two">+1 to two abilities</option><option value="one">+2 to one ability</option></select>
+        </label>
+        <button class="button" id="apply-level-up" type="button" data-i18n="Apply improvement">Apply improvement</button>
+      </section>
+    </dialog>
+    <dialog id="prologue-dialog" class="story-dialog" aria-labelledby="prologue-heading">
+      <section class="story-panel">
+        <p class="eyebrow">A NEW ADVENTURE</p>
+        <h2 id="prologue-heading"></h2>
+        <p id="prologue-copy" class="story-copy"></p>
+        <nav class="copy-page-controls" data-copy-pager="prologue-copy" aria-label="Story pages" hidden>
+          <button class="button secondary" type="button" data-copy-page="-1" aria-label="Previous story page">←</button>
+          <span data-copy-page-number></span>
+          <button class="button secondary" type="button" data-copy-page="1" aria-label="Next story page">→</button>
+        </nav>
+        <button class="button" id="begin-story" type="button" data-i18n="Take in Chiltomatlan">Take in Chiltomatlan</button>
+      </section>
+    </dialog>
+    <dialog id="town-dialog" class="story-dialog" aria-labelledby="town-dialog-heading">
+      <section class="story-panel">
+        <p class="eyebrow">CHILTOMATLAN · A CONVERSATION</p>
+        <h2 id="town-dialog-heading"></h2>
+        <p id="town-dialog-copy" class="story-copy"></p>
+        <nav class="copy-page-controls" data-copy-pager="town-dialog-copy" aria-label="Conversation pages" hidden>
+          <button class="button secondary" type="button" data-copy-page="-1" aria-label="Previous conversation page">←</button>
+          <span data-copy-page-number></span>
+          <button class="button secondary" type="button" data-copy-page="1" aria-label="Next conversation page">→</button>
+        </nav>
+        <button class="button" id="town-dialog-action" type="button"></button>
+        <button class="button secondary hidden" id="town-dialog-shop" type="button" data-i18n="Browse cosmetic curiosities">Browse cosmetic curiosities</button>
+        <button class="button secondary hidden" id="town-dialog-join" type="button"></button>
+        <button class="button secondary hidden" id="town-dialog-learn" type="button">Learn the rules</button>
+        <button class="button secondary" id="town-dialog-close" type="button">Continue walking</button>
+      </section>
+    </dialog>
+    <dialog id="cosmetic-shop-dialog" class="story-dialog cosmetic-shop-dialog" aria-labelledby="cosmetic-shop-heading">
+      <section class="story-panel cosmetic-shop-panel">
+        <p class="eyebrow" data-i18n="MAHUIZ'S PRIVATE COLLECTION">MAHUIZ'S PRIVATE COLLECTION</p>
+        <h2 id="cosmetic-shop-heading" data-i18n="Elite regalia">Elite regalia</h2>
+        <p class="story-copy" data-i18n="Rare helmets and clothing change your adventurer's pixel sprite only. They do not alter armor class or combat stats.">Rare helmets and clothing change your adventurer's pixel sprite only. They do not alter armor class or combat stats.</p>
+        <p id="cosmetic-shop-gold" class="cosmetic-shop-gold"></p>
+        <p id="cosmetic-shop-message" class="cosmetic-shop-message" role="status" aria-live="polite"></p>
+        <div class="cosmetic-shop-slots" aria-label="Equipped cosmetic slots" data-i18n-attr="aria-label:Equipped cosmetic slots">
+          <button class="button secondary" type="button" data-cosmetic-clear="helmet" data-i18n="Unequip helmet">Unequip helmet</button>
+          <button class="button secondary" type="button" data-cosmetic-clear="clothes" data-i18n="Unequip clothes">Unequip clothes</button>
+        </div>
+        <div id="cosmetic-shop-items" class="cosmetic-shop-items"></div>
+        <button class="button secondary" id="cosmetic-shop-close" type="button" data-i18n="Return to Mahuiz">Return to Mahuiz</button>
+      </section>
+    </dialog>
+    <dialog id="patolli-dialog" class="story-dialog patolli-dialog" aria-labelledby="patolli-heading">
+      <section class="story-panel patolli-panel">
+        <p class="eyebrow">CHILTOMATLAN · IXCHEL'S PLAZA BOARD</p>
+        <h2 id="patolli-heading" data-i18n="Patolli">Patolli</h2>
+        <button class="button secondary" id="patolli-rules-toggle" type="button" aria-expanded="false" data-i18n="Read the rules">Read the rules</button>
+        <section id="patolli-rules" class="patolli-rules-page" aria-label="Patolli rules" hidden data-i18n-attr="aria-label:Patolli rules">
+          <p class="patolli-rules-lead" data-i18n="Patolli is a historic Mesoamerican game, but surviving accounts vary. Ixchel's gold-stake match is a house-rule adaptation, not a claim to reproduce every historical version.">Patolli is a historic Mesoamerican game, but surviving accounts vary. Ixchel's gold-stake match is a house-rule adaptation, not a claim to reproduce every historical version.</p>
+          <p class="story-copy" data-patolli-rule-page="0" data-i18n="Toss five beans. One to four marked beans move that many spaces; five marked beans move ten. A piece leaves reserve only on a toss of exactly one, landing on its own start square. A toss of zero passes the turn in this house-rule version.">Toss five beans. One to four marked beans move that many spaces; five marked beans move ten. A piece leaves reserve only on a toss of exactly one, landing on its own start square. A toss of zero passes the turn in this house-rule version.</p>
+          <p class="story-copy" data-patolli-rule-page="1" hidden data-i18n="Move clockwise around the 52-space X-shaped track. You must land exactly at HOME; a move that overshoots is illegal. No piece may share a space. You may capture one opposing piece only on a marked center crossroads; it returns to reserve and its matched wager is claimed.">Move clockwise around the 52-space X-shaped track. You must land exactly at HOME; a move that overshoots is illegal. No piece may share a space. You may capture one opposing piece only on a marked center crossroads; it returns to reserve and its matched wager is claimed.</p>
+          <p class="story-copy" data-patolli-rule-page="2" hidden data-i18n="The two marked penalty triangles send one wager unit to the pot. Landing on either marked end square grants another turn. Here, six matched gold wagers are played as one short match: the first to claim four wins; if all six resolve without a majority, it is a draw. This wager-and-scoring system is Ixchel's local variation. Gold is fictional, and no expedition time passes.">The two marked penalty triangles send one wager unit to the pot. Landing on either marked end square grants another turn. Here, six matched gold wagers are played as one short match: the first to claim four wins; if all six resolve without a majority, it is a draw. This wager-and-scoring system is Ixchel's local variation. Gold is fictional, and no expedition time passes.</p>
+          <nav class="patolli-rules-controls" aria-label="Patolli rules pages" data-i18n-attr="aria-label:Patolli rules pages">
+            <button class="button secondary" id="patolli-rules-previous" type="button" aria-label="Previous rules page" data-i18n-attr="aria-label:Previous rules page">←</button>
+            <span id="patolli-rules-page-number" aria-live="polite">1 / 3</span>
+            <button class="button secondary" id="patolli-rules-next" type="button" aria-label="Next rules page" data-i18n-attr="aria-label:Next rules page">→</button>
+          </nav>
+        </section>
+        <p id="patolli-last-result" class="patolli-status" aria-live="polite" hidden></p>
+        <form id="patolli-setup" class="patolli-setup">
+          <label for="patolli-wager" data-i18n="Gold per matched piece wager">Gold per matched piece wager</label>
+          <input id="patolli-wager" type="number" min="1" step="1" value="1">
+          <small id="patolli-wager-note" class="muted"></small>
+          <p id="patolli-stakes" class="patolli-stakes" aria-live="polite"></p>
+          <button class="button" id="patolli-start" type="submit" data-i18n="Agree and stake six wagers">Agree and stake six wagers</button>
+        </form>
+        <section id="patolli-game" class="patolli-game" hidden>
+          <div class="patolli-game-layout">
+            <div class="patolli-board-column">
+              <div class="patolli-board-wrap">
+                <div id="patolli-board" class="patolli-board" aria-label="Patolli 52-square X-shaped board"></div>
+              </div>
+              <div id="patolli-beans" class="patolli-beans" aria-label="Last five-bean toss" data-i18n-attr="aria-label:Last five-bean toss"></div>
+              <p class="patolli-board-legend" aria-label="Board symbols" data-i18n-attr="aria-label:Board symbols">
+                <span><i class="patolli-legend-crossroads"></i> Capture</span>
+                <span><i class="patolli-legend-penalty"></i> Penalty</span>
+                <span><i class="patolli-legend-extra"></i> Extra turn</span>
+              </p>
+            </div>
+            <aside class="patolli-game-sidebar" aria-label="Match summary" data-i18n-attr="aria-label:Match summary">
+              <div class="patolli-score" id="patolli-score" aria-label="Matched wager score" data-i18n-attr="aria-label:Matched wager score"></div>
+              <div id="patolli-match-stats" class="patolli-match-stats" aria-live="polite"></div>
+              <div id="patolli-piece-choices" class="patolli-piece-choices" aria-label="Your six pieces" data-i18n-attr="aria-label:Your six pieces"></div>
+              <p id="patolli-status" class="patolli-status" aria-live="polite"></p>
+              <div class="patolli-controls">
+                <label class="patolli-autoplay-toggle">
+                  <input id="patolli-autoplay" type="checkbox">
+                  <span class="patolli-fast-forward-icon" aria-hidden="true">»</span>
+                  <span data-i18n="Fast-forward autoplay">Fast-forward autoplay</span>
+                </label>
+                <button class="button" id="patolli-roll" type="button" data-i18n="Toss five beans">Toss five beans</button>
+                <button class="button secondary" id="patolli-forfeit" type="button" data-i18n="Forfeit remaining wagers">Forfeit remaining wagers</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+        <button class="button" id="patolli-tutorial-start" type="button" hidden data-i18n="Choose stakes">Choose stakes</button>
+        <button class="button secondary" id="patolli-close" type="button" data-i18n="Return to Chiltomatlan">Return to Chiltomatlan</button>
+      </section>
+    </dialog>
+    <dialog id="game-over-dialog" class="game-over-dialog" aria-labelledby="game-over-heading">
+      <section class="game-over-panel">
+        <div id="game-over-portrait" class="game-over-portrait" aria-hidden="true"></div>
+        <p class="eyebrow" data-i18n="THE DELVE ENDS">THE DELVE ENDS</p>
+        <h2 id="game-over-heading" data-i18n="Lost in the dark">Lost in the dark</h2>
+        <p id="game-over-copy" class="story-copy"></p>
+        <nav class="copy-page-controls" data-copy-pager="game-over-copy" aria-label="Recovery pages" hidden data-i18n-attr="aria-label:Recovery pages">
+          <button class="button secondary" type="button" data-copy-page="-1" aria-label="Previous page" data-i18n-attr="aria-label:Previous page">←</button>
+          <span data-copy-page-number></span>
+          <button class="button secondary" type="button" data-copy-page="1" aria-label="Next page" data-i18n-attr="aria-label:Next page">→</button>
+        </nav>
+        <button class="button" id="recover-in-chiltomatlan" type="button" data-i18n="Return to Chiltomatlan">Return to Chiltomatlan</button>
+        <button class="button secondary" id="game-over-title" type="button" data-i18n="Title screen">Title screen</button>
+      </section>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="time-transition" class="time-transition" role="status" aria-live="polite" hidden></div>
+    <section id="message-box" class="rpg-message-box" aria-labelledby="message-box-title" aria-live="polite" hidden>
+      <div class="rpg-message-copy">
+        <strong id="message-box-title"></strong>
+        <p id="message-box-text"></p>
+      </div>
+      <div class="rpg-message-controls">
+        <span id="message-box-page" class="rpg-message-page" aria-hidden="true"></span>
+        <button id="message-box-close" class="quiet-button" type="button" aria-label="Close message" data-i18n-attr="aria-label:Close message">×</button>
+        <button id="message-box-advance" class="button secondary" type="button" data-i18n="Continue">Continue</button>
+      </div>
+    </section>
+    <script src="./data/locales.js?v=6" defer></script>
+    <script src="./data/items.js?v=5" defer></script>
+    <script src="./data/enemies.js?v=5" defer></script>
+    <script src="./data/content.js?v=3" defer></script>
+    <script src="./data/spells.js?v=1" defer></script>
+    <script src="./data/character-options.js?v=3" defer></script>
+    <script src="./systems/patolli.js?v=2" defer></script>
+    <script src="./systems/characters.js?v=17" defer></script>
+    <script src="./systems/dungeons.js?v=8" defer></script>
+    <script src="./admob.config.js?v=1" defer></script>
+    <script type="module" src="./systems/rewarded-ads.js?v=1"></script>
+    <script src="./app.js?v=164" defer></script>
+  </body>
+</html>

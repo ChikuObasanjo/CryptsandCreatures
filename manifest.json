@@ -1,0 +1,18 @@
+{
+  "name": "Crypts & Creatures",
+  "short_name": "Crypts",
+  "description": "A pocket-sized, turn-based dungeon crawler with user-made adventures.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#d8c69d",
+  "theme_color": "#d8c69d",
+  "categories": ["games"],
+  "icons": [
+    {
+      "src": "./icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
