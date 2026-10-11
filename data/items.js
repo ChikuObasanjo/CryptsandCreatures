@@ -28,10 +28,10 @@ window.CryptsItems = {
     scimitar: { name: "Obsidian-edged short blade", description: "A light curved blade fitted for quick, precise strikes.", dice: "1d6", finesse: true, icon: "sword" },
     quarterstaff: { name: "Hardwood staff", description: "A sturdy hardwood baton useful on the trail as well as in a fight.", dice: "1d6", icon: "staff" },
     spear: { name: "Tepoztopilli spear", description: "A long hardwood spear fitted with an obsidian-edged head.", dice: "1d6", icon: "spear" },
-    atlatl: { name: "Atlatl and darts", description: "A spear-thrower and balanced darts for striking foes at range.", dice: "1d6", ranged: true, icon: "spear" },
-    shortbow: { name: "Hunting bow", description: "A compact bow of flexible wood, strung with animal sinew.", dice: "1d6", ranged: true, icon: "bow" },
-    longbow: { name: "Jungle-wood war bow", description: "A flexible-wood bow strung with animal sinew.", dice: "1d8", ranged: true, icon: "bow" },
-    "light-crossbow": { name: "Foreign light crossbow", description: "A compact imported weapon, unfamiliar beside local bows and dart-throwers.", dice: "1d8", ranged: true, icon: "bow" },
+    atlatl: { name: "Atlatl and darts", description: "A spear-thrower and balanced darts for striking foes at range.", dice: "1d6", ranged: true, range: 6, icon: "spear" },
+    shortbow: { name: "Hunting bow", description: "A compact bow of flexible wood, strung with animal sinew.", dice: "1d6", ranged: true, range: 6, icon: "bow" },
+    longbow: { name: "Jungle-wood war bow", description: "A flexible-wood war bow strung with animal sinew.", dice: "1d8", ranged: true, range: 6, icon: "bow" },
+    "light-crossbow": { name: "Foreign light crossbow", description: "A compact imported weapon, unfamiliar beside local bows and dart-throwers.", dice: "1d8", ranged: true, range: 6, icon: "bow" },
     handaxe: { name: "Stone-edged hand axe", description: "A small hafted tool with a sharpened stone head.", dice: "1d6", icon: "axe" }
   },
   armors: {

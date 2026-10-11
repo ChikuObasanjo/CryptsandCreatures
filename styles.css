@@ -108,7 +108,7 @@ h2 { margin: 0; font-size: 19px; line-height: 1.2; }
 .town-street { background: repeating-linear-gradient(45deg, #a69368 0 3px, #b7a47a 3px 6px); }
 .town-gate { border: 2px solid #d6b867; background: radial-gradient(circle, #b48d46 0 20%, #4b492f 22% 55%, #2b2e26 60%); }
 .town-landmark { color: #edcf80; font: 700 clamp(9px, 2.5vw, 17px)/1 Georgia, serif; text-shadow: 0 2px #281f13; }
-.town-person { border-color: #b89651; background: radial-gradient(circle, #776044, #37352a); }
+.town-person { border-color: #b89651; }
 .town-person-marker { display: grid; width: 72%; height: 72%; place-items: center; border: 0; border-radius: 0; background: #35594a; color: #f3e0aa00; font: 700 clamp(8px, 2vw, 13px)/1 Georgia, serif; box-shadow: 0 1px 5px #0008; }
 .town-patolli-marker { border-color: #efd18a; border-radius: 4px; background: repeating-linear-gradient(45deg, #8f733f 0 3px, #403828 3px 6px); color: #fff0c1; font-size: clamp(10px, 2.5vw, 17px); }
 .npc-merchant { background: #805235; }
@@ -7728,8 +7728,26 @@ body.dungeon-game .topbar-meter-label small { display: none; }
 }
 .kit-resource-icon { width: 14px; height: 14px; image-rendering: pixelated; }
 .map-tools { display: flex; align-items: center; gap: 8px; }
-.loot-sprite-stack { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; }
-.loot-sprite-stack .tile-sprite { min-width: 0; flex: 1 1 0; }
+.loot-sprite-stack {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+.loot-sprite-stack .tile-sprite {
+  width: 50%;
+  max-width: 50%;
+  height: 100%;
+  min-width: 0;
+  flex: 0 1 50%;
+  object-fit: contain;
+}
 body.dungeon-game #dungeon-screen .look-toggle {
   position: fixed;
   z-index: 32;
@@ -8866,9 +8884,11 @@ body.immersive-game .tile-entity-defeated {
 .codex-character { image-rendering: pixelated; }
 
 body.immersive-game .tile-entity .loot-sprite-stack .tile-sprite {
-  width: auto;
+  width: 50%;
+  max-width: 50%;
   min-width: 0;
-  flex: 1 1 0;
+  height: 100%;
+  flex: 0 1 50%;
   filter: drop-shadow(0 1px 2px #100b05);
 }
 
@@ -9737,14 +9757,23 @@ body.immersive-game .tile-entity-creature { z-index: 3; }
 .character-dialog #background-description { margin: -2px 0 2px; }
 
 body.dark-mode {
-  --ink: #f1f2e9;
+  --ink: #f2f1e8;
   --muted: #c2cabb;
+  --bg: #111713;
+  --panel: #1a251d;
+  --panel-raised: #243329;
+  --line: #526552;
+  --gold: #edc96f;
+  --gold-dark: #987c44;
+  --red: #f08b78;
+  --green: #b5d398;
   color-scheme: dark;
-  background: radial-gradient(ellipse at 50% -30%, #253329 0, #111713 58%);
+  background-color: var(--bg);
+  background-image: radial-gradient(ellipse at 50% -30%, #253329 0, var(--bg) 58%);
   color: var(--ink);
 }
 body.dark-mode .title-screen {
-  border-color: #637b65;
+  border-color: var(--line);
   background: radial-gradient(ellipse at 35% 50%, #27392e, #17231c 88%);
 }
 body.dark-mode .title-screen h2,
@@ -9754,91 +9783,80 @@ body.dark-mode .title-screen .title-meta,
 body.dark-mode .title-screen .title-prompt { color: #edf0df; }
 body.dark-mode .title-screen .eyebrow { color: #c8d69b; }
 body.dark-mode .title-screen .button.secondary { background: #1b2a20; color: #f1f2e9; }
-body.dark-mode.immersive-game .town-banner,
-body.dark-mode.immersive-game .town-walk-panel,
-body.dark-mode.immersive-game .store-panel,
-body.dark-mode.immersive-game .destination-card,
-body.dark-mode.immersive-game .town-pack,
-body.dark-mode.immersive-game .side-column.drawer-open,
-body.dark-mode.immersive-game .side-column.drawer-open .journal-panel .quest-panel,
-body.dark-mode.immersive-game .side-column.drawer-open .journal-panel .room-panel,
-body.dark-mode.immersive-game .side-column.drawer-open .journal-panel .log-panel {
-  border-color: #536b57;
-  background: #1b2820;
-  color: #edf0e6;
-  box-shadow: inset 0 1px #ffffff0a;
+body.dark-mode.immersive-game {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 50% 44%, #1d2b21 0, var(--bg) 75%),
+    repeating-linear-gradient(0deg, #ffffff05 0 1px, transparent 1px 5px);
 }
-body.dark-mode.immersive-game .town-banner h2,
-body.dark-mode.immersive-game .town-walk-panel h2,
-body.dark-mode.immersive-game .store-panel h2,
-body.dark-mode.immersive-game .town-intro,
-body.dark-mode.immersive-game .town-location-copy,
-body.dark-mode.immersive-game .store-panel .inventory-load,
-body.dark-mode.immersive-game .store-subheading,
-body.dark-mode.immersive-game .store-item-copy strong,
-body.dark-mode.immersive-game .store-item-copy span,
-body.dark-mode.immersive-game #shop-message,
-body.dark-mode.immersive-game .muted,
-body.dark-mode.immersive-game .side-column.drawer-open,
-body.dark-mode.immersive-game .side-column.drawer-open .journal-panel,
-body.dark-mode.immersive-game .side-column.drawer-open .journal-panel * {
-  color: #e5eadf;
+body.dark-mode.immersive-game :is(
+  .panel, .story-panel, .character-panel, .log-panel, .room-panel, .action-panel,
+  .quest-panel, .town-pack, .town-walk-panel, .store-panel, .destination-card,
+  .side-column.drawer-open, .character-card-dialog .character-panel
+) {
+  border-color: var(--line);
+  background-color: var(--panel);
+  background-image: none;
+  box-shadow: 0 8px 24px #0005, inset 0 1px #ffffff08;
+  color: var(--ink);
 }
-body.dark-mode.immersive-game .character-card-dialog,
-body.dark-mode.immersive-game .character-card-dialog .character-panel,
-body.dark-mode.immersive-game .character-card-dialog .section-heading,
-body.dark-mode.immersive-game .character-card-dialog .character-tab-panel,
-body.dark-mode.immersive-game .character-card-dialog .character-tab,
-body.dark-mode.immersive-game .character-card-dialog .inventory-row,
-body.dark-mode.immersive-game .character-card-dialog .inventory-equip,
-body.dark-mode.immersive-game .character-card-dialog .inventory-filters button {
-  border-color: #536b57;
-  background: #1b2820;
-  color: #eef1e8;
+body.dark-mode.immersive-game :is(
+  .inventory-row, .inventory-equip, .character-tab-panel, .character-tab,
+  .inventory-filters button, .store-row, .store-item, .cosmetic-shop-item,
+  .store-categories button, .shop-item-icon
+) {
+  border-color: var(--line);
+  background-color: var(--panel-raised);
+  background-image: none;
+  color: var(--ink);
 }
-body.dark-mode.immersive-game .character-card-dialog .character-tab[aria-selected="true"],
-body.dark-mode.immersive-game .character-card-dialog .inventory-filters button[aria-pressed="true"] {
+body.dark-mode.immersive-game :is(
+  h1, h2, h3, h4, label, summary, .town-intro, .town-location-copy,
+  .store-subheading, .store-item-copy strong, .store-item-copy span,
+  #shop-message, .inventory-load, .inventory-heading, .inventory-item-copy,
+  .inventory-empty, .character-subtitle, .health-label, .ability-list,
+  .character-equipment, .inventory-row, .store-row, .store-item,
+  .cosmetic-shop-item, .character-tab, .inventory-filters button,
+  .store-categories button
+) {
+  color: var(--ink);
+}
+body.dark-mode.immersive-game :is(.muted, .small, .coming-soon, .map-reference, .map-reference-note) {
+  color: var(--muted);
+}
+body.dark-mode.immersive-game .eyebrow { color: var(--gold); }
+body.dark-mode.immersive-game .town-stats span,
+body.dark-mode.immersive-game .town-legend { color: var(--muted); }
+body.dark-mode.immersive-game .town-location-copy { color: #d8dfcb; }
+body.dark-mode.immersive-game #dungeon-screen .map-panel > .section-heading .map-hint {
+  color: var(--muted);
+}
+body.dark-mode.immersive-game :is(.character-tab[aria-selected="true"], .inventory-filters button[aria-pressed="true"], .store-categories button[aria-pressed="true"]) {
   border-color: #a5c28c;
   background: #304638;
   color: #fff7d8;
 }
-body.dark-mode.immersive-game .character-card-dialog .inventory-heading,
-body.dark-mode.immersive-game .character-card-dialog .inventory-heading span,
-body.dark-mode.immersive-game .character-card-dialog .inventory-item-copy strong,
-body.dark-mode.immersive-game .character-card-dialog .inventory-item-copy small,
-body.dark-mode.immersive-game .character-card-dialog .inventory-row,
-body.dark-mode.immersive-game .character-card-dialog .inventory-empty,
-body.dark-mode.immersive-game .character-card-dialog .character-subtitle,
-body.dark-mode.immersive-game .character-card-dialog .health-label,
-body.dark-mode.immersive-game .character-card-dialog .ability-list,
-body.dark-mode.immersive-game .character-card-dialog .character-equipment {
-  color: #eef1e8;
-}
-body.dark-mode.immersive-game .character-card-dialog .inventory-item-icon {
-  border-color: #536b57;
-  background: #26372b;
-}
-body.dark-mode.immersive-game .store-row,
-body.dark-mode.immersive-game .store-item,
-body.dark-mode.immersive-game .cosmetic-shop-item {
-  border-color: #536b57;
-  background: #202e24;
-  color: #eef1e8;
-}
-body.dark-mode.immersive-game .store-categories button {
-  border-color: #536b57;
-  background: #202e24;
-  color: #eef1e8;
-}
-body.dark-mode.immersive-game .store-categories button[aria-pressed="true"] {
-  border-color: #a5c28c;
-  background: #304638;
-  color: #fff7d8;
+body.dark-mode.immersive-game .inventory-item-icon {
+  border-color: var(--line);
+  background: var(--panel-raised);
 }
 body.dark-mode.immersive-game .inventory-security {
   border-color: #a58c58;
   background: #1b2820;
   color: #e4e8da;
+}
+body.dark-mode.immersive-game .button.secondary,
+body.dark-mode.immersive-game .quiet-button,
+body.dark-mode.immersive-game .town-stats span {
+  border-color: var(--line);
+  background: var(--panel-raised);
+  color: var(--ink);
+}
+body.dark-mode.immersive-game .button.secondary:hover,
+body.dark-mode.immersive-game .quiet-button:hover {
+  border-color: var(--gold);
+  background: #304638;
+  color: #fff7d8;
 }
 body.dark-mode dialog,
 body.dark-mode .character-card-dialog,
@@ -9846,24 +9864,203 @@ body.dark-mode .story-dialog,
 body.dark-mode .game-over-dialog,
 body.dark-mode .patolli-dialog,
 body.dark-mode .settings-dialog,
-body.dark-mode .cosmetic-shop-dialog {
-  border-color: #536b57;
+body.dark-mode .cosmetic-shop-dialog,
+body.dark-mode .target-choice-dialog {
+  border-color: var(--line);
   background: #19251d;
-  color: #eef1e8;
+  color: var(--ink);
 }
-body.dark-mode dialog h1,
-body.dark-mode dialog h2,
-body.dark-mode dialog h3,
-body.dark-mode dialog p,
-body.dark-mode dialog label,
-body.dark-mode dialog .story-copy,
-body.dark-mode dialog .muted {
-  color: #e6ebdf;
+body.dark-mode dialog :is(h1, h2, h3, h4, p, label, .story-copy, .story-lead, .story-footer, .story-dialog-copy, .story-dialog-body) {
+  color: var(--ink);
 }
-body.dark-mode dialog input,
-body.dark-mode dialog select,
-body.dark-mode dialog textarea {
+body.dark-mode dialog :is(.muted, .small) { color: var(--muted); }
+body.dark-mode dialog :is(input, select, textarea) {
   border-color: #647e68;
   background: #101914;
   color: #f2f4ea;
+}
+body.dark-mode dialog option { background: #101914; color: #f2f4ea; }
+body.dark-mode dialog .button.secondary,
+body.dark-mode dialog .quiet-button {
+  border-color: var(--line);
+  background: var(--panel-raised);
+  color: var(--ink);
+}
+body.dark-mode dialog .button:not(.secondary) { color: #211d13; }
+
+body.dark-mode {
+  --bg: #0b211b;
+  --panel: #15382e;
+  --panel-raised: #1d4739;
+  --line: #527965;
+}
+body.dark-mode.immersive-game {
+  background-color: #0b211b;
+  background-image:
+    radial-gradient(ellipse at 50% 42%, #174436 0, #0b211b 76%),
+    repeating-linear-gradient(0deg, #ffffff05 0 1px, transparent 1px 5px);
+}
+body.dark-mode.immersive-game #city-screen .town-walk-panel {
+  border-color: var(--line);
+  background: radial-gradient(ellipse at 50% 48%, #1a4739 0, #15382e 60%, #102c24 100%);
+  color: var(--ink);
+}
+body.dark-mode.immersive-game #city-screen .town-walk-panel > .section-heading h3,
+body.dark-mode.immersive-game #city-screen .town-walk-panel .keyboard-hint,
+body.dark-mode.immersive-game #city-screen .town-walk-panel .town-controls-hint {
+  color: var(--ink);
+}
+body.dark-mode.immersive-game #city-screen .town-map {
+  border-color: var(--line);
+  background-color: #0d3026;
+  box-shadow: inset 0 0 0 3px #244f40, 0 4px 0 #061711;
+}
+body.dark-mode.immersive-game #dungeon-screen .panel {
+  border-color: var(--line);
+  background: linear-gradient(135deg, #1a4538 0%, #15382e 52%, #102c24 100%);
+  box-shadow: 0 12px 34px #0008, inset 0 1px #c5dfc51a;
+  color: var(--ink);
+}
+body.dark-mode.immersive-game #dungeon-screen .map-panel {
+  background: linear-gradient(145deg, #1a4538, #123329);
+  box-shadow: inset 0 0 0 4px #24513f, 0 4px 0 #061711;
+}
+body.dark-mode.immersive-game #dungeon-screen .dungeon-map-viewport,
+body.dark-mode.immersive-game #dungeon-screen .map-viewport {
+  background: radial-gradient(ellipse at center, #1c4a3b, #0b2a22);
+}
+body.dark-mode.immersive-game #dungeon-screen .dungeon-map {
+  border-color: #567b64;
+  background-color: #123329;
+  box-shadow: inset 0 0 0 3px #214a3b, 0 4px 0 #061711;
+}
+body.dark-mode.dungeon-game.immersive-game,
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen {
+  color: var(--ink);
+}
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .map-panel,
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .action-panel {
+  border-color: var(--line);
+  background: linear-gradient(145deg, #1a4538, #123329);
+  color: var(--ink);
+}
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen #dungeon-map {
+  border-color: #567b64;
+  background-color: #0d3026;
+  box-shadow: inset 0 0 0 3px #214a3b, 0 4px 0 #061711;
+}
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .compact-log,
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .compact-log li,
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .look-inspector {
+  border-color: var(--line);
+  background: #15382e;
+  color: var(--ink);
+}
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .map-panel > .section-heading,
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .map-panel > .section-heading h2,
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .map-panel > .section-heading .eyebrow,
+body.dark-mode.dungeon-game.immersive-game #dungeon-screen .map-panel > .section-heading .map-hint {
+  color: var(--ink);
+}
+body.dark-mode.immersive-game .topbar .eyebrow,
+body.dark-mode.immersive-game .topbar h1,
+body.dark-mode.immersive-game .topbar h1 span {
+  color: var(--ink);
+}
+body.dark-mode.immersive-game .topbar h1 i { color: var(--gold); }
+body.dark-mode.immersive-game .topbar-actions .quiet-button,
+body.dark-mode.immersive-game .header-resources .topbar-resource,
+body.dark-mode.immersive-game .header-resources .topbar-meter-resource,
+body.dark-mode.immersive-game .header-resources .spell-slot-resource,
+body.dark-mode.immersive-game .kit-resource {
+  border-color: var(--line);
+  background: var(--panel-raised);
+  color: var(--ink);
+}
+
+.town-map > .town-tile.town-person,
+.town-map > .town-tile.town-well,
+.town-map > .town-tile.town-gate {
+  border-color: transparent;
+  box-shadow: none;
+}
+.town-map > .town-tile.town-well,
+.town-map > .town-tile.town-gate {
+  background: #cdb887 url("./resources/tiles/town-street.png?v=79") center / 100% 100%;
+}
+.town-map > .town-tile.town-gate {
+  background: #4a5040 url("./resources/tiles/town-gate.png?v=79") center / 100% 100%;
+}
+.town-map > .town-tile.town-person > .town-person-marker,
+.town-map > .town-tile.town-well > .town-well-marker {
+  border: 0;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+}
+.patolli-board-wrap {
+  position: relative;
+  padding: 10px;
+  border: 3px solid #c9a04d;
+  border-radius: 12px;
+  background-color: #315b47;
+  box-shadow:
+    inset 0 0 0 3px #713b2a,
+    inset 0 0 0 6px #d5af5a,
+    0 6px 0 #4c3021,
+    0 10px 18px #0008;
+}
+.patolli-board {
+  position: relative;
+  z-index: 1;
+}
+.patolli-board .patolli-square {
+  border: 1px solid #b6a36d;
+  border-radius: 3px;
+  background: linear-gradient(145deg, #719779, #3d6b56);
+  box-shadow: none;
+  color: #fff1ca;
+}
+.patolli-board .patolli-square small {
+  position: relative;
+  z-index: 1;
+  color: #fff1ca;
+  font-size: clamp(7px, 1.8vw, 10px);
+  font-weight: 700;
+  text-shadow: 0 1px 2px #17261e;
+}
+.patolli-board .patolli-square.patolli-crossroads {
+  border-color: #f1d386;
+  background: linear-gradient(145deg, #d8b867, #94713a);
+  box-shadow: inset 0 0 0 1px #fff0b277;
+}
+.patolli-board .patolli-square.patolli-penalty {
+  border-color: #e2a08b;
+  background: linear-gradient(145deg, #b96049, #763b32);
+}
+.patolli-board .patolli-square.patolli-extra-turn {
+  border-color: #f1df9b;
+  background: linear-gradient(145deg, #eedc9a, #bd9c50);
+}
+.patolli-board .patolli-square.patolli-player-start {
+  border-color: #ffe2a0;
+  background: linear-gradient(145deg, #bd8b4a, #805b32);
+}
+.patolli-board .patolli-square.patolli-opponent-start {
+  border-color: #a9d5bf;
+  background: linear-gradient(145deg, #5f9b82, #356c5d);
+}
+.patolli-board .patolli-square.patolli-legal-target {
+  outline: 2px solid #fff0a6;
+  outline-offset: 1px;
+  box-shadow: 0 0 10px #efd26bcc;
+}
+.patolli-board .patolli-square.patolli-move-origin {
+  animation: patolli-origin-pulse .34s ease-out both;
+}
+.patolli-board .patolli-home {
+  border-color: #e7cb7e;
+  background: #55745b;
+  color: #f4e7c8;
+  box-shadow: inset 0 0 0 2px #fff0bf99;
 }

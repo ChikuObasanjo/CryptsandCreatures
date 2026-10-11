@@ -4357,15 +4357,11 @@ function classifyLogMessage(message) {
 }
 
 function renderExpeditionKit() {
-  const healerKit = state.run.inventory.find((entry) => entry.id === "healer-kit");
   const resources = [
     { id: "food-rations", icon: "ration", label: "Tamales", count: Object.keys(FOOD_ITEMS).reduce((sum, id) => sum + inventoryQuantity(id), 0), always: true },
     { id: "clean-water", icon: "water", label: "Water", count: inventoryQuantity("clean-water"), always: true },
     { id: "healing-potion", icon: "potion", label: "Medicine", count: inventoryQuantity("healing-potion"), always: true },
     { id: "wild-ingredients", icon: "chilis", label: "Foraged food", count: inventoryQuantity("wild-ingredients"), always: true },
-    { id: "torch", icon: "supply", label: "Torch", count: inventoryQuantity("torch"), always: true },
-    { id: "healer-kit", icon: "kit", label: "Healer's kit",
-      count: healerKit ? (healerKit.uses ?? healerKit.quantity * HEALER_KIT_USES) : 0, always: true },
     { id: "crowbar", icon: "tool", label: "Pry bar", count: inventoryQuantity("crowbar") },
     { id: "hempen-rope", icon: "supply", label: "Maguey cord", count: inventoryQuantity("hempen-rope") }
   ];
@@ -4506,7 +4502,7 @@ function closeUtilityDrawer(restoreFocus = false) {
   state.utilityDrawer = null;
   renderUtilityDrawer();
   if (restoreFocus) {
-    elements[previousMode === "journal" ? "journal-toggle" : previousMode === "log" ? "log-toggle" : "party-toggle"].focus();
+    elements[previousMode === "log" ? "log-toggle" : "journal-toggle"].focus();
   }
 }
 
