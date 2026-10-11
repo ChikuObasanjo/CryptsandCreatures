@@ -419,6 +419,14 @@ function renderPatolli() {
   const legalTargets = new Set(game.legalMoves
     .filter((move) => move.pieceId === game.selectedPiece)
     .map((move) => move.trackIndex));
+  const selectablePiecesByTrackIndex = new Map();
+  if (!state.patolliAutoplay && game.turn === "player" && game.phase === "move") {
+    for (const piece of game.pieces.player) {
+      if (piece.status === "active" && game.legalMoves.some((move) => move.pieceId === piece.id)) {
+        selectablePiecesByTrackIndex.set(patolliPieceAt("player", piece), piece.id);
+      }
+    }
+  }
   const fragment = document.createDocumentFragment();
   for (let row = 0; row < 13; row += 1) {
     for (let column = 0; column < 13; column += 1) {
@@ -437,9 +445,17 @@ function renderPatolli() {
         if (state.patolliAnimation?.from === pathIndex) cell.classList.add("patolli-move-origin");
         if (state.patolliAnimation?.to === pathIndex) cell.classList.add("patolli-move-destination");
         if (legalTargets.has(pathIndex)) cell.classList.add("patolli-legal-target");
-        cell.disabled = state.patolliAutoplay || !legalTargets.has(pathIndex);
+        const selectablePiece = selectablePiecesByTrackIndex.get(pathIndex);
+        if (selectablePiece !== undefined) {
+          cell.classList.add("patolli-piece-selectable");
+          cell.dataset.patolliPiece = String(selectablePiece);
+        }
+        cell.disabled = state.patolliAutoplay ||
+          (!legalTargets.has(pathIndex) && selectablePiece === undefined);
         cell.dataset.trackIndex = String(pathIndex);
-        cell.setAttribute("aria-label", `Square ${pathIndex + 1}${PATOLLI_CAPTURE_SQUARES.includes(pathIndex) ? ", capture crossroads" : ""}${PATOLLI_PENALTY_SQUARES.includes(pathIndex) ? ", penalty triangle" : ""}${PATOLLI_EXTRA_TURN_SQUARES.includes(pathIndex) ? ", extra turn" : ""}`);
+        cell.setAttribute("aria-label", selectablePiece !== undefined
+          ? `Your piece ${selectablePiece + 1} on square ${pathIndex + 1}; select to move`
+          : `Square ${pathIndex + 1}${PATOLLI_CAPTURE_SQUARES.includes(pathIndex) ? ", capture crossroads" : ""}${PATOLLI_PENALTY_SQUARES.includes(pathIndex) ? ", penalty triangle" : ""}${PATOLLI_EXTRA_TURN_SQUARES.includes(pathIndex) ? ", extra turn" : ""}`);
         const number = document.createElement("small");
         number.textContent = String(pathIndex + 1);
         cell.append(number);
@@ -646,7 +662,12 @@ function connectPatolliEvents() {
   });
   elements["patolli-board"].addEventListener("click", (event) => {
     const square = event.target.closest("[data-track-index]");
-    if (square) moveSelectedPatolliPiece(Number(square.dataset.trackIndex));
+    if (!square) return;
+    if (square.classList.contains("patolli-piece-selectable")) {
+      selectPatolliPiece(Number(square.dataset.patolliPiece));
+      return;
+    }
+    moveSelectedPatolliPiece(Number(square.dataset.trackIndex));
   });
   elements["patolli-piece-choices"].addEventListener("click", (event) => {
     const piece = event.target.closest("[data-patolli-piece]");

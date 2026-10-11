@@ -944,9 +944,9 @@ function forageIngredients() {
   }
   const gathered = waterGathered + foodGathered;
   addLog(gathered
-    ? `You forage (Survival ${check}) and gather ${waterGathered} gourd${waterGathered === 1 ? "" : "s"} of water and ${foodGathered} food ingredient${foodGathered === 1 ? "" : "s"}.`
-    : `You find no safe supplies${found ? "; your pack is too full" : ` (Survival ${check})`}.`);
-  finishPlayerTurn();
+    ? `After an hour of foraging (Survival ${check}), you gather ${waterGathered} gourd${waterGathered === 1 ? "" : "s"} of water and ${foodGathered} food ingredient${foodGathered === 1 ? "" : "s"}.`
+    : `After an hour of foraging, you find no safe supplies${found ? "; your pack is too full" : ` (Survival ${check})`}.`);
+  finishPlayerTurn(60);
 }
 
 function advanceSurvivalTime(resting = false, elapsedMinutes = 10) {
@@ -1528,10 +1528,10 @@ function refreshCompanionFormation(dx = 0, dy = 0) {
   });
 }
 
-function finishPlayerTurn() {
+function finishPlayerTurn(elapsedMinutes = 10) {
   state.run.steps += 1;
   if (state.run.location === "dungeon" && !state.run.lost && !state.run.won) {
-    advanceSurvivalTime();
+    advanceSurvivalTime(false, elapsedMinutes);
     if (!state.run.lost) alliesTakeTurn();
     if (!state.run.lost) enemiesTakeTurn();
   }
@@ -3498,7 +3498,7 @@ function renderActions() {
     distanceInSquares(enemy, state.run.player) <= 7);
   addButton("Camp · cook, eat & sleep", campAndRest, "b", true, ended || nearbyThreat,
     elements["action-supplies"], "camp-button");
-  addButton("Forage for ingredients", forageIngredients, "v", true,
+  addButton("Forage · 1 hour", forageIngredients, "v", true,
     ended || getCarriedWeight() + GEAR_ITEMS["wild-ingredients"].weight > getCarryCapacity(state.run.character),
     elements["action-explore"], "forage-button");
   elements["return-after-delving"].classList.add("hidden");
@@ -3814,7 +3814,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
       name: "Forage",
       status: inDungeon ? "Available" : "Dungeon action",
       state: inDungeon ? "available" : "context",
-      description: "Spend your turn making a Survival check to gather wild ingredients. Better results find more, if your pack has room."
+      description: "Spend an hour making a Survival check to gather wild ingredients. Better results find more, if your pack has room."
     },
     {
       name: "Camp",
@@ -4484,6 +4484,16 @@ function renderUtilityDrawer() {
   elements["journal-panel"].hidden = !isOpen || mode !== "journal";
   elements["log-drawer-panel"].hidden = !isOpen || mode !== "log";
   elements["side-drawer-title"].textContent = mode === "journal" ? "Journal" : mode === "log" ? "Log" : "Party";
+}
+
+function openCharacterCard() {
+  if (!elements["character-card-dialog"].open) elements["character-card-dialog"].showModal();
+  elements["character-button"].setAttribute("aria-expanded", "true");
+}
+
+function closeCharacterCard() {
+  if (elements["character-card-dialog"].open) elements["character-card-dialog"].close();
+  elements["character-button"].setAttribute("aria-expanded", "false");
 }
 
 function toggleUtilityDrawer(mode) {
@@ -5223,8 +5233,19 @@ function connectEvents() {
     dismissRpgMessage();
   });
   document.addEventListener("click", (event) => {
-    if ((state.messageBox && !elements["message-box"].contains(event.target)) ||
-      (state.utilityDrawer && !elements["side-drawer"].contains(event.target))) {
+    if (state.messageBox && !elements["message-box"].contains(event.target)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    if (state.utilityDrawer && !elements["side-drawer"].contains(event.target)) {
+      const drawerToggle = event.target instanceof Element &&
+        event.target.closest("#party-toggle, #journal-toggle, #log-toggle");
+      const characterToggle = event.target instanceof Element &&
+        event.target.closest("#character-button, #header-spell-slots");
+      if (drawerToggle) return;
+      closeUtilityDrawer(false);
+      if (characterToggle) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     }
@@ -5261,10 +5282,13 @@ function connectEvents() {
     elements["level-up-two-label"].classList.toggle("hidden", elements["level-up-mode-select"].value === "one");
   });
   elements["apply-level-up"].addEventListener("click", applyLevelUpChoice);
-  elements["character-button"].addEventListener("click", () => elements["character-card-dialog"].showModal());
+  elements["character-button"].addEventListener("click", () => {
+    if (elements["character-card-dialog"].open) closeCharacterCard();
+    else openCharacterCard();
+  });
   elements["header-spell-slots"].addEventListener("click", () => {
     selectCharacterTab("abilities");
-    elements["character-card-dialog"].showModal();
+    openCharacterCard();
     document.querySelector('[data-character-tab="abilities"]').focus();
   });
   elements["wait-dpad-button"].addEventListener("click", waitTurn);
@@ -5273,8 +5297,11 @@ function connectEvents() {
   elements["log-toggle"].addEventListener("click", () => toggleUtilityDrawer("log"));
   elements["look-toggle"].addEventListener("click", toggleLookMode);
   elements["close-side-drawer"].addEventListener("click", () => closeUtilityDrawer(true));
-  elements["close-character-card"].addEventListener("click", () => elements["character-card-dialog"].close());
-  elements["close-character-card-top"].addEventListener("click", () => elements["character-card-dialog"].close());
+  elements["close-character-card"].addEventListener("click", closeCharacterCard);
+  elements["close-character-card-top"].addEventListener("click", closeCharacterCard);
+  elements["character-card-dialog"].addEventListener("close", () => {
+    elements["character-button"].setAttribute("aria-expanded", "false");
+  });
   document.querySelectorAll("[data-character-tab]").forEach((button) => {
     button.addEventListener("click", () => selectCharacterTab(button.dataset.characterTab));
     button.addEventListener("keydown", (event) => {
@@ -5394,7 +5421,7 @@ function connectEvents() {
   });
   elements["open-ability-guide"].addEventListener("click", () => {
     selectCharacterTab("abilities");
-    elements["character-card-dialog"].showModal();
+    openCharacterCard();
     document.querySelector('[data-character-tab="abilities"]').focus();
   });
   elements["begin-story"].addEventListener("click", () => elements["prologue-dialog"].close());
@@ -5480,6 +5507,10 @@ function connectEvents() {
     renderInventory();
   });
   elements["character-card-dialog"].addEventListener("click", (event) => {
+    if (event.target === elements["character-card-dialog"]) {
+      closeCharacterCard();
+      return;
+    }
     const button = event.target.closest("[data-page-list]");
     if (!button) return;
     const key = button.dataset.pageList;
