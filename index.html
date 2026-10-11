@@ -11,7 +11,7 @@
     <meta name="description" content="Explore a forbidden tomb, manage your supplies, and return to Chiltomatlan to prepare for another descent.">
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.png" type="image/png" sizes="512x512">
-    <link rel="stylesheet" href="./styles.css?v=202">
+    <link rel="stylesheet" href="./styles.css?v=203">
     <title>Crypts &amp; Creatures</title>
   </head>
   <body>
@@ -728,6 +728,13 @@
         <button class="button secondary" id="game-over-title" type="button" data-i18n="Title screen">Title screen</button>
       </section>
     </dialog>
+    <dialog id="target-choice-dialog" class="story-dialog target-choice-dialog" aria-labelledby="target-choice-heading">
+      <section class="story-panel target-choice-panel">
+        <h2 id="target-choice-heading">Choose a target</h2>
+        <div id="target-choice-list" class="target-choice-list"></div>
+        <button id="target-choice-close" class="button secondary" type="button">Cancel</button>
+      </section>
+    </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <div id="time-transition" class="time-transition" role="status" aria-live="polite" hidden></div>
     <section id="message-box" class="rpg-message-box" aria-labelledby="message-box-title" aria-live="polite" hidden>
@@ -752,6 +759,6 @@
     <script src="./systems/dungeons.js?v=8" defer></script>
     <script src="./admob.config.js?v=1" defer></script>
     <script type="module" src="./systems/rewarded-ads.js?v=1"></script>
-    <script src="./app.js?v=164" defer></script>
+    <script src="./app.js?v=165" defer></script>
   </body>
 </html>

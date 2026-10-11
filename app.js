@@ -1,3 +1,4 @@
+"use strict";
 
 const {
   food: FOOD_ITEMS,
@@ -223,6 +224,7 @@ const elements = Object.fromEntries([
   "character-card-dialog", "close-character-card", "close-character-card-top", "city-screen", "store-screen", "dungeon-screen",
   "town-story", "return-to-city", "shop-message", "store-buy-heading", "store-buy-list", "store-sell-list", "store-carry-load",
   "town-map", "town-location-copy", "town-interact-button", "town-interact-label", "town-dialog", "town-dialog-heading", "town-dialog-copy", "town-dialog-action", "town-dialog-shop", "town-dialog-close",
+  "target-choice-dialog", "target-choice-heading", "target-choice-list", "target-choice-close",
   "cosmetic-shop-dialog", "cosmetic-shop-items", "cosmetic-shop-gold", "cosmetic-shop-message", "cosmetic-shop-close",
   "town-dialog-learn", "patolli-dialog", "patolli-rules", "patolli-rules-toggle", "patolli-rules-page-number", "patolli-rules-previous", "patolli-rules-next", "patolli-last-result", "patolli-setup", "patolli-wager", "patolli-wager-note", "patolli-start",
   "patolli-game", "patolli-board", "patolli-status", "patolli-score", "patolli-match-stats", "patolli-stakes", "patolli-beans", "patolli-piece-choices", "patolli-autoplay", "patolli-roll", "patolli-forfeit", "patolli-close", "patolli-tutorial-start", "time-transition",
@@ -1056,6 +1058,36 @@ function enemiesAdjacent() {
   return state.run.enemies.filter((enemy) => enemy.alive && distanceInSquares(enemy, state.run.player) === 1);
 }
 
+function chooseFromOptions(title, options) {
+  if (options.length === 1) {
+    options[0].action();
+    return;
+  }
+  if (!options.length) return;
+  elements["target-choice-heading"].textContent = title;
+  elements["target-choice-list"].replaceChildren();
+  for (const option of options) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "button secondary";
+    button.textContent = option.label;
+    button.addEventListener("click", () => {
+      elements["target-choice-dialog"].close();
+      option.action();
+    });
+    elements["target-choice-list"].append(button);
+  }
+  elements["target-choice-dialog"].showModal();
+  elements["target-choice-list"].querySelector("button")?.focus();
+}
+
+function chooseEnemyTarget(title, enemies, action) {
+  chooseFromOptions(title, enemies.map((enemy) => ({
+    label: `${enemy.name} · ${distanceInSquares(enemy, state.run.player)} squares · ${enemy.hp}/${enemy.maxHp} HP`,
+    action: () => action(enemy)
+  })));
+}
+
 function nearestEnemy() {
   const enemies = state.run.enemies.filter((enemy) => enemy.alive);
   enemies.sort((a, b) => distanceInSquares(a, state.run.player) - distanceInSquares(b, state.run.player));
@@ -1445,6 +1477,9 @@ function closedDoorOnDiagonal(from, to) {
     { x: to.x, y: from.y },
     { x: from.x, y: to.y }
   ].some((position) => {
+    if (position.x < 0 || position.x >= MAP_TILE_SIZE || position.y < 0 || position.y >= MAP_TILE_SIZE) {
+      return false;
+    }
     const index = tileIndex(position.x, position.y);
     return state.run.terrain[index] === "door" && !state.run.openDoors.includes(index);
   });
@@ -1572,14 +1607,19 @@ function movePlayer(dx, dy) {
     const { x, y } = state.run.player;
     const nx = x + dx;
     const ny = y + dy;
+    if (nx < 0 || nx >= MAP_TILE_SIZE || ny < 0 || ny >= MAP_TILE_SIZE) break;
+    const destinationIndex = tileIndex(nx, ny);
+    if (state.run.terrain[destinationIndex] === "door" && !state.run.openDoors.includes(destinationIndex) &&
+      !closedDoorOnDiagonal({ x, y }, { x: nx, y: ny })) {
+      if (!openDungeonDoor({ x: nx, y: ny, index: destinationIndex })) {
+        finishPlayerTurn();
+        return false;
+      }
+    }
     if (!canStepBetween({ x, y }, { x: nx, y: ny })) {
-      if (state.run.terrain[tileIndex(nx, ny)] === "door") {
+      if (state.run.terrain[tileIndex(nx, ny)] === "door" || closedDoorOnDiagonal({ x, y }, { x: nx, y: ny })) {
         stoppedAtClosedDoor = true;
-        const doorIndex = tileIndex(nx, ny);
-        const door = { x: nx, y: ny, index: doorIndex };
-        interactWithDoor(door);
-      } else if (closedDoorOnDiagonal({ x, y }, { x: nx, y: ny })) {
-        stoppedAtClosedDoor = true;
+        showToast("A closed doorway blocks that diagonal path.");
       }
       break;
     }
@@ -1792,22 +1832,30 @@ function resolveEnemyDefeat(enemy) {
 }
 
 function attack() {
-  const target = enemiesAdjacent()[0];
-  if (!target) {
-    showToast("Move next to a creature to attack.");
+  const targets = attackTargets();
+  if (!targets.length) {
+    showToast("No creature is within your weapon's reach.");
     return;
   }
-  attackEnemy(target);
+  chooseEnemyTarget("Choose a creature to attack", targets, (target) => {
+    const ranged = distanceInSquares(target, state.run.player) > 1;
+    attackEnemy(target, { ranged, disadvantage: ranged && enemiesAdjacent().length > 0 });
+  });
 }
 
-function spellTarget(range = 7) {
+function spellTargets(range = 7) {
   return state.run.enemies
     .filter((enemy) => enemy.alive && distanceInSquares(enemy, state.run.player) <= range &&
       hasLineOfSight(state.run.player, enemy))
-    .sort((a, b) => distanceInSquares(a, state.run.player) - distanceInSquares(b, state.run.player))[0] || null;
+    .sort((a, b) => distanceInSquares(a, state.run.player) - distanceInSquares(b, state.run.player) ||
+      a.name.localeCompare(b.name));
 }
 
-function castSpell(spellId) {
+function spellTarget(range = 7) {
+  return spellTargets(range)[0] || null;
+}
+
+function castSpell(spellId, chosenTarget = null) {
   const spell = SPELLS[spellId];
   const classId = state.run.character.class;
   if (!spell || !hasSpellcasting(classId, state.run.level) || state.run.lost || state.run.won ||
@@ -1833,9 +1881,18 @@ function castSpell(spellId) {
     finishPlayerTurn();
     return;
   }
-  const target = spellTarget(spell.range);
-  if (!target) {
+  const targets = spellTargets(spell.range);
+  if (!targets.length) {
     showToast("No creature is in sight and within spell range.");
+    return;
+  }
+  if (!chosenTarget && targets.length > 1) {
+    chooseEnemyTarget(`Choose a target for ${spell.name}`, targets, (target) => castSpell(spellId, target));
+    return;
+  }
+  const target = chosenTarget || targets[0];
+  if (!targets.includes(target)) {
+    showToast("That creature is no longer a valid target.");
     return;
   }
   if (!spell.free) state.run.spellSlots -= 1;
@@ -1910,27 +1967,21 @@ function hasLineOfSight(from, to) {
   return true;
 }
 
-function rangedTarget() {
-  if (!currentCharacterStats().weapon.ranged) return null;
+function rangedTargets() {
+  const weapon = currentCharacterStats().weapon;
+  if (!weapon.ranged) return [];
   const player = state.run.player;
   return state.run.enemies
-    .filter((enemy) => enemy.alive && distanceInSquares(player, enemy) <= 6 && hasLineOfSight(player, enemy))
-    .sort((a, b) => distanceInSquares(player, a) - distanceInSquares(player, b))[0] || null;
+    .filter((enemy) => enemy.alive &&
+      distanceInSquares(player, enemy) <= weapon.range && hasLineOfSight(player, enemy))
+    .sort((a, b) => distanceInSquares(player, a) - distanceInSquares(player, b) ||
+      a.name.localeCompare(b.name));
 }
 
-function rangedAttack() {
-  const weapon = currentCharacterStats().weapon;
-  if (!weapon.ranged) {
-    showToast("You need a bow or crossbow equipped for a ranged attack.");
-    return;
-  }
-  const target = rangedTarget();
-  if (!target) {
-    showToast("No creature is within six clear squares.");
-    return;
-  }
-  const threatened = enemiesAdjacent().length > 0;
-  attackEnemy(target, { ranged: true, disadvantage: threatened });
+function attackTargets() {
+  const adjacent = enemiesAdjacent();
+  const ranged = rangedTargets().filter((enemy) => distanceInSquares(enemy, state.run.player) > 1);
+  return [...adjacent, ...ranged];
 }
 
 function dodge() {
@@ -1990,12 +2041,16 @@ function searchArea() {
   finishPlayerTurn();
 }
 
-function disarmNearbyHazard() {
+function disarmNearbyHazard(selectedHazard = null) {
   if (state.run.lost || state.run.won) return;
-  const hazard = state.run.hazards.find((item) => !item.triggered && item.revealed &&
+  const hazard = selectedHazard || state.run.hazards.find((item) => !item.triggered && item.revealed &&
     distanceInSquares(item, state.run.player) <= 1);
   if (!hazard) {
     showToast("No revealed trap is close enough to disarm. Search nearby first.");
+    return;
+  }
+  if (hazard.triggered || !hazard.revealed || distanceInSquares(hazard, state.run.player) > 1) {
+    showToast("That trap is no longer close enough to disarm.");
     return;
   }
   const roll = randomInt(20) + skillBonus("sleight-of-hand");
@@ -2373,18 +2428,12 @@ function gearRewardStatus() {
 }
 
 function townInteractionLabel() {
-  const position = state.run.townPosition;
-  if (isTownWellAt(position.x, position.y)) return "Draw water · Ceiba Well";
-  const npc = TOWN_NPCS.find((person) => townDistance(position, person) <= 1);
-  if (npc) return `Talk · ${npc.name.split(",")[0]}`;
-  if (townDistance(position, TOWN_WELL) <= 1) return "Draw water · Ceiba Well";
-  if (townDistance(position, { x: 5, y: 7 }) <= 1) return "Enter the tomb";
-  return "Nothing nearby";
+  return contextualInteraction()?.label || "Nothing nearby";
 }
 
 function drawWaterAtTownWell() {
-  if (state.run.location !== "city" || townDistance(state.run.townPosition, TOWN_WELL) > 1) {
-    showToast("Walk beside the Ceiba Well to draw water.");
+  if (state.run.location !== "city" || townDistance(state.run.townPosition, TOWN_WELL) !== 0) {
+    showToast("Stand on the Ceiba Well to draw water.");
     return;
   }
   const thirstyMembers = partyMembers().filter((member) => member.needs.water < 100);
@@ -2402,8 +2451,8 @@ function drawWaterAtTownWell() {
 }
 
 function drawWaterAtDungeonWell(well) {
-  if (!well || distanceInSquares(well, state.run.player) > 1) {
-    showToast("Move beside the tomb well to draw water.");
+  if (!well || distanceInSquares(well, state.run.player) !== 0) {
+    showToast("Stand on the tomb well to draw water.");
     return;
   }
   const thirstyMembers = partyMembers().filter((member) => member.needs.water < 100);
@@ -2446,9 +2495,8 @@ function moveTownPlayer(dx, dy) {
   const x = position.x + dx;
   const y = position.y + dy;
   const npc = townNpcAt(x, y);
-  // Movement never triggers interaction: stop at occupied NPC tiles.
-  if (npc) {
-    showToast(`Speak with ${npc.name} using Interact while standing nearby.`);
+  if (npc && townDistance(position, npc) === 1) {
+    talkToTownNpc(npc.id);
     return;
   }
   if (!townCanOccupy(x, y)) {
@@ -2766,12 +2814,12 @@ async function claimTownGearReward() {
   showToast(`Mahuiz blesses ${blessed.join(" and ")}. The upgrade is permanent.`);
 }
 
-function nearbyDungeonDoor() {
+function nearbyDungeonDoors() {
   return state.run.terrain
     .map((type, index) => type === "door"
       ? { x: index % MAP_TILE_SIZE, y: Math.floor(index / MAP_TILE_SIZE), index }
       : null)
-    .find((door) => door && distanceInSquares(door, state.run.player) === 1);
+    .filter((door) => door && distanceInSquares(door, state.run.player) === 1);
 }
 
 function interactWithDoor(door) {
@@ -2791,6 +2839,11 @@ function interactWithDoor(door) {
     finishPlayerTurn();
     return;
   }
+  openDungeonDoor(door);
+  finishPlayerTurn();
+}
+
+function openDungeonDoor(door) {
   const sign = dungeonSignAt(door.x, door.y);
   if (sign?.type === "locked") {
     const crowbarBonus = inventoryQuantity("crowbar") > 0 ? 2 : 0;
@@ -2798,76 +2851,129 @@ function interactWithDoor(door) {
     const total = check.die + abilityModifier(state.run.character.scores.str) + crowbarBonus;
     if (check.die === 1 || (check.die !== 20 && total < 15)) {
       addLog(`You fail to force the locked doorway (${total} vs. DC 15).`);
-      finishPlayerTurn();
-      return;
+      return false;
     }
     addLog(`You force open the locked doorway (${total} vs. DC 15).${crowbarBonus ? " Your crowbar helps." : ""}`);
   } else {
     addLog("You open the doorway.");
   }
   state.run.openDoors.push(door.index);
-  finishPlayerTurn();
+  return true;
 }
 
-function interact() {
-  if (!state.run || state.messageBox || state.utilityDrawer || state.run.lost || state.run.won) return;
+function contextualInteraction() {
+  if (!state.run || state.messageBox || state.utilityDrawer || state.run.lost || state.run.won) return null;
   if (state.run.location === "city") {
-    const npc = TOWN_NPCS.find((person) => townDistance(state.run.townPosition, person) <= 1);
-    if (npc) {
-      talkToTownNpc(npc.id);
-      return;
+    const position = state.run.townPosition;
+    if (isTownWellAt(position.x, position.y)) {
+      return { label: "Draw water · Ceiba Well", action: drawWaterAtTownWell };
     }
-    if (townDistance(state.run.townPosition, TOWN_WELL) <= 1) {
-      drawWaterAtTownWell();
-      return;
+    const npcs = TOWN_NPCS.filter((person) => townDistance(position, person) <= 1);
+    if (npcs.length) {
+      const label = npcs.length > 1
+        ? `Talk · choose (${npcs.length})`
+        : `Talk · ${npcs[0].name.split(",")[0]}`;
+      return {
+        label,
+        action: () => chooseFromOptions("Choose someone to speak with", npcs.map((npc) => ({
+          label: npc.name,
+          action: () => talkToTownNpc(npc.id)
+        })))
+      };
     }
-    const gate = { x: 5, y: 7 };
-    if (townDistance(state.run.townPosition, gate) === 1) {
-      showToast("Move onto the southern road to enter the tomb.");
-      return;
+    if (TOWN_MAP[position.y]?.[position.x] === "D") {
+      return { label: "Enter the tomb", action: enterDungeon };
     }
-    showToast("Move beside a townsperson or the southern road to interact.");
-    return;
+    return null;
   }
-  if (state.run.location !== "dungeon") return;
-  const enemy = enemiesAdjacent()[0];
-  if (enemy) {
-    attackEnemy(enemy);
-    return;
+  if (state.run.location !== "dungeon") return null;
+  const enemies = attackTargets();
+  if (enemies.length) {
+    const label = enemies.length > 1
+      ? `Attack · choose target (${enemies.length})`
+      : `Attack · ${enemies[0].name}${distanceInSquares(enemies[0], state.run.player) === 1 &&
+        flankingCompanion(enemies[0]) ? " · Advantage" : ""}`;
+    return {
+      label,
+      action: attack
+    };
   }
   const stair = dungeonSignAt(state.run.player.x, state.run.player.y);
   if (stair && ["stairs-up", "stairs-down", "exit"].includes(stair.type)) {
-    traverseDungeonStair(stair);
-    return;
+    const label = stair.type === "stairs-down" ? `Descend · floor ${stair.targetFloor}`
+      : stair.type === "stairs-up" ? `Ascend · floor ${stair.targetFloor}` : "Leave the conquered tomb";
+    return { label, action: () => traverseDungeonStair(stair) };
   }
   if (isAtDungeonEntrance()) {
-    returnToChiltomatlan();
-    return;
+    return { label: "Return to Chiltomatlan", action: returnToChiltomatlan };
   }
-  const hazard = state.run.hazards.find((entry) => !entry.triggered && entry.revealed &&
+  const hazards = state.run.hazards.filter((entry) => !entry.triggered && entry.revealed &&
     distanceInSquares(entry, state.run.player) <= 1);
-  if (hazard) {
-    disarmNearbyHazard();
-    return;
+  if (hazards.length) {
+    return {
+      label: "Disarm revealed trap",
+      action: () => chooseFromOptions("Choose a trap to disarm", hazards.map((hazard) => ({
+        label: hazard.name,
+        action: () => disarmNearbyHazard(hazard)
+      })))
+    };
   }
-  const well = state.run.wells?.find((entry) => distanceInSquares(entry, state.run.player) <= 1);
+  const well = state.run.wells?.find((entry) => distanceInSquares(entry, state.run.player) === 0);
   if (well) {
-    drawWaterAtDungeonWell(well);
-    return;
+    return { label: "Draw water · tomb well", action: () => drawWaterAtDungeonWell(well) };
   }
-  const doorway = nearbyDungeonDoor();
-  if (doorway) {
-    interactWithDoor(doorway);
-    return;
+  const treasures = state.run.treasures.filter((item) => distanceInSquares(item, state.run.player) <= 1);
+  const treasureTiles = [...new Map(treasures.map((treasure) => [tileIndex(treasure.x, treasure.y), treasure])).values()];
+  if (treasureTiles.length) {
+    return {
+      label: "Collect nearby treasure",
+      action: () => chooseFromOptions("Choose treasure to collect", treasureTiles.map((treasure) => ({
+        label: `${treasure.items.map((item) => itemDetails(item.id).name).join(", ") || "Supplies"}${treasure.gold ? ` · ${formatCurrency(treasure.gold)}` : ""}`,
+        action: () => {
+          collectTreasureAt(treasure.x, treasure.y);
+          finishPlayerTurn();
+        }
+      })))
+    };
   }
   const entrance = state.run.rooms.find((room) => room.type === "entrance");
+  const doorways = nearbyDungeonDoors();
   const exit = state.run.rooms.find((room) => room.type === "exit");
   const targetRoom = exit || entrance;
   const targetPosition = targetRoom && {
     x: targetRoom.anchorX ?? targetRoom.mapX + Math.floor(targetRoom.mapW / 2),
     y: targetRoom.anchorY ?? targetRoom.mapY + Math.floor(targetRoom.mapH / 2)
   };
-  showToast("Nothing nearby to interact with. Move to a doorway, treasure, revealed trap, or creature.");
+  if (targetPosition && distanceInSquares(targetPosition, state.run.player) === 1) {
+    return {
+      label: targetRoom.type === "exit" ? "Approach the exit" : "Return to entrance",
+      action: () => showToast("Move onto the stair or exit tile to use it.")
+    };
+  }
+  if (doorways.length) {
+    return {
+      label: doorways.length > 1 ? `Doorway · choose (${doorways.length})`
+        : state.run.openDoors.includes(doorways[0].index) ? "Close nearby doorway"
+          : dungeonSignAt(doorways[0].x, doorways[0].y)?.type === "locked"
+            ? "Force open locked doorway" : "Open nearby doorway",
+      action: () => chooseFromOptions("Choose a doorway", doorways.map((door) => ({
+        label: `${state.run.openDoors.includes(door.index) ? "Close" : "Open"} doorway · ${door.x + 1}, ${door.y + 1}`,
+        action: () => interactWithDoor(door)
+      })))
+    };
+  }
+  return null;
+}
+
+function interact() {
+  const interaction = contextualInteraction();
+  if (interaction) {
+    interaction.action();
+    return;
+  }
+  showToast(state.run?.location === "city"
+    ? "Nothing nearby to interact with. Stand on the well to draw water."
+    : "Nothing nearby to interact with. Move to a creature, treasure, revealed trap, or doorway.");
 }
 
 function renderTownMap() {
@@ -2875,17 +2981,19 @@ function renderTownMap() {
   elements["town-map"].style.setProperty("--town-columns", TOWN_MAP[0].length);
   const player = state.run.townPosition;
   const nearNpc = TOWN_NPCS.find((npc) => townDistance(player, npc) <= 1);
-  const nearWell = townDistance(player, TOWN_WELL) <= 1;
+  const onWell = townDistance(player, TOWN_WELL) === 0;
   const onTrail = TOWN_MAP[player.y]?.[player.x] === "D";
   const interactionLabel = townInteractionLabel();
   elements["town-interact-label"].textContent = interactionLabel;
   elements["town-interact-button"].disabled = interactionLabel === "Nothing nearby";
-  elements["town-location-copy"].textContent = nearNpc && nearWell
-    ? `${nearNpc.name} is nearby. Tap their marker to speak, or tap the Ceiba Well to draw water.`
+  elements["town-location-copy"].textContent = nearNpc && onWell
+    ? `${nearNpc.name} is nearby. Tap their marker to speak, or use the Ceiba Well beneath you.`
     : nearNpc
       ? `${nearNpc.name} is nearby. Tap their marker or use the action button to speak.`
-      : nearWell
-        ? "The Ceiba Well is within reach. Tap its marker or use the action button to draw clean water for the party."
+    : onWell
+      ? "You are standing on the Ceiba Well. Use the action button to draw clean water for the party."
+      : townDistance(player, TOWN_WELL) === 1
+        ? "The Ceiba Well is nearby. Step onto its tile to draw clean water."
     : onTrail
       ? "The broken imperial seal opens onto the tomb's outer halls. Step through to begin your expedition."
       : "You stand in Chiltomatlan's shaded plaza. The travelers' house is west, the market is east, and the forbidden tomb road lies south.";
@@ -3162,7 +3270,7 @@ function inspectMapTile(tile) {
         thirstyMembers.length
           ? `Available: draw water to restore hydration for ${thirstyMembers.length} traveler${thirstyMembers.length === 1 ? "" : "s"}.`
           : "Current state: the party is fully hydrated.",
-        distance <= 1 ? "Interact nearby to draw water; using the well advances the dungeon turn." : "Approach within one tile to draw water."
+        distance === 0 ? "Stand on the well to draw water; using it advances the dungeon turn." : "Move onto the well tile to draw water."
       ].join(" ");
       if (enemy) description += ` ${enemy.name} also occupies this tile.`;
       if (treasure) description += ` Loose treasure also lies here and is collected automatically when you step onto it: ${
@@ -3190,7 +3298,7 @@ function inspectMapTile(tile) {
       description = [
         ...treasures.map((cache) => cache.gold ? `${formatCurrency(cache.gold)} in loose gold.` : ""),
         ...lootDescriptions,
-        distance <= 1 ? "Collectible: step onto the cache to collect what you can carry." : "Collectible: move onto the cache to collect what you can carry."
+        distance <= 1 ? "Collectible: interact from beside the cache or step onto it to collect what you can carry." : "Collectible: move onto the cache to collect what you can carry."
       ].filter(Boolean).join(" ");
     } else if (hazard) {
       title = hazard.name;
@@ -3211,7 +3319,7 @@ function inspectMapTile(tile) {
         ? `The doorway is ${open ? "open" : "locked"}. ${open
           ? "It can be closed while its tile is empty."
           : "Interact nearby to attempt a DC 15 Strength check; carrying a crowbar grants +2."}`
-        : `The doorway is ${open ? "open" : "closed"}. Interact while adjacent to ${open ? "close" : "open"} it.`;
+        : `The doorway is ${open ? "open" : "closed"}. Walk into a closed doorway to open and pass through; interact beside an open doorway to close it.`;
     } else if (tile.classList.contains("map-entrance")) {
       title = "Tomb entrance";
       description = "The route back to Chiltomatlan. Return here to safely secure expedition loot.";
@@ -3263,39 +3371,14 @@ function toggleLookMode() {
     : "Tap to move · one square per turn";
 }
 
-function dungeonInteractionLabel(nearbyHazard) {
-  const enemy = enemiesAdjacent()[0];
-  if (enemy) return `Attack · ${enemy.name}${flankingCompanion(enemy) ? " · Advantage" : ""}`;
-  const stair = dungeonSignAt(state.run.player.x, state.run.player.y);
-  if (stair?.role === "entrance" || isAtDungeonEntrance()) return "Return to Chiltomatlan";
-  if (stair?.role === "exit") return "Leave the conquered tomb";
-  if (stair?.type === "stairs-down") return `Descend · floor ${stair.targetFloor}`;
-  if (stair?.type === "stairs-up") return `Ascend · floor ${stair.targetFloor}`;
-  if (nearbyHazard) return "Disarm revealed trap";
-  if (state.run.wells?.some((well) => distanceInSquares(well, state.run.player) <= 1)) {
-    return "Draw water · tomb well";
-  }
-  if (state.run.treasures.some((treasure) => distanceInSquares(treasure, state.run.player) <= 1)) {
-    return "Collect nearby treasure";
-  }
-  const targetRoom = state.run.rooms.find((room) => room.type === "exit") ||
-    state.run.rooms.find((room) => room.type === "entrance");
-  const targetPosition = targetRoom && {
-    x: targetRoom.anchorX ?? targetRoom.mapX + Math.floor(targetRoom.mapW / 2),
-    y: targetRoom.anchorY ?? targetRoom.mapY + Math.floor(targetRoom.mapH / 2)
-  };
-  const nearbyDoor = nearbyDungeonDoor();
-  if (!nearbyDoor) return "Nothing nearby";
-  if (state.run.openDoors.includes(nearbyDoor.index)) return "Close nearby doorway";
-  return dungeonSignAt(nearbyDoor.x, nearbyDoor.y)?.type === "locked"
-    ? "Force open locked doorway"
-    : "Open nearby doorway";
+function dungeonInteractionLabel() {
+  return contextualInteraction()?.label || "Nothing nearby";
 }
 
 function renderActions() {
   const icons = {
     "wait-button": "kit",
-    "ranged-button": "weapon",
+    "attack-button": "weapon",
     "dodge-button": "armor",
     "dash-button": "tool",
     "disengage-button": "armor",
@@ -3305,7 +3388,6 @@ function renderActions() {
     "drink-water-button": "water",
     "camp-button": "kit",
     "forage-button": "chilis",
-    "melee-button": "weapon",
     "interact-button": "tool",
     "spell-spark-button": "keepsake",
     "spell-shard-button": "keepsake",
@@ -3353,8 +3435,7 @@ function renderActions() {
   const inDungeon = state.run.location === "dungeon";
   elements["action-panel"].classList.toggle("hidden", !inDungeon);
   if (!inDungeon) return;
-  const stats = currentCharacterStats();
-  const target = inDungeon ? rangedTarget() : null;
+  const validAttackTargets = attackTargets();
   const nearbyHazard = state.run.hazards.some((hazard) => !hazard.triggered && hazard.revealed &&
     distanceInSquares(hazard, state.run.player) <= 1);
   primaryActions.replaceChildren();
@@ -3370,24 +3451,30 @@ function renderActions() {
       : `Explore · tap to move · Passive Perception ${passivePerception}`;
   elements["action-mode"].textContent = state.dashReady ? "Dash armed"
     : state.disengageReady ? "Disengage armed" : "";
-  const interactionLabel = dungeonInteractionLabel(nearbyHazard);
+  const interactionLabel = dungeonInteractionLabel();
   const atEntrance = isAtDungeonEntrance();
   addButton(interactionLabel, interact, atEntrance && !interactionLabel.startsWith("Attack") ? "e t" : "e", false,
     ended || interactionLabel === "Nothing nearby", primaryActions, "interact-button");
   addButton("Wait", waitTurn, ".", true, ended, elements["action-explore"], "wait-button");
-  addButton(target ? `Ranged · ${target.name}` : stats.weapon.ranged ? "Ranged attack" : "Ranged · bow needed",
-    rangedAttack, "r", true, ended || !stats.weapon.ranged || !target, elements["action-combat"], "ranged-button");
+  if (validAttackTargets.length) {
+    const attackLabel = validAttackTargets.length > 1
+      ? `Attack · choose target (${validAttackTargets.length})`
+      : `Attack · ${validAttackTargets[0].name}`;
+    addButton(attackLabel, attack, "r", true, ended, elements["action-combat"], "attack-button");
+  }
   if (hasSpellcasting(state.run.character.class, state.run.level)) {
     (CLASS_SPELLS[state.run.character.class] || []).forEach((spellId, index) => {
       const spell = SPELLS[spellId];
-      const target = spell.healing ? null : spellTarget(spell.range);
+      const spellTargetsInSight = spell.healing ? [] : spellTargets(spell.range);
+      const target = spellTargetsInSight[0] || null;
       const disabled = ended || (spell.healing
         ? state.run.spellSlots < 1 || !canHeal() || state.run.hp >= state.run.maxHp
         : !target || (!spell.free && state.run.spellSlots < 1));
       const spellName = t(spell.name);
       const label = spell.healing
         ? `${spellName} · ${state.run.spellSlots}`
-        : `${spellName}${target ? ` · ${t(target.name)}` : ""}${spell.free ? "" : ` · ${state.run.spellSlots}`}`;
+        : `${spellName}${spellTargetsInSight.length > 1 ? ` · choose (${spellTargetsInSight.length})`
+          : target ? ` · ${t(target.name)}` : ""}${spell.free ? "" : ` · ${state.run.spellSlots}`}`;
       addButton(label, () => castSpell(spellId), ["j", "k", "l"][index], true, disabled,
         elements["action-combat"], `spell-${spellId}-button`);
     });
@@ -3421,11 +3508,6 @@ function renderActions() {
     elements["return-after-delving"].disabled = false;
     elements["return-after-delving"].dataset.shortcut = "t";
     elements["return-after-delving"].textContent = "Return to Chiltomatlan · T";
-  } else if (!state.run.lost && inDungeon) {
-    const adjacent = enemiesAdjacent();
-    if (adjacent.length && !interactionLabel.startsWith("Attack")) {
-      addButton(`Attack · ${adjacent[0].name}`, attack, " ", false, false, elements["action-combat"], "melee-button");
-    }
   }
   if (!elements["return-after-delving"].classList.contains("hidden")) {
     primaryActions.append(elements["return-after-delving"]);
@@ -3674,8 +3756,7 @@ function renderCharacterInfoPage() {
 
 function renderAbilityGuide(character, stats, spellAbility, spellReady) {
   const inDungeon = state.run.location === "dungeon";
-  const adjacentEnemies = inDungeon ? enemiesAdjacent().length : 0;
-  const rangedTargetInSight = inDungeon ? rangedTarget() : null;
+  const attackableEnemies = inDungeon ? attackTargets() : [];
   const nearbyHazard = inDungeon && state.run.hazards.some((hazard) =>
     !hazard.triggered && hazard.revealed && distanceInSquares(hazard, state.run.player) <= 1);
   const nearbyThreat = inDungeon && state.run.enemies.some((enemy) =>
@@ -3684,18 +3765,14 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
   const canUsePotion = inventoryQuantity("healing-potion") > 0 && !noHpNeeded;
   const abilities = [
     {
-      name: "Melee attack",
-      status: inDungeon ? (adjacentEnemies ? "Target nearby" : "Needs adjacent foe") : "Dungeon action",
-      state: inDungeon && adjacentEnemies ? "available" : "context",
-      description: `Strike an adjacent creature with your equipped ${stats.weapon.name}. Roll a d20 + ${stats.attackBonus >= 0 ? "+" : ""}${stats.attackBonus}; a hit deals ${stats.damageDice}${stats.damageBonus >= 0 ? "+" : ""}${stats.damageBonus}. A natural 20 doubles the damage dice. Uses your turn.`
-    },
-    {
-      name: "Ranged attack",
-      status: !stats.weapon.ranged ? "Needs a ranged weapon" : inDungeon && rangedTargetInSight ? "Target in range" : "Needs target in sight",
-      state: !stats.weapon.ranged ? "locked" : inDungeon && rangedTargetInSight ? "available" : "context",
-      description: stats.weapon.ranged
-        ? "With your ranged weapon equipped, attack a creature within 6 clear squares. A nearby enemy gives you disadvantage. Uses your turn."
-        : "Your current weapon is not ranged. Equip a bow, atlatl, or other ranged weapon from your pack to use this action."
+      name: "Attack",
+      status: !inDungeon ? "Dungeon action" : attackableEnemies.length
+        ? `${attackableEnemies.length} target${attackableEnemies.length === 1 ? "" : "s"} in reach`
+        : "Needs a target in reach",
+      state: inDungeon && attackableEnemies.length ? "available" : "context",
+      description: `Attack with your equipped ${stats.weapon.name}. ${stats.weapon.ranged
+        ? `Adjacent foes are struck in melee; visible foes up to ${stats.weapon.range} squares away can be shot.`
+        : "You can strike adjacent foes in melee."} Roll a d20 + ${stats.attackBonus >= 0 ? "+" : ""}${stats.attackBonus}; a hit deals ${stats.damageDice}${stats.damageBonus >= 0 ? "+" : ""}${stats.damageBonus}. A natural 20 doubles the damage dice. Uses your turn.`
     },
     {
       name: "Dodge",
@@ -5339,13 +5416,13 @@ function connectEvents() {
     const y = Number(tile.dataset.y);
     const npc = townNpcAt(x, y);
     if (isTownWellAt(x, y)) {
-      if (townDistance(state.run.townPosition, TOWN_WELL) <= 1) drawWaterAtTownWell();
-      else showToast("Walk beside the Ceiba Well, then interact to draw water.");
+      if (townDistance(state.run.townPosition, TOWN_WELL) === 0) drawWaterAtTownWell();
+      else moveTowardTownNpc(TOWN_WELL);
       return;
     }
     if (npc) {
       if (townDistance(state.run.townPosition, npc) <= 1) talkToTownNpc(npc.id);
-      else showToast(`Walk beside ${npc.name}, then interact to speak.`);
+      else moveTowardTownNpc(npc);
       return;
     }
     const dx = x - state.run.townPosition.x;
@@ -5360,6 +5437,10 @@ function connectEvents() {
     moveTownPlayer(dx, dy);
   });
   elements["town-dialog-close"].addEventListener("click", () => elements["town-dialog"].close());
+  elements["target-choice-close"].addEventListener("click", () => elements["target-choice-dialog"].close());
+  elements["target-choice-dialog"].addEventListener("click", (event) => {
+    if (event.target === elements["target-choice-dialog"]) elements["target-choice-dialog"].close();
+  });
   elements["cosmetic-shop-close"].addEventListener("click", () => elements["cosmetic-shop-dialog"].close());
   elements["cosmetic-shop-items"].addEventListener("click", (event) => {
     const button = event.target.closest("[data-cosmetic-id]");
@@ -5508,7 +5589,14 @@ function connectEvents() {
       interact();
       return;
     }
-    if (distance === 1 && canStepBetween(state.run.player, destination) &&
+    if (distance === 1 && state.run.treasures.some((treasure) => treasure.x === x && treasure.y === y)) {
+      collectTreasureAt(x, y);
+      finishPlayerTurn();
+      return;
+    }
+    const closedDoorDestination = state.run.terrain[tileIndex(x, y)] === "door" &&
+      !state.run.openDoors.includes(tileIndex(x, y));
+    if (distance === 1 && (canStepBetween(state.run.player, destination) || closedDoorDestination) &&
     ["floor", "corridor", "door", "creature", "hazard"].some((name) => tile.classList.contains(name))) {
     movePlayer(x - state.run.player.x, y - state.run.player.y);
     } else if (tile.title) {
@@ -5598,7 +5686,7 @@ function connectEvents() {
     if (direction) {
       event.preventDefault();
       movePlayer(direction.x, direction.y);
-    } else if (event.code === "Space" && enemiesAdjacent().length) {
+    } else if (event.code === "Space" && attackTargets().length) {
       event.preventDefault();
       attack();
     } else {
@@ -5646,4 +5734,4 @@ window.cryptsLocale.ready.then(start).catch((error) => {
   notice.setAttribute("role", "alert");
   notice.textContent = `The language catalogs could not be loaded: ${escapeMessage(error)}`;
   document.body.append(notice);
-});"
+});

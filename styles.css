@@ -1407,6 +1407,10 @@ body {
 .story-copy, .story-question { margin: 0; color: #d1d5bb; font: 13px/1.6 Georgia, serif; }
 .story-question { color: #b9ca9b; font-style: italic; }
 .story-panel .button, .game-over-panel .button { width: 100%; }
+.target-choice-dialog { width: min(390px, calc(100% - 28px)); }
+.target-choice-panel { gap: 10px; }
+.target-choice-list { display: grid; width: 100%; max-height: min(55vh, 420px); gap: 7px; overflow: auto; }
+.target-choice-list .button { text-align: left; }
 .game-over-dialog { border-color: #a65b48; }
 .game-over-dialog::backdrop { background: #160b0be8; }
 .game-over-panel { justify-items: center; text-align: center; }
