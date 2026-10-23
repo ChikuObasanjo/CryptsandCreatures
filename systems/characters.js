@@ -73,6 +73,8 @@ function deriveCharacter(character, level = 1) {
   const equipmentEnhancements = character.equipmentEnhancements || {};
   const weaponEnhancement = equipmentEnhancements.weaponIds?.includes(character.equipment.weapon) ? 1 : 0;
   const armorEnhancement = equipmentEnhancements.armorIds?.includes(character.equipment.armor) ? 1 : 0;
+  const weaponTier = weapon.tier ? GEAR_TIERS[weapon.tier] : null;
+  const armorTier = armor.tier ? GEAR_TIERS[armor.tier] : null;
   const con = modifiers.con || 0;
   const hitDie = CLASSES[character.class]?.hitDie || 10;
   const hpPerLevel = Math.max(1, Math.floor(hitDie / 2) + 1 + con);
@@ -86,9 +88,9 @@ function deriveCharacter(character, level = 1) {
   const proficiencyBonus = 2 + Math.floor(Math.max(0, level - 1) / 4);
   const background = BACKGROUNDS[character.background];
   return {
-    modifiers, maxHp: Math.max(1, maxHp), ac: ac + armorEnhancement,
-    attackBonus: proficiencyBonus + attackAbility + (background?.attackBonus || 0) + weaponEnhancement,
-    damageBonus: attackAbility, damageDice: weapon.dice, weapon
+    modifiers, maxHp: Math.max(1, maxHp), ac: ac + armorEnhancement + (armorTier?.ac || 0) + (armor.acBonus || 0),
+    attackBonus: proficiencyBonus + attackAbility + (background?.attackBonus || 0) + weaponEnhancement + (weaponTier?.attack || 0) + (weapon.attackBonus || 0),
+    damageBonus: attackAbility + (weaponTier?.damage || 0) + (weapon.damageBonus || 0), damageDice: weapon.dice, weapon
   };
 }
 
@@ -96,6 +98,10 @@ function currentCharacterStats() {
   const character = state.run.character || makeLegacyCharacter();
   const stats = deriveCharacter(withNeedsPenalty(character, state.run.needs), state.run.level);
   stats.maxHp = state.run.maxHp;
+  const mods = heroStatModifiers();
+  stats.attackBonus += mods.attack;
+  stats.damageBonus += mods.damage;
+  stats.ac += mods.ac;
   return stats;
 }
 
@@ -245,7 +251,7 @@ function bestPartySkillBonus(skill) {
       ? wardenFieldcraftBonus() : 0;
     return abilityModifier(adjusted.scores[ability]) + proficiency +
       Number(hasBalancedNutrition(member.needs)) +
-      (member.hero ? inventorySkillBonus(skill) : 0) + wardenBonus + backgroundSkillBonus;
+      (member.hero ? inventorySkillBonus(skill) + buffSkillBonus(skill) : 0) + wardenBonus + backgroundSkillBonus;
   }));
 }
 
@@ -254,7 +260,7 @@ function makeLegacyCharacter() {
     legacy: true, name: "Wayfarer", gender: "other", race: "human", heritage: "", class: "fighter", background: "folk-hero",
     scoreMethod: "standard", baseScores: { str: 14, dex: 12, con: 14, int: 10, wis: 12, cha: 10 },
     scores: { str: 14, dex: 12, con: 14, int: 10, wis: 12, cha: 10 },
-    appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band" },
+    appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band", facePaint: "none", body: "standard", beard: "none", jewelry: "ear-spools", crest: "none" },
     cosmetics: { owned: [], helmet: null, clothes: null },
     equipment: { weapon: "macuahuitl", armor: "scale", shield: false, cloak: false }
   };
@@ -337,7 +343,11 @@ function currentDraftCharacter() {
       garment: elements["character-garment"].value,
       adornment: elements["character-adornment"].value,
       headwear: elements["character-headwear"].value,
-      facePaint: elements["character-face-paint"].value
+      facePaint: elements["character-face-paint"].value,
+      body: elements["character-body"].value,
+      beard: elements["character-beard"].value,
+      jewelry: elements["character-jewelry"].value,
+      crest: elements["character-crest"].value || "none"
     },
     equipment: {
       weapon: elements["character-weapon"].value,
@@ -357,406 +367,28 @@ const CHARACTER_FACINGS = [
 const CHARACTER_RACES = [
   "human", "dwarf", "elf", "halfling", "dragonborn", "gnome", "half-elf", "half-orc", "tiefling"
 ];
-const PLAYER_RACE_COLORS = {
-  human: null,
-  dwarf: { hair: "#5c3229", hairLight: "#99543a" },
-  elf: null,
-  halfling: null,
-  dragonborn: { skin: "#3e8277", skinLight: "#71b49a", skinDark: "#28584f" },
-  gnome: null,
-  "half-elf": null,
-  "half-orc": { skin: "#6e8052", skinLight: "#a5ae70", skinDark: "#46583b" },
-  tiefling: { skin: "#98565c", skinLight: "#cf7a70", skinDark: "#653a51" }
-};
-
-function adjustHexColor(hex, amount) {
-  const value = Number.parseInt(hex.slice(1), 16);
-  const channels = [value >> 16, (value >> 8) & 255, value & 255]
-    .map((channel) => Math.max(0, Math.min(255, channel + amount)));
-  return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
-}
-
-function drawCodexCharacter(context, character, facing) {
-  const appearance = character?.appearance || makeLegacyCharacter().appearance;
-  const equipment = character?.equipment || {};
-  const race = CHARACTER_RACES.includes(character?.race) ? character.race : "human";
-  const cosmetics = character?.cosmetics || {};
-  const outfitId = cosmetics.clothes || "";
-  const outfitColors = {
-    "jaguar-clothes": { cloth: "#c59636", clothLight: "#e8c866", armor: "#403027", red: "#4c3028", gold: "#f1d17a", jade: "#54483a" },
-    "eagle-clothes": { cloth: "#347d72", clothLight: "#73b7a0", armor: "#d9d0ae", red: "#a84d38", gold: "#e3c566", jade: "#8bd0ae" },
-    "tzitzimitl-clothes": { cloth: "#33254f", clothLight: "#654878", armor: "#ded7c6", red: "#a64456", gold: "#d9bd76", jade: "#8f79ba" }
-  };
-  const colors = {
-    outline: "#39251f",
-    shadow: "#54372c",
-    skin: appearance.skin || "#9a603c",
-    skinLight: adjustHexColor(appearance.skin || "#9a603c", 38),
-    skinDark: adjustHexColor(appearance.skin || "#9a603c", -36),
-    hair: appearance.hair || "#211a17",
-    hairLight: adjustHexColor(appearance.hair || "#211a17", 36),
-    cloth: appearance.tunic || "#334d78",
-    clothLight: adjustHexColor(appearance.tunic || "#334d78", 44),
-    red: "#b94d37",
-    cream: "#f0d39a",
-    gold: "#d6a64f",
-    jade: "#63a78a",
-    boot: "#56382c",
-    armor: equipment.armor === "scale" ? "#8e927d" : equipment.armor === "chainmail" ? "#a6aa9a" : "#76533c"
-  };
-  Object.assign(colors, outfitColors[outfitId] || {});
-  Object.assign(colors, PLAYER_RACE_COLORS[race] || {});
-  if (race === "dwarf") {
-    colors.skinDark = "#754833";
-    colors.skinLight = "#d19669";
-  }
-
-  const pixel = (x, y, width, height, color) => {
-    context.fillStyle = color;
-    context.fillRect(x, y, width, height);
-  };
-  const row = (y, x, width, color) => pixel(x, y, width, 1, color);
-  const north = facing.startsWith("north");
-  const flip = facing.endsWith("west");
-  context.clearRect(0, 0, 32, 40);
-  context.imageSmoothingEnabled = false;
-  if (flip) {
-    context.save();
-    context.translate(32, 0);
-    context.scale(-1, 1);
-  }
-
-  if (equipment.cloak) {
-    pixel(8, 13, 16, 16, colors.red);
-    pixel(9, 15, 14, 13, colors.cloth);
-    row(27, 9, 14, colors.gold);
-  }
-  if (race === "dragonborn") {
-    pixel(17, 29, 9, 2, colors.skinDark);
-    pixel(23, 30, 5, 2, colors.skin);
-    pixel(26, 31, 3, 2, colors.skinDark);
-  } else if (race === "tiefling") {
-    pixel(17, 30, 7, 2, colors.red);
-    pixel(23, 31, 5, 2, colors.red);
-    pixel(26, 30, 2, 2, colors.gold);
-  }
-
-  pixel(10, 27, 5, 8, colors.skinDark);
-  pixel(17, 27, 5, 8, colors.skinDark);
-  pixel(9, 34, 7, 3, colors.boot);
-  pixel(16, 34, 7, 3, colors.boot);
-  pixel(10, 28, 4, 5, colors.skin);
-  pixel(17, 28, 4, 5, colors.skin);
-  pixel(10, 33, 5, 1, colors.gold);
-  pixel(17, 33, 5, 1, colors.gold);
-  pixel(9, 36, 7, 2, colors.outline);
-  pixel(16, 36, 7, 2, colors.outline);
-
-  pixel(8, 15, 16, 13, colors.outline);
-  pixel(9, 16, 14, 11, colors.cloth);
-  pixel(10, 17, 12, 8, colors.clothLight);
-  pixel(9, 25, 14, 2, colors.red);
-  pixel(10, 26, 12, 1, colors.gold);
-  pixel(9, 16, 2, 9, colors.red);
-  pixel(21, 16, 2, 9, colors.red);
-  pixel(11, 17, 1, 8, colors.cream);
-  pixel(19, 17, 1, 8, colors.cream);
-  pixel(12, 18, 2, 2, colors.red);
-  pixel(16, 18, 2, 2, colors.red);
-  pixel(14, 20, 2, 2, colors.red);
-  pixel(12, 22, 2, 2, colors.red);
-  pixel(16, 22, 2, 2, colors.red);
-  pixel(12, 19, 1, 1, colors.gold);
-  pixel(17, 19, 1, 1, colors.gold);
-  pixel(14, 21, 2, 1, colors.gold);
-  pixel(12, 23, 1, 1, colors.gold);
-  pixel(17, 23, 1, 1, colors.gold);
-  pixel(14, 23, 4, 1, colors.cream);
-
-  pixel(6, 17, 4, 8, colors.skinDark);
-  pixel(7, 18, 3, 6, colors.skin);
-  pixel(22, 17, 4, 8, colors.skinDark);
-  pixel(23, 18, 3, 6, colors.skin);
-  pixel(7, 23, 4, 3, colors.gold);
-  pixel(22, 23, 4, 3, colors.gold);
-
-  pixel(11, 5, 10, 11, colors.outline);
-  pixel(12, 5, 8, 10, colors.skin);
-  pixel(12, 7, 8, 1, colors.skinLight);
-  pixel(12, 12, 8, 2, colors.skinDark);
-  if (!north) {
-    pixel(12, 9, 2, 2, "#f0d39a");
-    pixel(17, 9, 2, 2, "#f0d39a");
-    pixel(13, 9, 1, 2, colors.outline);
-    pixel(18, 9, 1, 2, colors.outline);
-    pixel(15, 11, 2, 1, colors.outline);
-  } else {
-    pixel(12, 8, 8, 5, colors.hair);
-  }
-
-  const hairStyle = appearance.hairStyle || "short";
-  if (race !== "dragonborn") {
-    pixel(10, 4, 12, 4, colors.hair);
-    pixel(11, 3, 9, 2, colors.hairLight);
-    if (hairStyle === "long" || hairStyle === "braids") {
-      pixel(10, 7, 2, 9, colors.hair);
-      pixel(20, 7, 2, 9, colors.hair);
-    }
-    if (hairStyle === "braids") {
-      pixel(9, 12, 2, 8, colors.hairLight);
-      pixel(21, 12, 2, 8, colors.hairLight);
-      pixel(9, 19, 2, 2, colors.gold);
-      pixel(21, 19, 2, 2, colors.gold);
-    } else if (hairStyle === "crest") {
-      pixel(14, 1, 4, 3, colors.hairLight);
-    } else if (hairStyle === "topknot") {
-      pixel(14, 1, 4, 3, colors.hair);
-      pixel(15, 0, 2, 2, colors.hairLight);
-    } else if (hairStyle === "shaved-sides") {
-      pixel(10, 7, 2, 3, colors.skinDark);
-      pixel(20, 7, 2, 3, colors.skinDark);
-    }
-  } else {
-    pixel(13, 2, 6, 5, colors.skinDark);
-    pixel(14, 0, 4, 5, colors.jade);
-    pixel(15, 1, 2, 3, colors.cream);
-  }
-
-  if (race === "elf") {
-    pixel(9, 6, 4, 3, colors.skin);
-    pixel(9, 5, 3, 2, colors.skinLight);
-    pixel(19, 6, 4, 3, colors.skin);
-    pixel(20, 5, 3, 2, colors.skinLight);
-  } else if (race === "half-elf") {
-    pixel(9, 6, 3, 2, colors.skin);
-    pixel(9, 5, 2, 2, colors.skinLight);
-    pixel(20, 6, 3, 2, colors.skin);
-    pixel(21, 5, 2, 2, colors.skinLight);
-  } else if (race === "half-orc") {
-    pixel(9, 11, 2, 3, colors.skinDark);
-    pixel(21, 11, 2, 3, colors.skinDark);
-    pixel(13, 13, 2, 3, colors.cream);
-    pixel(17, 13, 2, 3, colors.cream);
-  } else if (race === "dwarf") {
-    pixel(11, 11, 10, 4, colors.hair);
-    pixel(12, 14, 8, 3, colors.hairLight);
-    pixel(13, 15, 6, 2, colors.cream);
-  } else if (race === "halfling") {
-    pixel(10, 6, 2, 2, colors.hairLight);
-    pixel(12, 4, 2, 2, colors.hairLight);
-    pixel(18, 4, 2, 2, colors.hairLight);
-    pixel(20, 6, 2, 2, colors.hairLight);
-    pixel(11, 11, 2, 2, "#d78a6b");
-    pixel(19, 11, 2, 2, "#d78a6b");
-  } else if (race === "gnome") {
-    pixel(11, 3, 2, 2, colors.jade);
-    pixel(13, 1, 2, 3, colors.jade);
-    pixel(15, 0, 2, 3, colors.cream);
-    pixel(17, 1, 2, 3, colors.jade);
-    pixel(19, 3, 2, 2, colors.jade);
-    pixel(14, 10, 4, 2, colors.skinLight);
-  } else if (race === "dragonborn") {
-    pixel(9, 8, 4, 4, colors.skin);
-    pixel(10, 7, 3, 4, colors.skinLight);
-    pixel(19, 8, 4, 4, colors.skin);
-    pixel(19, 7, 3, 4, colors.skinLight);
-    pixel(11, 11, 2, 2, colors.skinDark);
-    pixel(19, 11, 2, 2, colors.skinDark);
-  } else if (race === "tiefling") {
-    pixel(11, 3, 2, 4, colors.red);
-    pixel(12, 1, 2, 3, colors.red);
-    pixel(19, 3, 2, 4, colors.red);
-    pixel(18, 1, 2, 3, colors.red);
-    pixel(11, 1, 2, 1, colors.gold);
-    pixel(19, 1, 2, 1, colors.gold);
-  }
-
-  if (race === "dragonborn") {
-    pixel(12, 12, 2, 1, colors.cream);
-    pixel(18, 12, 2, 1, colors.cream);
-    pixel(13, 14, 1, 1, colors.skinLight);
-    pixel(18, 14, 1, 1, colors.skinLight);
-  }
-  if (equipment.armor && equipment.armor !== "none") {
-    pixel(9, 16, 14, 3, colors.armor);
-    pixel(10, 16, 12, 1, colors.gold);
-    if (equipment.armor === "scale" || equipment.armor === "chainmail") {
-      for (let x = 11; x < 21; x += 3) {
-        row(19, x, 2, colors.cream);
-        row(22, x, 2, colors.cream);
-      }
-    }
-    pixel(10, 25, 12, 1, colors.gold);
-  }
-  if (outfitId === "jaguar-clothes") {
-    pixel(9, 16, 14, 10, "#403027");
-    pixel(10, 17, 12, 8, "#c59636");
-    pixel(10, 17, 12, 2, "#e8c866");
-    for (const [x, y] of [[12, 20], [17, 19], [14, 23], [19, 24]]) {
-      pixel(x, y, 2, 1, "#30231f");
-      pixel(x, y + 1, 1, 1, "#f1d17a");
-    }
-    pixel(8, 17, 3, 4, "#403027");
-    pixel(21, 17, 3, 4, "#403027");
-    pixel(9, 25, 14, 2, "#30231f");
-  } else if (outfitId === "eagle-clothes") {
-    pixel(9, 16, 14, 10, "#d9d0ae");
-    pixel(10, 17, 12, 8, "#347d72");
-    pixel(10, 17, 12, 2, "#73b7a0");
-    for (let x = 8; x <= 22; x += 2) pixel(x, 18 + (x % 3), 2, 4, "#f3e7c6");
-    pixel(14, 19, 4, 5, "#e3c566");
-    pixel(15, 20, 2, 3, "#a84d38");
-    pixel(9, 25, 14, 2, "#d9d0ae");
-  } else if (outfitId === "tzitzimitl-clothes") {
-    pixel(9, 16, 14, 10, "#ded7c6");
-    pixel(10, 17, 12, 8, "#33254f");
-    pixel(10, 17, 12, 2, "#654878");
-    pixel(11, 19, 2, 5, "#ded7c6");
-    pixel(19, 19, 2, 5, "#ded7c6");
-    pixel(14, 18, 4, 7, "#a64456");
-    pixel(15, 19, 2, 5, "#d9bd76");
-    pixel(9, 25, 14, 2, "#ded7c6");
-    for (const [x, y] of [[11, 18], [19, 18], [13, 24], [18, 24]]) pixel(x, y, 1, 1, "#d9bd76");
-  }
-
-  if (appearance.headwear === "feather-band") {
-    pixel(10, 4, 12, 2, colors.red);
-    pixel(11, 4, 10, 1, colors.gold);
-    pixel(19, 2, 2, 3, colors.jade);
-    pixel(21, 0, 2, 4, colors.cream);
-    pixel(23, 2, 1, 3, colors.red);
-  } else if (appearance.headwear === "cotton-wrap") {
-    pixel(10, 3, 12, 4, colors.cream);
-    pixel(12, 3, 8, 1, colors.red);
-    pixel(19, 5, 3, 3, colors.red);
-  } else if (appearance.headwear === "jade-circlet") {
-    pixel(10, 5, 12, 1, colors.gold);
-    pixel(15, 4, 3, 2, colors.jade);
-  }
-  if (cosmetics.helmet === "jaguar-helmet") {
-    pixel(9, 4, 14, 5, "#403027");
-    pixel(11, 4, 10, 3, "#c59636");
-    pixel(12, 5, 2, 1, "#30231f");
-    pixel(18, 5, 2, 1, "#30231f");
-    pixel(9, 5, 3, 3, "#b17b2e");
-    pixel(20, 5, 3, 3, "#b17b2e");
-    pixel(14, 7, 4, 2, "#f1d17a");
-    pixel(15, 8, 2, 1, "#403027");
-  } else if (cosmetics.helmet === "eagle-helmet") {
-    pixel(9, 5, 14, 4, "#d9d0ae");
-    pixel(11, 4, 10, 3, "#347d72");
-    pixel(13, 1, 3, 5, "#f3e7c6");
-    pixel(16, 0, 3, 6, "#e3c566");
-    pixel(19, 2, 3, 5, "#a84d38");
-    pixel(14, 6, 5, 2, "#e3c566");
-  } else if (cosmetics.helmet === "tzitzimitl-helmet") {
-    pixel(9, 5, 14, 5, "#ded7c6");
-    pixel(11, 4, 10, 3, "#33254f");
-    pixel(10, 5, 2, 3, "#ded7c6");
-    pixel(20, 5, 2, 3, "#ded7c6");
-    pixel(9, 4, 2, 1, "#a64456");
-    pixel(8, 2, 2, 3, "#ded7c6");
-    pixel(6, 0, 2, 3, "#a64456");
-    pixel(21, 4, 2, 1, "#a64456");
-    pixel(23, 2, 2, 3, "#ded7c6");
-    pixel(25, 0, 2, 3, "#a64456");
-    pixel(14, 5, 4, 2, "#d9bd76");
-  }
-
-  if (appearance.adornment === "jade-beads") {
-    pixel(10, 16, 2, 7, colors.jade);
-    pixel(20, 16, 2, 7, colors.jade);
-  } else if (appearance.adornment === "shell-beads") {
-    pixel(11, 16, 2, 7, colors.cream);
-    pixel(19, 16, 2, 7, colors.cream);
-  } else if (appearance.adornment === "feather-trim") {
-    pixel(8, 16, 2, 7, colors.jade);
-    pixel(22, 16, 2, 7, colors.red);
-  }
-
-  if (appearance.facePaint === "jade-lines") {
-    pixel(11, 10, 1, 3, colors.jade);
-    pixel(20, 10, 1, 3, colors.jade);
-  } else if (appearance.facePaint === "terracotta-marks") {
-    pixel(11, 10, 1, 3, colors.red);
-    pixel(20, 10, 1, 3, colors.red);
-  }
-
-  if (equipment.shield) {
-    pixel(4, 20, 5, 7, colors.outline);
-    pixel(5, 21, 3, 5, colors.red);
-    pixel(6, 22, 1, 3, colors.gold);
-  }
-  const weaponId = equipment.weapon || "macuahuitl";
-  const weaponIcon = WEAPONS[weaponId]?.icon || "sword";
-  if (weaponId === "macuahuitl") {
-    pixel(24, 7, 6, 18, colors.outline);
-    pixel(25, 8, 4, 15, "#795039");
-    pixel(26, 9, 1, 12, "#a87845");
-    for (let y = 9; y <= 20; y += 3) {
-      const toothY = y + (y % 2);
-      pixel(22, toothY, 3, 2, colors.outline);
-      pixel(22, toothY, 2, 1, "#9da29a");
-      pixel(29, toothY + 1, 3, 2, colors.outline);
-      pixel(30, toothY + 1, 2, 1, "#9da29a");
-    }
-    pixel(25, 23, 4, 11, colors.outline);
-    pixel(26, 24, 2, 8, "#795039");
-    pixel(26, 26, 2, 1, colors.gold);
-    pixel(26, 29, 2, 1, colors.gold);
-    pixel(26, 32, 2, 2, "#a87845");
-  } else if (weaponId === "atlatl") {
-    pixel(23, 14, 4, 21, colors.shadow);
-    pixel(24, 15, 2, 18, colors.gold);
-    pixel(23, 13, 4, 3, colors.cream);
-    pixel(26, 14, 2, 2, colors.outline);
-    pixel(24, 22, 2, 3, colors.red);
-    pixel(29, 4, 2, 19, colors.shadow);
-    pixel(29, 5, 1, 16, colors.gold);
-    pixel(28, 3, 3, 2, colors.cream);
-    pixel(29, 2, 1, 2, colors.gold);
-  } else if (weaponIcon === "spear" || weaponIcon === "staff") {
-    pixel(25, 3, 2, 31, colors.shadow);
-    pixel(25, 3, 1, 31, colors.gold);
-    pixel(24, 3, 4, 3, weaponIcon === "spear" ? colors.cream : colors.jade);
-    pixel(25, 1, 2, 3, colors.gold);
-  } else if (weaponIcon === "bow") {
-    pixel(25, 9, 2, 19, colors.shadow);
-    pixel(26, 10, 1, 17, colors.gold);
-    pixel(26, 12, 1, 13, colors.cream);
-  } else {
-    pixel(25, 13, 2, 14, colors.shadow);
-    pixel(25, 14, 1, 12, colors.gold);
-    if (weaponIcon === "axe" || weaponIcon === "hammer" || weaponIcon === "mace") {
-      pixel(23, 12, 6, 4, colors.armor);
-      pixel(24, 11, 4, 6, colors.gold);
-    } else {
-      pixel(24, 10, 4, 8, colors.cream);
-      pixel(25, 9, 2, 2, colors.gold);
-    }
-  }
-  if (flip) context.restore();
-}
-
 function createCodexCharacterSprite(character, className, facing = "south") {
-  const canvas = document.createElement("canvas");
-  canvas.width = 32;
-  canvas.height = 40;
-  canvas.setAttribute("aria-hidden", "true");
   const race = CHARACTER_RACES.includes(character?.race) ? character.race : "human";
   const direction = CHARACTER_FACINGS.includes(facing) ? facing : "south";
-  canvas.classList.add(className, `race-${race}`, `facing-${direction}`, "codex-character");
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Canvas rendering is unavailable for the character sprite.");
-  drawCodexCharacter(context, character, direction);
-  return canvas;
+  const image = document.createElement("img");
+  image.className = `${className} race-${race} facing-${direction} codex-character`;
+  image.alt = "";
+  image.draggable = false;
+  image.decoding = "async";
+  image.setAttribute("aria-hidden", "true");
+  image.src = codexFigureUrl(character || makeLegacyCharacter(), direction);
+  return image;
 }
 
 function initializeCharacterBuilder() {
   fillSelect(elements["character-race"], Object.entries(RACES).map(([id, race]) => [id, race.name]), "human");
   fillSelect(elements["character-class"], Object.entries(CLASSES).map(([id, characterClass]) => [id, characterClass.name]), "fighter");
   fillSelect(elements["character-background"], Object.entries(BACKGROUNDS).map(([id, background]) => [id, background.name]), "folk-hero");
-  fillSelect(elements["character-skin"], SKIN_TONES.map((tone) => [tone.value, tone.name]), SKIN_TONES[0].value);
+  fillSelect(elements["character-body"], BODY_TYPES.map((id) => [id, APPEARANCE_LABELS[id]]), "standard");
+  fillSelect(elements["character-beard"], BEARD_STYLES.map((id) => [id, APPEARANCE_LABELS[id]]), "none");
+  fillSelect(elements["character-jewelry"], JEWELRY_STYLES.map((id) => [id, APPEARANCE_LABELS[id]]), "ear-spools");
+  fillSelect(elements["character-hair-style"], HAIR_STYLES.map((id) => [id, APPEARANCE_LABELS[id]]), "short");
+  syncAppearanceOptions("human", defaultAppearanceFor("human"));
   fillSelect(elements["half-elf-bonus-one"], ABILITIES.filter(([key]) => key !== "cha").map(([key, name]) => [key, name]), "str");
   fillSelect(elements["half-elf-bonus-two"], ABILITIES.filter(([key]) => !["cha", "str"].includes(key)).map(([key, name]) => [key, name]), "dex");
   renderAbilityInputs();
@@ -855,10 +487,10 @@ function syncEquipmentOptions(resetToDefaults = false) {
   }
   const currentWeapon = elements["character-weapon"].value;
   const currentArmor = elements["character-armor"].value;
-  const weaponOptions = selectedClass.weapons.map((id) => [id, WEAPONS[id].name]);
+  const weaponOptions = selectedClass.weapons.filter((id) => !WEAPONS[id].exotic).map((id) => [id, WEAPONS[id].name]);
   fillSelect(elements["character-weapon"], weaponOptions,
     !resetToDefaults && weaponOptions.some(([id]) => id === currentWeapon) ? currentWeapon : selectedClass.weapon);
-  const armorOptions = selectedClass.armor.map((id) => [id, ARMORS[id].name]);
+  const armorOptions = selectedClass.armor.filter((id) => !ARMORS[id].exotic).map((id) => [id, ARMORS[id].name]);
   fillSelect(elements["character-armor"], armorOptions,
     !resetToDefaults && armorOptions.some(([id]) => id === currentArmor) ? currentArmor : DEFAULT_CLASS_ARMOR[elements["character-class"].value]);
   const shieldOption = elements["character-shield"].querySelector('option[value="yes"]');
@@ -948,7 +580,11 @@ function updateCharacterPreview() {
         garment: elements["character-garment"].value || "woven-tunic",
         adornment: elements["character-adornment"].value || "none",
         headwear: elements["character-headwear"].value || "none",
-        facePaint: elements["character-face-paint"].value || "none"
+        facePaint: elements["character-face-paint"].value || "none",
+        body: elements["character-body"].value || "standard",
+        beard: elements["character-beard"].value || "none",
+        jewelry: elements["character-jewelry"].value || "ear-spools",
+        crest: elements["character-crest"].value || "none"
       },
       equipment: {
         weapon: elements["character-weapon"].value || "longsword",
@@ -1064,7 +700,7 @@ function openCharacterBuilder() {
   const profile = {
     name: "Iztli", gender: "other", race: "human", heritage: "", class: "fighter", background: "folk-hero",
     scoreMethod: "rolled", baseScores: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
-    appearance: { skin: SKIN_TONES[0].value, hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band" },
+    appearance: { skin: SKIN_TONES[0].value, hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band", facePaint: "none", body: "standard", beard: "none", jewelry: "ear-spools", crest: "none" },
     equipment: { weapon: "macuahuitl", armor: "scale", shield: false, cloak: false },
     equipmentEnhancements: { weaponIds: [], armorIds: [] }
   };
@@ -1102,6 +738,8 @@ function openCharacterBuilder() {
   elements["character-adornment"].value = CLOTHING_ADORNMENTS.includes(profile.appearance?.adornment) ? profile.appearance.adornment : "none";
   elements["character-headwear"].value = HEADWEAR_STYLES.includes(profile.appearance?.headwear) ? profile.appearance.headwear : "none";
   elements["character-face-paint"].value = FACE_PAINT_STYLES.includes(profile.appearance?.facePaint) ? profile.appearance.facePaint : "none";
+  const profileLook = normalizeAppearance({ ...(profile.appearance || {}) }, profile.race);
+  syncAppearanceOptions(profile.race, profileLook);
   elements["character-shield"].value = profile.equipment?.shield ? "yes" : "no";
   elements["character-cloak"].value = profile.equipment?.cloak ? "yes" : "no";
   syncEquipmentOptions();
@@ -1193,4 +831,34 @@ function commitCharacter(event) {
   } catch (error) {
     elements["character-error"].textContent = escapeMessage(error);
   }
+}
+
+// Race-aware look options: scale colors and crests for dragonborn, horns and ember skin
+// for tieflings, and a beard default for dwarves.
+function syncAppearanceOptions(race, look = {}) {
+  const tones = raceSkinTones(race);
+  const keepSkin = tones.some((tone) => tone.value === (look.skin ?? elements["character-skin"].value));
+  fillSelect(elements["character-skin"], tones.map((tone) => [tone.value, tone.name]),
+    keepSkin ? (look.skin ?? elements["character-skin"].value) : tones[0].value);
+  const hairColors = raceHairColors(race);
+  const currentHair = look.hair ?? elements["character-hair"].value;
+  fillSelect(elements["character-hair"], hairColors.map((color) => [color.value, color.name]),
+    hairColors.some((color) => color.value === currentHair) ? currentHair : hairColors[0].value);
+  const crests = CREST_STYLES[race] || [];
+  const currentCrest = look.crest ?? elements["character-crest"].value;
+  fillSelect(elements["character-crest"], (crests.length ? crests : ["none"]).map((id) => [id, APPEARANCE_LABELS[id] || id]),
+    crests.includes(currentCrest) ? currentCrest : (crests[0] || "none"));
+  if (look.body) elements["character-body"].value = look.body;
+  if (look.jewelry) elements["character-jewelry"].value = look.jewelry;
+  if (look.beard) elements["character-beard"].value = look.beard;
+  if (look.hairStyle && HAIR_STYLES.includes(look.hairStyle)) elements["character-hair-style"].value = look.hairStyle;
+  const t = window.cryptsLocale.t;
+  const scaled = race === "dragonborn";
+  elements["character-skin-label"].textContent = t(scaled ? "Scale color" : "Skin tone");
+  elements["character-hair-label"].textContent = t(scaled ? "Crest color" : "Hair color");
+  elements["character-crest-label"].textContent = t(race === "tiefling" ? "Horns" : "Crest");
+  elements["character-crest-field"].hidden = !crests.length;
+  elements["character-hair-style-field"].hidden = scaled;
+  elements["character-beard-field"].hidden = scaled;
+  elements["character-race"].dataset.lastRace = race;
 }

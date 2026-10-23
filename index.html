@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#d8c69d">
+    <meta name="theme-color" content="#f8eed6">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Crypts & Creatures">
@@ -11,7 +11,7 @@
     <meta name="description" content="Explore a forbidden tomb, manage your supplies, and return to Chiltomatlan to prepare for another descent.">
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.png" type="image/png" sizes="512x512">
-    <link rel="stylesheet" href="./styles.css?v=223">
+    <link rel="stylesheet" href="./styles.css?v=310">
     <title>Crypts &amp; Creatures</title>
   </head>
   <body>
@@ -101,6 +101,7 @@
         <select id="language-select" name="language">
           <option value="en" data-i18n="English">English</option>
           <option value="es" data-i18n="Spanish">Spanish</option>
+          <option value="nah" data-i18n="Nahuatl">Nahuatl</option>
         </select>
         <p class="muted" data-i18n="Choose the language used throughout the game.">Choose the language used throughout the game.</p>
         <label for="dark-mode-toggle" class="settings-toggle">
@@ -145,7 +146,7 @@
                     <label data-creation-subpage="2"><span data-i18n="Background">Background</span><select id="character-background" name="background"></select></label>
                     <p id="background-description" class="builder-note" data-creation-subpage="2"></p>
                     <label data-creation-subpage="2">Heritage<select id="character-heritage" name="heritage"></select></label>
-                    <label data-creation-subpage="2">Pronouns / gender<select id="character-gender" name="gender">
+                    <label data-creation-subpage="2">Pronouns<select id="character-gender" name="gender">
                       <option value="man" data-i18n="He / him">He / him</option><option value="woman" data-i18n="She / her">She / her</option><option value="other" data-i18n="They / them">They / them</option>
                     </select></label>
                     <div id="half-elf-bonuses" class="builder-two hidden" data-creation-subpage="2">
@@ -199,24 +200,20 @@
               <section class="builder-section appearance-section" data-creation-step="3">
                 <div data-creation-subpage="0"><p class="eyebrow" data-i18n="ONE LAST DETAIL">ONE LAST DETAIL</p><h3 data-i18n="Make them yours">Make them yours</h3><p class="builder-note" data-i18n="A look for the road ahead. None of these choices change how your adventurer plays.">A look for the road ahead. None of these choices change how your adventurer plays.</p></div>
                 <div class="builder-two" data-creation-subpage="0">
-                  <label>Skin tone<select id="character-skin" name="skin"></select></label>
-                  <label>Hair style<select id="character-hair-style" name="hairStyle">
-                    <option value="short" data-i18n="Short">Short</option><option value="long" data-i18n="Long">Long</option><option value="braids" data-i18n="Braids">Braids</option>
-                    <option value="crest" data-i18n="Crest">Crest</option><option value="topknot" data-i18n="Topknot">Topknot</option><option value="shaved-sides" data-i18n="Shaved sides">Shaved sides</option>
-                  </select></label>
+                  <label><span id="character-skin-label">Skin tone</span><select id="character-skin" name="skin"></select></label>
+                  <label>Build<select id="character-body" name="body"></select></label>
+                  <label id="character-hair-style-field">Hair style<select id="character-hair-style" name="hairStyle"></select></label>
+                  <label id="character-crest-field" hidden><span id="character-crest-label">Crest</span><select id="character-crest" name="crest"></select></label>
                 </div>
                 <div class="builder-two" data-creation-subpage="1">
-                  <label>Hair color<select id="character-hair" name="hair">
-                    <option value="#211a17" data-i18n="Black">Black</option><option value="#59402b" data-i18n="Brown">Brown</option><option value="#a87a42" data-i18n="Copper">Copper</option><option value="#d8c58c" data-i18n="Pale gold">Pale gold</option><option value="#8b8d8c" data-i18n="Silver">Silver</option>
-                  </select></label>
+                  <label><span id="character-hair-label">Hair color</span><select id="character-hair" name="hair"></select></label>
                   <label>Clothing color<select id="character-tunic" name="tunic">
                     <option value="#334d78" data-i18n="Indigo">Indigo</option><option value="#28685e" data-i18n="Jade">Jade</option><option value="#9c4935" data-i18n="Terracotta">Terracotta</option><option value="#8a7137" data-i18n="Ochre">Ochre</option><option value="#5d5b59" data-i18n="Ash gray">Ash gray</option>
                   </select></label>
-                </div>
-                <div class="builder-two" data-creation-subpage="1">
                   <label>Garment<select id="character-garment" name="garment">
                     <option value="woven-tunic" data-i18n="Woven tunic">Woven tunic</option><option value="cotton-wrap" data-i18n="Cotton wrap">Cotton wrap</option>
                     <option value="feather-mantle" data-i18n="Feather mantle">Feather mantle</option><option value="hide-vest" data-i18n="Hide vest">Hide vest</option>
+                    <option value="huipil" data-i18n="Huipil and wrap skirt">Huipil and wrap skirt</option>
                   </select></label>
                   <label>Adornment<select id="character-adornment" name="adornment">
                     <option value="none" data-i18n="None">None</option><option value="jade-beads" data-i18n="Jade beads">Jade beads</option>
@@ -231,7 +228,10 @@
                   <label>Face paint<select id="character-face-paint" name="facePaint">
                     <option value="none" data-i18n="None">None</option><option value="jade-lines" data-i18n="Jade lines">Jade lines</option>
                     <option value="terracotta-marks" data-i18n="Terracotta marks">Terracotta marks</option>
+                    <option value="black-band" data-i18n="Black eye band">Black eye band</option><option value="gold-dots" data-i18n="Gold dots">Gold dots</option>
                   </select></label>
+                  <label id="character-beard-field">Facial hair<select id="character-beard" name="beard"></select></label>
+                  <label>Jewelry<select id="character-jewelry" name="jewelry"></select></label>
                 </div>
                 <p class="builder-note" data-creation-subpage="2" data-i18n="Appearance is cosmetic; it does not change your abilities.">Appearance is cosmetic; it does not change your abilities.</p>
               </section>
@@ -376,47 +376,46 @@
               <p class="keyboard-hint" data-i18n="Walk one tile at a time. Tap a nearby neighbor or press E to talk; step onto the southern road to enter the forbidden tomb.">Walk one tile at a time. Tap a nearby neighbor or press E to talk; step onto the southern road to enter the forbidden tomb.</p>
               <div class="town-legend" aria-label="Town map key" data-i18n-attr="aria-label:Town map key">
                 <span><i>⌂</i> Ceiba House</span><span><i>▤</i> Market</span>
-                <span><i>N/T/X/P</i> Townsfolk</span><span><i>W</i> Ceiba Well</span><span><i>↟</i> Tomb road</span>
+                <span><i>N/T/X/P/B</i> Townsfolk</span><span><i>W</i> Ceiba Well</span><span><i>↟</i> Tomb road</span>
               </div>
             </section>
           </section>
 
-          <section id="store-screen" class="store-screen hidden" data-store-view="buy" aria-labelledby="store-heading">
-            <div class="panel store-panel">
-              <p class="eyebrow" data-i18n="CHILTOMATLAN MARKET · SAFE ZONE">CHILTOMATLAN MARKET · SAFE ZONE</p>
-              <h2 id="store-heading" data-i18n="The Market Stalls">The Market Stalls</h2>
-              <p class="town-intro" data-i18n="Stock up for the road, compare each item's cost and use, or trade what you can spare.">Stock up for the road, compare each item's cost and use, or trade what you can spare.</p>
-              <p id="store-carry-load" class="inventory-load"></p>
-              <div class="store-tabs" role="group" aria-label="Market inventory">
-                <button id="store-buy-tab" type="button" aria-pressed="true" data-store-tab="buy" data-i18n="Buy supplies">Buy supplies</button>
-                <button id="store-sell-tab" type="button" aria-pressed="false" data-store-tab="sell" data-i18n="Sell from pack">Sell from pack</button>
+          <section id="store-screen" class="store-screen hidden" data-store-view="buy" data-vendor="market" aria-labelledby="shop-title">
+            <div class="panel shop-panel">
+              <header class="shop-header">
+                <img id="shop-portrait" class="shop-portrait" src="./resources/tokens/merchant.png" alt="">
+                <div class="shop-heading">
+                  <p class="eyebrow" id="shop-keeper">Teyac, market trader</p>
+                  <h2 id="shop-title">Teyac's market</h2>
+                  <p id="shop-tagline" class="shop-tagline"></p>
+                </div>
+                <div class="shop-wallet">
+                  <span class="shop-purse" title="Gold in your purse"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong id="shop-purse">0 gp</strong></span>
+                  <span class="shop-load" title="Pack weight. Secured gold stays in your Ceiba House strongbox; only gold found on this delve weighs 1 lb per 50 gp.">
+                    <span class="shop-load-label">Pack <strong id="shop-load-text"></strong></span>
+                    <span class="shop-load-track"><span id="shop-load-fill"></span></span>
+                  </span>
+                  <small id="shop-perks" class="shop-perks"></small>
+                </div>
+                <button id="return-to-city" class="button secondary shop-leave" type="button">Leave</button>
+              </header>
+              <div class="shop-toolbar">
+                <div id="shop-tabs" class="shop-tabs" role="group" aria-label="Trade">
+                  <button type="button" data-shop-view="buy" aria-pressed="true">Buy</button>
+                  <button type="button" data-shop-view="sell" aria-pressed="false">Sell</button>
+                </div>
+                <div id="shop-categories" class="shop-categories" role="group" aria-label="Categories"></div>
+                <button id="shop-sell-all" class="button secondary shop-sell-all" type="button" hidden>Sell all treasure</button>
               </div>
-              <div class="store-categories" role="group" aria-label="Items for sale">
-                <button type="button" data-store-category="supplies" aria-pressed="true" data-i18n="Supplies">Supplies</button>
-                <button type="button" data-store-category="consumables" aria-pressed="false" data-i18n="Consumables">Consumables</button>
-                <button type="button" data-store-category="equipment" aria-pressed="false" data-i18n="Equipment">Equipment</button>
-                <button type="button" data-store-category="miscellaneous" aria-pressed="false" data-i18n="Misc.">Misc.</button>
+              <div class="shop-body">
+                <div id="shop-grid" class="shop-grid" aria-label="Items"></div>
+                <aside id="shop-detail" class="shop-detail" aria-live="polite">
+                  <button id="shop-detail-close" class="quiet-button shop-detail-close" type="button" aria-label="Close item details">×</button>
+                  <div id="shop-detail-body" class="shop-detail-body"></div>
+                </aside>
               </div>
-              <section id="store-buy-panel" class="store-trade-panel" aria-labelledby="store-buy-heading">
-                <h3 id="store-buy-heading" class="store-subheading">Supplies · food, water &amp; trail gear</h3>
-                <div id="store-buy-list" class="store-list"></div>
-                <nav class="menu-list-pager" data-list-pager="storeBuy" aria-label="Items for sale pages" hidden>
-                  <button class="quiet-button" type="button" data-page-list="storeBuy" data-page-direction="-1" aria-label="Previous items page">←</button>
-                  <span data-page-indicator></span>
-                  <button class="quiet-button" type="button" data-page-list="storeBuy" data-page-direction="1" aria-label="Next items page">→</button>
-                </nav>
-              </section>
-              <section id="store-sell-panel" class="store-trade-panel" aria-labelledby="store-sell-heading">
-                <h3 id="store-sell-heading" class="store-subheading">Sell from your pack</h3>
-                <div id="store-sell-list" class="store-list"></div>
-                <nav class="menu-list-pager" data-list-pager="storeSell" aria-label="Items to sell pages" hidden>
-                  <button class="quiet-button" type="button" data-page-list="storeSell" data-page-direction="-1" aria-label="Previous items page">←</button>
-                  <span data-page-indicator></span>
-                  <button class="quiet-button" type="button" data-page-list="storeSell" data-page-direction="1" aria-label="Next items page">→</button>
-                </nav>
-              </section>
-              <p id="shop-message" class="muted small" aria-live="polite">Choose a stall item to trade.</p>
-              <button id="return-to-city" class="button secondary" type="button">Back to Chiltomatlan</button>
+              <p id="shop-message" class="shop-message" role="status" aria-live="polite"></p>
             </div>
           </section>
 
@@ -475,18 +474,20 @@
                   <div class="combatant-title"><strong id="combat-character-name">Iztli</strong><span>LV <span id="combat-level">1</span></span></div>
                   <div class="health-label"><span data-i18n="Hit points">Hit points</span><strong id="combat-player-hp">18 / 18</strong></div>
                   <div class="health-track player-track"><span id="combat-player-health-fill"></span></div>
-                  <span class="combatant-detail">AC <span id="combat-player-ac">15</span> <i></i>ATK <span id="combat-player-attack">+4</span> <i></i><span id="combat-potions">2</span> tonics</span>
+                  <span class="combatant-detail">AC <span id="combat-player-ac">15</span> <i></i>ATK <span id="combat-player-attack">+4</span> <i></i><span id="combat-potions">2</span> medicine</span>
+                  <div id="player-conditions" class="status-chips" aria-label="Conditions and boons" hidden></div>
                 </div>
               </section>
               <div id="encounter" class="combatant-card enemy-combatant hidden" aria-live="polite">
                 <div id="enemy-portrait" class="combatant-art" aria-hidden="true"></div>
                 <div class="combatant-info">
-                  <div class="combatant-title"><strong id="enemy-name" data-i18n="Creature">Creature</strong><span data-i18n="HOSTILE">HOSTILE</span></div>
+                  <div class="combatant-title"><strong id="enemy-name" data-i18n="Creature">Creature</strong><span id="enemy-rank" class="enemy-rank">HOSTILE</span></div>
                   <div class="health-label"><span id="enemy-health">12 / 12 HP</span><span id="enemy-distance"></span></div>
                   <div class="health-track"><span id="enemy-health-fill"></span></div>
                   <span id="enemy-description" class="combatant-detail"></span>
                 </div>
               </div>
+              <div id="map-status-chips" class="status-chips map-status-chips" aria-label="Conditions and boons" hidden></div>
             </div>
             <div class="section-heading">
               <div>
@@ -564,6 +565,27 @@
               <summary>Quest · <span id="quest-title" data-i18n="The Deep Pulse">The Deep Pulse</span></summary>
               <p id="town-story" class="town-story"></p>
             </details>
+            <section class="panel bounty-panel" aria-labelledby="bounty-heading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">XOCHI'S BOUNTY BOARD</p>
+                  <h2 id="bounty-heading" data-i18n="Bounties & renown">Bounties &amp; renown</h2>
+                </div>
+              </div>
+              <p id="renown-line" class="renown-line"></p>
+              <div id="bounty-list" class="bounty-list" aria-live="polite"></div>
+              <p class="muted small">Completed bounties are paid when you return to Chiltomatlan.</p>
+            </section>
+            <section class="panel bestiary-panel" aria-labelledby="bestiary-heading">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">CREATURES OF THE TOMB</p>
+                  <h2 id="bestiary-heading">Bestiary <span id="bestiary-count" class="bestiary-count"></span></h2>
+                </div>
+              </div>
+              <div id="bestiary-list" class="bestiary-list"></div>
+              <p id="projects-summary" class="projects-summary muted small"></p>
+            </section>
             <section class="panel factions-panel" aria-labelledby="factions-heading">
               <div class="section-heading">
                 <div>
@@ -590,9 +612,10 @@
     </main>
     <dialog id="pause-dialog" class="pause-dialog" aria-labelledby="pause-heading">
       <section class="pause-panel panel">
+        <div class="pause-emblem" aria-hidden="true">❚❚</div>
         <p class="eyebrow" data-i18n="SAFE TO STEP AWAY">SAFE TO STEP AWAY</p>
         <h2 id="pause-heading" data-i18n="Paused">Paused</h2>
-        <p>Time only advances when you act. Your run is saved on this device.</p>
+        <p class="venue-tagline">Time only advances when you act. Your run is saved on this device.</p>
         <button class="button" id="resume-game" type="button" data-i18n="Resume">Resume</button>
         <button class="button secondary" id="return-to-title" type="button" data-i18n="Title screen">Title screen</button>
       </section>
@@ -623,28 +646,37 @@
         <button class="button" id="begin-story" type="button" data-i18n="Take in Chiltomatlan">Take in Chiltomatlan</button>
       </section>
     </dialog>
-    <dialog id="town-dialog" class="story-dialog" aria-labelledby="town-dialog-heading">
-      <section class="story-panel">
-        <p class="eyebrow">CHILTOMATLAN · A CONVERSATION</p>
-        <h2 id="town-dialog-heading"></h2>
-        <p id="town-dialog-copy" class="story-copy"></p>
+    <dialog id="town-dialog" class="story-dialog venue-dialog town-dialog" aria-labelledby="town-dialog-heading">
+      <section class="story-panel venue-panel">
+        <header class="venue-header">
+          <img id="town-dialog-portrait" class="venue-portrait" src="./resources/tokens/merchant.png" alt="">
+          <div class="venue-heading">
+            <p class="eyebrow" id="town-dialog-role">Chiltomatlan · a conversation</p>
+            <h2 id="town-dialog-heading"></h2>
+          </div>
+          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong data-purse>0 gp</strong></span>
+          <button class="quiet-button venue-close" id="town-dialog-x" type="button" aria-label="Continue walking" data-i18n-attr="aria-label:Continue walking">×</button>
+        </header>
+        <p id="town-dialog-copy" class="story-copy venue-speech"></p>
         <nav class="copy-page-controls" data-copy-pager="town-dialog-copy" aria-label="Conversation pages" hidden>
           <button class="button secondary" type="button" data-copy-page="-1" aria-label="Previous conversation page">←</button>
           <span data-copy-page-number></span>
           <button class="button secondary" type="button" data-copy-page="1" aria-label="Next conversation page">→</button>
         </nav>
+        <div class="venue-actions">
         <button class="button" id="town-dialog-action" type="button"></button>
         <button class="button secondary hidden" id="town-dialog-shop" type="button" data-i18n="Browse cosmetic curiosities">Browse cosmetic curiosities</button>
         <button class="button secondary hidden" id="town-dialog-join" type="button"></button>
         <button class="button secondary hidden" id="town-dialog-learn" type="button">Learn the rules</button>
         <button class="button secondary" id="town-dialog-close" type="button">Continue walking</button>
+        </div>
       </section>
     </dialog>
     <dialog id="cosmetic-shop-dialog" class="story-dialog cosmetic-shop-dialog" aria-labelledby="cosmetic-shop-heading">
       <section class="story-panel cosmetic-shop-panel">
         <p class="eyebrow" data-i18n="MAHUIZ'S PRIVATE COLLECTION">MAHUIZ'S PRIVATE COLLECTION</p>
         <h2 id="cosmetic-shop-heading" data-i18n="Elite regalia">Elite regalia</h2>
-        <p class="story-copy" data-i18n="Rare helmets and clothing change your adventurer's pixel sprite only. They do not alter armor class or combat stats.">Rare helmets and clothing change your adventurer's pixel sprite only. They do not alter armor class or combat stats.</p>
+        <p class="story-copy" data-i18n="Rare helmets and clothing change only how your adventurer looks. They do not alter armor class or combat stats.">Rare helmets and clothing change only how your adventurer looks. They do not alter armor class or combat stats.</p>
         <p id="cosmetic-shop-gold" class="cosmetic-shop-gold"></p>
         <p id="cosmetic-shop-message" class="cosmetic-shop-message" role="status" aria-live="polite"></p>
         <div class="cosmetic-shop-slots" aria-label="Equipped cosmetic slots" data-i18n-attr="aria-label:Equipped cosmetic slots">
@@ -655,16 +687,80 @@
         <button class="button secondary" id="cosmetic-shop-close" type="button" data-i18n="Return to Mahuiz">Return to Mahuiz</button>
       </section>
     </dialog>
+    <dialog id="projects-dialog" class="story-dialog venue-dialog projects-dialog" aria-labelledby="projects-heading">
+      <section class="story-panel venue-panel projects-panel">
+        <header class="venue-header">
+          <img class="venue-portrait" src="./resources/tokens/master-builder.png" alt="">
+          <div class="venue-heading">
+            <p class="eyebrow">Tlacotl, master builder</p>
+            <h2 id="projects-heading" data-i18n="Town projects">Town projects</h2>
+            <p class="venue-tagline">Gold you bring home rebuilds the town. Every project is permanent and helps every future delve.</p>
+          </div>
+          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong id="projects-gold" data-purse>0 gp</strong></span>
+          <button class="quiet-button venue-close" id="projects-x" type="button" aria-label="Back to the plaza">×</button>
+        </header>
+        <p id="projects-message" class="cosmetic-shop-message" role="status" aria-live="polite"></p>
+        <div id="projects-list" class="projects-list"></div>
+        <section id="workshop-panel" class="workshop-panel" aria-labelledby="workshop-heading" hidden>
+          <h3 id="workshop-heading"><span class="venue-section-mark" aria-hidden="true">◆</span> Obsidian Workshop · reforge equipped gear</h3>
+          <div id="workshop-list" class="workshop-list"></div>
+        </section>
+        <button class="button secondary" id="projects-close" type="button">Back to the plaza</button>
+      </section>
+    </dialog>
+    <dialog id="house-dialog" class="story-dialog venue-dialog house-dialog" data-style="calli" aria-labelledby="house-title">
+      <section class="story-panel venue-panel house-panel">
+        <header class="venue-header">
+          <img id="house-portrait" class="venue-portrait house-portrait" src="./resources/tiles/town-house-calli.png" alt="">
+          <div class="venue-heading">
+            <p class="eyebrow" id="house-eyebrow">Your home in Chiltomatlan</p>
+            <h2 id="house-title">Adobe calli</h2>
+            <p class="venue-tagline" id="house-tagline"></p>
+          </div>
+          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong data-purse>0 gp</strong></span>
+          <button class="quiet-button venue-close" id="house-close" type="button" aria-label="Back to the plaza">×</button>
+        </header>
+        <div id="house-body" class="house-body"></div>
+      </section>
+    </dialog>
+    <dialog id="mirror-dialog" class="story-dialog venue-dialog mirror-dialog" aria-labelledby="mirror-heading">
+      <section class="story-panel venue-panel mirror-panel">
+        <header class="venue-header">
+          <span class="venue-portrait mirror-glyph" aria-hidden="true">◐</span>
+          <div class="venue-heading">
+            <p class="eyebrow">An obsidian mirror</p>
+            <h2 id="mirror-heading">The mirror</h2>
+            <p class="venue-tagline">Polished black glass shows you as you are, and as you could be.</p>
+          </div>
+        </header>
+        <div class="mirror-layout">
+          <div id="mirror-preview" class="mirror-preview" aria-label="Preview of your new look"></div>
+          <div id="mirror-fields" class="mirror-fields builder-two"></div>
+        </div>
+        <p id="mirror-message" class="character-error" role="alert"></p>
+        <div class="mirror-actions">
+          <button class="button secondary" id="mirror-cancel" type="button">Back</button>
+          <button class="button" id="mirror-save" type="button">Keep this look</button>
+        </div>
+      </section>
+    </dialog>
     <dialog id="patolli-dialog" class="story-dialog patolli-dialog" aria-labelledby="patolli-heading">
-      <section class="story-panel patolli-panel">
-        <p class="eyebrow">CHILTOMATLAN · IXCHEL'S PLAZA BOARD</p>
-        <h2 id="patolli-heading" data-i18n="Patolli">Patolli</h2>
-        <button class="button secondary" id="patolli-rules-toggle" type="button" aria-expanded="false" data-i18n="Read the rules">Read the rules</button>
+      <section class="story-panel venue-panel patolli-panel">
+        <header class="venue-header">
+          <img class="venue-portrait venue-portrait-board" src="./resources/tokens/patolli-board.png" alt="">
+          <div class="venue-heading">
+            <p class="eyebrow">Ixchel's plaza board</p>
+            <h2 id="patolli-heading" data-i18n="Patolli">Patolli</h2>
+            <p class="venue-tagline">Six pieces, six matched wagers. The first to claim four wins the match.</p>
+          </div>
+          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong data-purse>0 gp</strong></span>
+          <button class="button secondary venue-header-action" id="patolli-rules-toggle" type="button" aria-expanded="false" data-i18n="Read the rules">Read the rules</button>
+        </header>
         <section id="patolli-rules" class="patolli-rules-page" aria-label="Patolli rules" hidden data-i18n-attr="aria-label:Patolli rules">
           <p class="patolli-rules-lead" data-i18n="Patolli is a historic Mesoamerican game, but surviving accounts vary. Ixchel's gold-stake match is a house-rule adaptation, not a claim to reproduce every historical version.">Patolli is a historic Mesoamerican game, but surviving accounts vary. Ixchel's gold-stake match is a house-rule adaptation, not a claim to reproduce every historical version.</p>
           <p class="story-copy" data-patolli-rule-page="0" data-i18n="Toss five beans. One to four marked beans move that many spaces; five marked beans move ten. A piece leaves reserve only on a toss of exactly one, landing on its own start square. A toss of zero passes the turn in this house-rule version.">Toss five beans. One to four marked beans move that many spaces; five marked beans move ten. A piece leaves reserve only on a toss of exactly one, landing on its own start square. A toss of zero passes the turn in this house-rule version.</p>
-          <p class="story-copy" data-patolli-rule-page="1" hidden data-i18n="Move clockwise around the 52-space X-shaped track. You must land exactly at HOME; a move that overshoots is illegal. No piece may share a space. You may capture one opposing piece only on a marked center crossroads; it returns to reserve and its matched wager is claimed.">Move clockwise around the 52-space X-shaped track. You must land exactly at HOME; a move that overshoots is illegal. No piece may share a space. You may capture one opposing piece only on a marked center crossroads; it returns to reserve and its matched wager is claimed.</p>
-          <p class="story-copy" data-patolli-rule-page="2" hidden data-i18n="The two marked penalty triangles send one wager unit to the pot. Landing on either marked end square grants another turn. Here, six matched gold wagers are played as one short match: the first to claim four wins; if all six resolve without a majority, it is a draw. This wager-and-scoring system is Ixchel's local variation. Gold is fictional, and no expedition time passes.">The two marked penalty triangles send one wager unit to the pot. Landing on either marked end square grants another turn. Here, six matched gold wagers are played as one short match: the first to claim four wins; if all six resolve without a majority, it is a draw. This wager-and-scoring system is Ixchel's local variation. Gold is fictional, and no expedition time passes.</p>
+          <p class="story-copy" data-patolli-rule-page="1" hidden data-i18n="Squares are numbered from your own START, so your pieces always count upward from 1 to 52 and then go HOME; the faint chevrons show the way. You must land exactly at HOME; a move that overshoots is illegal. No piece may share a space. You may capture one opposing piece only on a gold center crossroads; it returns to reserve and its matched wager is claimed.">Squares are numbered from your own START, so your pieces always count upward from 1 to 52 and then go HOME; the faint chevrons show the way. You must land exactly at HOME; a move that overshoots is illegal. No piece may share a space. You may capture one opposing piece only on a gold center crossroads; it returns to reserve and its matched wager is claimed.</p>
+          <p class="story-copy" data-patolli-rule-page="2" hidden data-i18n="Every arm has two penalty triangles, one in each lane. Landing on one sends one wager unit to the pot; if that piece's wager is already spent, the piece leaves the board and the other player claims its wager. Landing on any of the eight rounded end squares grants another turn. Here, six matched gold wagers are played as one short match: the first to claim four wins; if all six resolve without a majority, it is a draw. This wager-and-scoring system is Ixchel's local variation. Gold is fictional, and no expedition time passes.">Every arm has two penalty triangles, one in each lane. Landing on one sends one wager unit to the pot; if that piece's wager is already spent, the piece leaves the board and the other player claims its wager. Landing on any of the eight rounded end squares grants another turn. Here, six matched gold wagers are played as one short match: the first to claim four wins; if all six resolve without a majority, it is a draw. This wager-and-scoring system is Ixchel's local variation. Gold is fictional, and no expedition time passes.</p>
           <nav class="patolli-rules-controls" aria-label="Patolli rules pages" data-i18n-attr="aria-label:Patolli rules pages">
             <button class="button secondary" id="patolli-rules-previous" type="button" aria-label="Previous rules page" data-i18n-attr="aria-label:Previous rules page">←</button>
             <span id="patolli-rules-page-number" aria-live="polite">1 / 3</span>
@@ -673,11 +769,19 @@
         </section>
         <p id="patolli-last-result" class="patolli-status" aria-live="polite" hidden></p>
         <form id="patolli-setup" class="patolli-setup">
+          <div class="patolli-setup-art" aria-hidden="true"><img src="./resources/tokens/patolli-board.png" alt=""></div>
+          <div class="patolli-setup-copy">
           <label for="patolli-wager" data-i18n="Gold per matched piece wager">Gold per matched piece wager</label>
-          <input id="patolli-wager" type="number" min="1" step="1" value="1">
+          <div class="venue-stepper">
+            <button type="button" class="quiet-button" data-patolli-wager-step="-1" aria-label="Lower the wager">−</button>
+            <input id="patolli-wager" type="number" min="1" step="1" value="1">
+            <button type="button" class="quiet-button" data-patolli-wager-step="1" aria-label="Raise the wager">+</button>
+            <button type="button" class="quiet-button venue-stepper-max" data-patolli-wager-step="max">Max</button>
+          </div>
           <small id="patolli-wager-note" class="muted"></small>
           <p id="patolli-stakes" class="patolli-stakes" aria-live="polite"></p>
           <button class="button" id="patolli-start" type="submit" data-i18n="Agree and stake six wagers">Agree and stake six wagers</button>
+          </div>
         </form>
         <section id="patolli-game" class="patolli-game" hidden>
           <div class="patolli-game-layout">
@@ -748,17 +852,23 @@
         <button id="message-box-advance" class="button secondary" type="button" data-i18n="Continue">Continue</button>
       </div>
     </section>
-    <script src="./data/locales.js?v=6" defer></script>
+    <script src="./data/locales.js?v=8" defer></script>
     <script src="./data/items.js?v=5" defer></script>
+    <script src="./data/progression.js?v=1" defer></script>
     <script src="./data/enemies.js?v=5" defer></script>
     <script src="./data/content.js?v=3" defer></script>
     <script src="./data/spells.js?v=1" defer></script>
-    <script src="./data/character-options.js?v=3" defer></script>
-    <script src="./systems/patolli.js?v=3" defer></script>
-    <script src="./systems/characters.js?v=17" defer></script>
-    <script src="./systems/dungeons.js?v=8" defer></script>
+    <script src="./data/character-options.js?v=5" defer></script>
+    <script src="./data/exotics.js?v=1" defer></script>
+    <script src="./systems/patolli.js?v=5" defer></script>
+    <script src="./systems/progression.js?v=2" defer></script>
+    <script src="./systems/codex-figure.js?v=4" defer></script>
+    <script src="./systems/shop.js?v=3" defer></script>
+    <script src="./systems/house.js?v=3" defer></script>
+    <script src="./systems/characters.js?v=20" defer></script>
+    <script src="./systems/dungeons.js?v=9" defer></script>
     <script src="./admob.config.js?v=1" defer></script>
     <script type="module" src="./systems/rewarded-ads.js?v=1"></script>
-    <script src="./app.js?v=170" defer></script>
+    <script src="./app.js?v=177" defer></script>
   </body>
 </html>

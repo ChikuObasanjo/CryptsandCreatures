@@ -1,34 +1,59 @@
 "use strict";
 
-const PATOLLI_TRACK = [
-  [5, 0], [6, 0], [7, 0], [8, 0], [8, 1], [7, 1], [7, 2], [7, 3],
-  [7, 4], [8, 4], [9, 4], [9, 5], [10, 5], [11, 5], [12, 5],
-  [12, 6], [12, 7], [11, 7], [10, 7], [9, 7], [8, 7], [8, 8], [8, 9],
-  [7, 9], [7, 10], [7, 11], [7, 12], [6, 12], [5, 12], [4, 12], [4, 11],
-  [5, 11], [5, 10], [5, 9], [5, 8], [4, 8], [4, 7], [3, 7], [2, 7],
-  [1, 7], [0, 7], [0, 6], [0, 5], [1, 5], [2, 5], [3, 5], [4, 5],
-  [4, 4], [4, 3], [5, 3], [5, 2], [5, 1]
-];
-const PATOLLI_CAPTURE_SQUARES = [11, 20, 35, 46];
-const PATOLLI_PENALTY_SQUARES = [5, 31];
-const PATOLLI_EXTRA_TURN_SQUARES = [0, 26];
-const PATOLLI_PLAYER_START = 0;
-const PATOLLI_OPPONENT_START = 26;
+// Classic patolli layout: two crossing strips, each arm two lanes wide and six squares long,
+// meeting in four center crossroads (4 × 13 = 52 squares). Coordinates are [row, column]
+// on a 14 × 14 grid; the board is drawn as a "+" and rotated 45° into an X.
+const PATOLLI_GRID_SIZE = 14;
+const PATOLLI_TRACK = (() => {
+  const track = [];
+  const arm = (center, out, across, back) => {
+    track.push(center, ...out, across, ...back);
+  };
+  const range = (from, to) => {
+    const step = from <= to ? 1 : -1;
+    return Array.from({ length: Math.abs(to - from) + 1 }, (_, index) => from + index * step);
+  };
+  arm([6, 6], range(5, 0).map((row) => [row, 6]), [0, 7], range(1, 5).map((row) => [row, 7]));
+  arm([6, 7], range(8, 13).map((column) => [6, column]), [7, 13], range(12, 8).map((column) => [7, column]));
+  arm([7, 7], range(8, 13).map((row) => [row, 7]), [13, 6], range(12, 8).map((row) => [row, 6]));
+  arm([7, 6], range(5, 0).map((column) => [7, column]), [6, 0], range(1, 5).map((column) => [6, column]));
+  return track;
+})();
+const PATOLLI_CAPTURE_SQUARES = [0, 13, 26, 39];
+// Every arm carries a pair of penalty triangles, one in each lane, four squares out
+// from the crossroads, and both rounded end squares of every arm grant another turn.
+const PATOLLI_PENALTY_SQUARES = [0, 1, 2, 3].flatMap((arm) => [arm * 13 + 4, arm * 13 + 9]);
+const PATOLLI_EXTRA_TURN_SQUARES = [0, 1, 2, 3].flatMap((arm) => [arm * 13 + 6, arm * 13 + 7]);
+const PATOLLI_PLAYER_START = 6;
+const PATOLLI_OPPONENT_START = 32;
+const PATOLLI_TRACK_VERSION = 4;
 if (PATOLLI_TRACK.length !== 52 || new Set(PATOLLI_TRACK.map(([row, column]) => `${row},${column}`)).size !== 52 ||
   PATOLLI_TRACK.some(([row, column], index) => {
     const [nextRow, nextColumn] = PATOLLI_TRACK[(index + 1) % PATOLLI_TRACK.length];
-    return row < 0 || row >= 13 || column < 0 || column >= 13 ||
+    return row < 0 || row >= PATOLLI_GRID_SIZE || column < 0 || column >= PATOLLI_GRID_SIZE ||
       Math.abs(row - nextRow) + Math.abs(column - nextColumn) !== 1;
   })) throw new Error("The Patolli circuit must be a connected 52-square track.");
 
+// Squares are numbered from your own start, so your pieces always count upward 1 → 52 and then HOME.
+function patolliSquareNumber(trackIndex) {
+  return ((trackIndex - PATOLLI_PLAYER_START + PATOLLI_TRACK.length) % PATOLLI_TRACK.length) + 1;
+}
+
+// Grid direction from a square to the next one along the circuit (0 = up, clockwise in degrees).
+function patolliStepAngle(trackIndex) {
+  const [row, column] = PATOLLI_TRACK[trackIndex];
+  const [nextRow, nextColumn] = PATOLLI_TRACK[(trackIndex + 1) % PATOLLI_TRACK.length];
+  if (nextRow < row) return 0;
+  if (nextColumn > column) return 90;
+  if (nextRow > row) return 180;
+  return 270;
+}
+
 function maxPatolliStakePerPiece() {
-  const capacity = getCarryCapacity(state.run.character);
-  const carriedWithoutGold = getCarriedWeight() - state.run.gold / 50;
-  const maximumGold = Math.floor(Math.max(0, capacity - carriedWithoutGold) * 50);
+  // Patolli is played in town, where secured gold sits in the Ceiba House strongbox.
   return Math.max(0, Math.min(
     Math.floor(state.run.gold / 6),
-    Math.floor(Math.max(0, maximumGold - state.run.gold) / 6),
-    Math.floor(Math.max(0, 10000 - state.run.gold) / 6)
+    Math.floor(Math.max(0, MAX_GOLD - state.run.gold) / 6)
   ));
 }
 
@@ -165,8 +190,8 @@ function applyPatolliMove(game, side, move) {
     captureId: move.captureId
   };
   let message = side === "player"
-    ? `Your piece ${piece.id + 1} moves ${move.finish ? "home" : `to square ${move.trackIndex + 1}`}.`
-    : `Ixchel's piece ${piece.id + 1} moves ${move.finish ? "home" : `to square ${move.trackIndex + 1}`}.`;
+    ? `Your piece ${piece.id + 1} moves ${move.finish ? "home" : `to square ${patolliSquareNumber(move.trackIndex)}`}.`
+    : `Ixchel's piece ${piece.id + 1} moves ${move.finish ? "home" : `to square ${patolliSquareNumber(move.trackIndex)}`}.`;
   if (move.captureId !== null) {
     const captured = game.pieces[otherSide][move.captureId];
     captured.status = "captured";
@@ -178,7 +203,7 @@ function applyPatolliMove(game, side, move) {
     if (resolved) message += ` It captures piece ${captured.id + 1} at a crossroads, returning it to reserve and claiming its matched wager.`;
   }
   if (!move.finish && PATOLLI_EXTRA_TURN_SQUARES.includes(move.trackIndex)) {
-    message += " The marked end square grants another turn.";
+    message += " The rounded end square grants another turn.";
   }
   if (move.finish) {
     resolvePatolliStake(game, piece.id, side, piece);
@@ -189,12 +214,15 @@ function applyPatolliMove(game, side, move) {
     stake[payerKey] -= payment;
     game.pot += payment;
     if (side === "player") game.playerPotContribution += payment;
-    message += payment
-      ? ` The penalty square sends ${formatCurrency(payment)} from this wager to the pot.`
-      : " Unable to pay the penalty, this piece forfeits its wager.";
-    if (payment < game.stakePerPiece) {
+    if (payment) {
+      message += ` The penalty triangle sends ${formatCurrency(payment)} from this wager to the pot.`;
+    } else {
+      // Nothing left to pay: the piece is knocked off the board and its wager goes to the other player.
       piece.status = "captured";
       resolvePatolliStake(game, piece.id, otherSide, null);
+      message += side === "player"
+        ? " Its wager is already spent, so the piece leaves the board and Ixchel claims the wager."
+        : " Its wager is already spent, so the piece leaves the board and you claim the wager.";
     }
   }
   game.message = message;
@@ -344,6 +372,7 @@ function renderPatolli() {
   }
   const tutorialOnly = state.patolliTutorialOnly && !active;
   const maximumWager = maxPatolliStakePerPiece();
+  renderPurses();
   const rulePages = [...elements["patolli-rules"].querySelectorAll("[data-patolli-rule-page]")];
   state.patolliRulesPage = Math.max(0, Math.min(state.patolliRulesPage, rulePages.length - 1));
   rulePages.forEach((page, index) => { page.hidden = index !== state.patolliRulesPage; });
@@ -368,7 +397,7 @@ function renderPatolli() {
   elements["patolli-wager"].max = String(maximumWager);
   elements["patolli-start"].disabled = maximumWager < 1;
   elements["patolli-wager-note"].textContent = maximumWager
-    ? `You may stake ${formatCurrency(maximumWager)} per piece (${formatCurrency(maximumWager * 6)} total). The purse and maximum payout both fit your carrying capacity.`
+    ? `You may stake ${formatCurrency(maximumWager)} per piece (${formatCurrency(maximumWager * 6)} total). Stakes come from your Ceiba House strongbox.`
     : "You need enough gold for six matched stakes and room for the maximum possible payout.";
   if (maximumWager > 0 && Number(elements["patolli-wager"].value) > maximumWager) {
     elements["patolli-wager"].value = String(maximumWager);
@@ -415,7 +444,6 @@ function renderPatolli() {
     return row;
   }));
   elements["patolli-match-stats"].classList.toggle("patolli-capture-flash", Boolean(state.patolliAnimation?.capture));
-  const pathIndexByCoord = new Map(PATOLLI_TRACK.map(([row, column], index) => [`${row},${column}`, index]));
   const legalTargets = new Set(game.legalMoves
     .filter((move) => move.pieceId === game.selectedPiece)
     .map((move) => move.trackIndex));
@@ -428,69 +456,73 @@ function renderPatolli() {
     }
   }
   const fragment = document.createDocumentFragment();
-  for (let row = 0; row < 13; row += 1) {
-    for (let column = 0; column < 13; column += 1) {
-      const pathIndex = pathIndexByCoord.get(`${row},${column}`);
-      const central = row >= 5 && row <= 7 && column >= 5 && column <= 7;
-      let cell;
-      if (pathIndex !== undefined) {
-        cell = document.createElement("button");
-        cell.type = "button";
-        cell.className = "patolli-square";
-        if (PATOLLI_CAPTURE_SQUARES.includes(pathIndex)) cell.classList.add("patolli-crossroads");
-        if (PATOLLI_PENALTY_SQUARES.includes(pathIndex)) cell.classList.add("patolli-penalty");
-        if (PATOLLI_EXTRA_TURN_SQUARES.includes(pathIndex)) cell.classList.add("patolli-extra-turn");
-        if (pathIndex === PATOLLI_PLAYER_START) cell.classList.add("patolli-player-start");
-        if (pathIndex === PATOLLI_OPPONENT_START) cell.classList.add("patolli-opponent-start");
-        if (state.patolliAnimation?.from === pathIndex) cell.classList.add("patolli-move-origin");
-        if (state.patolliAnimation?.to === pathIndex) cell.classList.add("patolli-move-destination");
-        if (legalTargets.has(pathIndex)) cell.classList.add("patolli-legal-target");
-        const selectablePiece = selectablePiecesByTrackIndex.get(pathIndex);
-        if (selectablePiece !== undefined) {
-          cell.classList.add("patolli-piece-selectable");
-          cell.dataset.patolliPiece = String(selectablePiece);
-        }
-        cell.disabled = state.patolliAutoplay ||
-          (!legalTargets.has(pathIndex) && selectablePiece === undefined);
-        cell.dataset.trackIndex = String(pathIndex);
-        cell.setAttribute("aria-label", selectablePiece !== undefined
-          ? `Your piece ${selectablePiece + 1} on square ${pathIndex + 1}; select to move`
-          : `Square ${pathIndex + 1}${PATOLLI_CAPTURE_SQUARES.includes(pathIndex) ? ", capture crossroads" : ""}${PATOLLI_PENALTY_SQUARES.includes(pathIndex) ? ", penalty triangle" : ""}${PATOLLI_EXTRA_TURN_SQUARES.includes(pathIndex) ? ", extra turn" : ""}`);
-        const number = document.createElement("small");
-        number.textContent = String(pathIndex + 1);
-        cell.append(number);
-        for (const side of ["player", "opponent"]) {
-          for (const piece of game.pieces[side]) {
-            if (patolliPieceAt(side, piece) !== pathIndex) continue;
-            const marker = document.createElement("span");
-            marker.className = `patolli-piece-marker ${side === "player" ? "patolli-player-token" : "patolli-opponent-token"}`;
-            if (state.patolliAnimation?.to === pathIndex && state.patolliAnimation.side === side &&
-              state.patolliAnimation.pieceId === piece.id) marker.classList.add("patolli-piece-arrival");
-            marker.textContent = String(piece.id + 1);
-            marker.title = `${side === "player" ? "Your" : "Ixchel's"} piece ${piece.id + 1}`;
-            cell.append(marker);
-          }
-        }
-      } else if (central) {
-        const finishButton = row === 6 && column === 6 && legalTargets.has(-1);
-        cell = document.createElement(finishButton ? "button" : "span");
-        if (finishButton) {
-          cell.type = "button";
-          cell.dataset.trackIndex = "-1";
-          cell.setAttribute("aria-label", "Exact finish");
-        }
-        cell.className = `patolli-center-cell${row === 6 && column === 6 ? " patolli-home" : ""}`;
-        cell.textContent = row === 6 && column === 6 ? "HOME" : "·";
-        if (finishButton) cell.classList.add("patolli-legal-target");
-      } else {
-        cell = document.createElement("span");
-        cell.className = "patolli-empty-cell";
-      }
-      cell.style.gridRow = String(row + 1);
-      cell.style.gridColumn = String(column + 1);
-      fragment.append(cell);
+  for (const [pathIndex, [row, column]] of PATOLLI_TRACK.entries()) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "patolli-square";
+    const armEnd = pathIndex % 13 === 6 || pathIndex % 13 === 7;
+    if (armEnd) cell.classList.add("patolli-arm-end", pathIndex % 13 === 6 ? "patolli-arm-end-a" : "patolli-arm-end-b");
+    cell.dataset.arm = String(Math.floor(pathIndex / 13));
+    if (PATOLLI_CAPTURE_SQUARES.includes(pathIndex)) cell.classList.add("patolli-crossroads");
+    if (PATOLLI_PENALTY_SQUARES.includes(pathIndex)) cell.classList.add("patolli-penalty");
+    if (PATOLLI_EXTRA_TURN_SQUARES.includes(pathIndex)) cell.classList.add("patolli-extra-turn");
+    if (pathIndex === PATOLLI_PLAYER_START) cell.classList.add("patolli-player-start");
+    if (pathIndex === PATOLLI_OPPONENT_START) cell.classList.add("patolli-opponent-start");
+    if (state.patolliAnimation?.from === pathIndex) cell.classList.add("patolli-move-origin");
+    if (state.patolliAnimation?.to === pathIndex) cell.classList.add("patolli-move-destination");
+    if (legalTargets.has(pathIndex)) cell.classList.add("patolli-legal-target");
+    const selectablePiece = selectablePiecesByTrackIndex.get(pathIndex);
+    if (selectablePiece !== undefined) {
+      cell.classList.add("patolli-piece-selectable");
+      cell.dataset.patolliPiece = String(selectablePiece);
     }
+    cell.disabled = state.patolliAutoplay ||
+      (!legalTargets.has(pathIndex) && selectablePiece === undefined);
+    cell.dataset.trackIndex = String(pathIndex);
+    cell.setAttribute("aria-label", selectablePiece !== undefined
+      ? `Your piece ${selectablePiece + 1} on square ${patolliSquareNumber(pathIndex)}; select to move`
+      : `Square ${patolliSquareNumber(pathIndex)}${PATOLLI_CAPTURE_SQUARES.includes(pathIndex) ? ", capture crossroads" : ""}${PATOLLI_PENALTY_SQUARES.includes(pathIndex) ? ", penalty triangle" : ""}${PATOLLI_EXTRA_TURN_SQUARES.includes(pathIndex) ? ", extra turn" : ""}`);
+    const number = document.createElement("small");
+    number.textContent = String(patolliSquareNumber(pathIndex));
+    const arrow = document.createElement("i");
+    arrow.className = "patolli-direction";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.style.setProperty("--step", `${patolliStepAngle(pathIndex)}deg`);
+    cell.append(number, arrow);
+    if (pathIndex === PATOLLI_PLAYER_START || pathIndex === PATOLLI_OPPONENT_START) {
+      const flag = document.createElement("b");
+      flag.className = "patolli-start-flag";
+      flag.textContent = "START";
+      cell.append(flag);
+    }
+    for (const side of ["player", "opponent"]) {
+      for (const piece of game.pieces[side]) {
+        if (patolliPieceAt(side, piece) !== pathIndex) continue;
+        const marker = document.createElement("span");
+        marker.className = `patolli-piece-marker ${side === "player" ? "patolli-player-token" : "patolli-opponent-token"}`;
+        if (state.patolliAnimation?.to === pathIndex && state.patolliAnimation.side === side &&
+          state.patolliAnimation.pieceId === piece.id) marker.classList.add("patolli-piece-arrival");
+        marker.textContent = String(piece.id + 1);
+        marker.title = `${side === "player" ? "Your" : "Ixchel's"} piece ${piece.id + 1}`;
+        cell.append(marker);
+      }
+    }
+    cell.style.gridRow = String(row + 1);
+    cell.style.gridColumn = String(column + 1);
+    fragment.append(cell);
   }
+  const finishReady = legalTargets.has(-1);
+  const home = document.createElement(finishReady ? "button" : "span");
+  home.className = `patolli-home${finishReady ? " patolli-legal-target" : ""}`;
+  if (finishReady) {
+    home.type = "button";
+    home.dataset.trackIndex = "-1";
+    home.setAttribute("aria-label", "Exact finish: move this piece home");
+  }
+  home.textContent = "HOME";
+  home.style.gridRow = "4 / span 3";
+  home.style.gridColumn = "4 / span 3";
+  fragment.append(home);
   elements["patolli-board"].replaceChildren(fragment);
   elements["patolli-beans"].replaceChildren(...Array.from({ length: 5 }, (_, index) => {
     const bean = document.createElement("span");
@@ -522,7 +554,7 @@ function renderPatolli() {
       }
       chip.className = `patolli-piece-chip ${side === "player" ? "patolli-piece-chip-player" : "patolli-piece-chip-opponent"}`;
       const status = piece.status === "ready" ? "in reserve" : piece.status === "active"
-        ? `square ${patolliPieceAt(side, piece) + 1}` : piece.status === "finished" ? "home"
+        ? `square ${patolliSquareNumber(patolliPieceAt(side, piece))}` : piece.status === "finished" ? "home"
           : piece.status === "captured" ? "captured"
             : piece.status === "settled" && game.stakes[piece.id].winner !== null
               ? "reserve · wager settled" : "wager settled";
@@ -564,10 +596,10 @@ function startPatolli(stakePerPiece) {
   }
   const totalStake = stakePerPiece * 6;
   state.patolliRulesOpen = false;
-  state.run.gold -= totalStake;
+  state.run.gold = roundGold(state.run.gold - totalStake);
   const pieces = () => Array.from({ length: 6 }, (_, id) => ({ id, progress: -1, status: "ready" }));
   state.run.patolliGame = {
-    trackVersion: 3,
+    trackVersion: PATOLLI_TRACK_VERSION,
     stakePerPiece,
     pieces: { player: pieces(), opponent: pieces() },
     stakes: Array.from({ length: 6 }, () => ({
@@ -637,6 +669,15 @@ function connectPatolliEvents() {
     startPatolli(Number(elements["patolli-wager"].value));
   });
   elements["patolli-wager"].addEventListener("input", renderPatolli);
+  elements["patolli-setup"].addEventListener("click", (event) => {
+    const step = event.target.closest("[data-patolli-wager-step]")?.dataset.patolliWagerStep;
+    if (!step) return;
+    const maximum = Math.max(1, maxPatolliStakePerPiece());
+    const current = Math.max(1, Math.floor(Number(elements["patolli-wager"].value) || 1));
+    const next = step === "max" ? maximum : current + Number(step);
+    elements["patolli-wager"].value = String(Math.max(1, Math.min(maximum, next)));
+    renderPatolli();
+  });
   elements["patolli-roll"].addEventListener("click", tossPatolliBeans);
   elements["patolli-autoplay"].addEventListener("change", (event) => {
     setPatolliAutoplay(event.currentTarget.checked);

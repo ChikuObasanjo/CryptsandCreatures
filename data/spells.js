@@ -13,23 +13,23 @@ window.CryptsSpells = {
   },
   catalog: {
     "bardic-note": {
-      name: "Bardic Note", description: "A sharp, focused note that unsettles a foe.",
+      name: "Bardic Note", description: "One note from a clay flute, sharp enough to make a foe flinch.",
       damage: "1d6", range: 7, free: true
     },
     "discordant-chord": {
-      name: "Discordant Chord", description: "A dissonant chord strikes a creature through the air.",
+      name: "Discordant Chord", description: "A teponaztli drum's wrong note, struck so hard the air itself hits back.",
       damage: "2d6", range: 7
     },
     "soothing-verse": {
-      name: "Soothing Verse", description: "A steadying melody restores your own strength.",
+      name: "Soothing Verse", description: "A flower-song for the wounded; your breath steadies and your cuts close.",
       healing: "1d8"
     },
     "sacred-flame": {
-      name: "Sacred Flame", description: "A column of sacred light scorches a visible foe.",
+      name: "Sacred Flame", description: "A column of the sun's fire falls on a foe you can see.",
       damage: "1d6", range: 7, free: true
     },
     "radiant-seal": {
-      name: "Radiant Seal", description: "A burning sigil bursts against a distant enemy.",
+      name: "Radiant Seal", description: "A day-sign glyph burns in the air and bursts against a distant enemy.",
       damage: "2d8", range: 7
     },
     "breath-of-the-ceiba": {
@@ -37,23 +37,23 @@ window.CryptsSpells = {
       healing: "1d8"
     },
     "thorn-call": {
-      name: "Thorn Call", description: "A dart of living thorn flies toward a creature.",
+      name: "Thorn Call", description: "A maguey thorn, called up out of the ground, flies at a creature.",
       damage: "1d6", range: 7, free: true
     },
     "storm-seed": {
-      name: "Storm Seed", description: "A seed of thunder bursts against a distant target.",
+      name: "Storm Seed", description: "A seed of Tlaloc's rain cracks open in thunder over a distant target.",
       damage: "2d6", range: 7
     },
     "holy-brand": {
-      name: "Holy Brand", description: "A flash of consecrated light strikes a visible foe.",
+      name: "Holy Brand", description: "Your oath flares as white sun-fire across a visible foe.",
       damage: "1d6", range: 7, free: true
     },
     "radiant-smite": {
-      name: "Radiant Smite", description: "A focused lance of sacred force punishes a distant enemy.",
+      name: "Radiant Smite", description: "A god's judgment, thrown like a spear of light at a distant enemy.",
       damage: "2d8", range: 7
     },
     "hunter-arrow": {
-      name: "Hunter's Arrow", description: "A guided force-arrow seeks out a visible quarry.",
+      name: "Hunter's Arrow", description: "An arrow blessed by Mixcoatl, the cloud-serpent hunter, finds a quarry you can see.",
       damage: "1d6", range: 7, free: true
     },
     "thorn-volley": {
@@ -61,7 +61,7 @@ window.CryptsSpells = {
       damage: "2d6", range: 7
     },
     "wind-shot": {
-      name: "Wind Shot", description: "A compressed gust hurls itself at a distant target.",
+      name: "Wind Shot", description: "A breath of Ehecatl, the wind, hurls itself at a distant target.",
       damage: "2d8", range: 7
     },
     "jade-spark": {
@@ -73,11 +73,11 @@ window.CryptsSpells = {
       damage: "2d6", range: 7
     },
     "arcane-surge": {
-      name: "Arcane Surge", description: "A concentrated burst of raw magic crashes into a foe.",
+      name: "Arcane Surge", description: "The power you were born with breaks loose in a green-white flare.",
       damage: "3d6", range: 7
     },
     "eldritch-bolt": {
-      name: "Eldritch Bolt", description: "A bolt of pact-bound force hunts a visible creature.",
+      name: "Eldritch Bolt", description: "A bolt of your patron's night-power hunts a creature you can see.",
       damage: "1d8", range: 7, free: true
     },
     "void-lance": {
@@ -85,15 +85,15 @@ window.CryptsSpells = {
       damage: "2d8", range: 7
     },
     "pact-rend": {
-      name: "Pact Rend", description: "A violent tear of otherworldly force rips through a foe.",
+      name: "Pact Rend", description: "Your patron reaches through you and tears at a foe from the far side of the night.",
       damage: "3d6", range: 7
     },
     "arcane-dart": {
-      name: "Arcane Dart", description: "A precise dart of shaped magic strikes a visible enemy.",
+      name: "Arcane Dart", description: "A glyph read aloud becomes a dart of light that strikes a visible enemy.",
       damage: "1d8", range: 7, free: true
     },
     "force-lance": {
-      name: "Force Lance", description: "A disciplined lance of force batters a distant creature.",
+      name: "Force Lance", description: "A spear of written power, black and red ink made solid, batters a distant creature.",
       damage: "3d6", range: 7
     }
   }

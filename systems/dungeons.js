@@ -360,6 +360,7 @@ function createGreatTempleEnemies(rooms, player) {
       enemy.maxHp = enemy.hp;
     }
     scaleGreatTempleEnemy(enemy);
+    decorateEnemy(enemy, { isBoss });
     enemies.push(enemy);
   }
   const roamerCount = 2 + Math.floor(state.run.dungeonFloor / 3);
@@ -371,6 +372,7 @@ function createGreatTempleEnemies(rooms, player) {
     usedEncounterIds.add(template.id);
     const enemy = createEnemy(template, position, -1, enemies.length);
     scaleGreatTempleEnemy(enemy);
+    decorateEnemy(enemy);
     enemies.push(enemy);
   }
   return enemies;
@@ -395,6 +397,7 @@ function addGreatTempleRoamers(player, count) {
     usedEncounterIds.add(template.id);
     const enemy = createEnemy(template, position, -1, state.run.enemies.length);
     scaleGreatTempleEnemy(enemy);
+    decorateEnemy(enemy);
     state.run.enemies.push(enemy);
   }
 }
@@ -500,11 +503,16 @@ function createGreatTempleCaches(player, occupied) {
       : state.run.dungeonFloor >= 9 && randomInt(100) <= 35 ? "obsidian-mirror"
         : state.run.dungeonFloor >= 5 && randomInt(100) <= 35 ? "jade-pectoral"
           : randomInt(2) === 1 ? "jade-bead" : "terracotta-figurine";
+    const cacheItems = itemId ? [{ id: itemId, quantity: 1 }] : [];
+    if (randomInt(100) <= cacheGearChance(state.run.dungeonFloor)) {
+      const gear = rollGearDrop(state.run.dungeonFloor);
+      if (gear) cacheItems.push({ id: gear, quantity: 1 });
+    }
     state.run.treasures.push({
       id: `temple-cache-${index + 1}`,
       ...position,
       gold: (randomInt(8) + randomInt(8)) * Math.ceil(1 + (state.run.dungeonFloor - 1) * 0.15),
-      items: itemId ? [{ id: itemId, quantity: 1 }] : []
+      items: cacheItems
     });
   }
 }
@@ -697,7 +705,10 @@ function initializeDungeon() {
       damage: finalBoss.damage,
       initiativeBonus: finalBoss.initiativeBonus || 0,
       xp: finalBoss.xp,
-      edible: Boolean(finalBoss.edible)
+      edible: Boolean(finalBoss.edible),
+      inflicts: PROGRESSION.creatureConditions.tzitzimitl ? { ...PROGRESSION.creatureConditions.tzitzimitl } : undefined,
+      guardian: true,
+      greatGuardian: true
     });
     state.run.rooms[bossRoomIndex].optionalQuest = true;
   }
@@ -847,6 +858,7 @@ function newRun(character) {
     hasEnteredDungeon: false,
     character,
     factions: createFactionState(),
+    progress: createProgress(),
     needs: createNeeds(),
     party: [],
     townPosition: { x: 5, y: 4 },

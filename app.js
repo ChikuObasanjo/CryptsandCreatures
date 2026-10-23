@@ -60,8 +60,8 @@ const TOWN_MAP = [
   "#I...N#..N#",
   "#...W.....#",
   "#####.#####",
-  "#...N.P...#",
-  "#....D....#",
+  "#HH.N.P...#",
+  "#HH..D....#",
   "###########"
 ];
 const TOWN_NPCS = [
@@ -69,7 +69,8 @@ const TOWN_NPCS = [
   { id: "innkeeper", name: "Nali, keeper of the travelers' house", x: 5, y: 3, glyph: "N", faction: "ceiba-house" },
   { id: "merchant", name: "Teyac, market trader", x: 9, y: 3, glyph: "T", faction: "traders-circle" },
   { id: "temple-keeper", name: "Xochi, keeper of the sealed road", x: 4, y: 6, glyph: "X", faction: "road-wardens" },
-  { id: "patolli-player", name: "Ixchel, keeper of the Patolli board", x: 6, y: 6, glyph: "P", faction: null }
+  { id: "patolli-player", name: "Ixchel, keeper of the Patolli board", x: 6, y: 6, glyph: "P", faction: null },
+  { id: "master-builder", name: "Tlacotl, master builder", x: 8, y: 6, glyph: "B", faction: null }
 ];
 const MOBILE_MAP_VIEW_SIZE = 7;
 const DESKTOP_MAP_VIEW_SIZE = 9;
@@ -84,7 +85,8 @@ const WATER_DRAIN_PER_HOUR = 6;
 const NUTRIENT_DECAY_HOURS = 12;
 const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
-const SPRITE_RESOURCE_VERSION = 77;
+const MAX_GOLD = 1_000_000;
+const SPRITE_RESOURCE_VERSION = 78;
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
   "###.....#...#.#...##......##..#.....#...#.#..",
@@ -207,7 +209,7 @@ const elements = Object.fromEntries([
   "header-spell-slot-count", "header-spell-slot-pips",
   "header-water-stock", "header-clock", "delve-objectives", "inventory-filters",
   "start-screen", "continue-game", "continue-hint", "new-game", "open-settings", "settings-dialog", "close-settings", "language-select", "dark-mode-toggle", "game-layout", "new-game-warning", "pause-dialog",
-  "pause-button", "resume-game", "return-to-title",
+  "resume-game", "return-to-title",
   "character-dialog", "character-dialog-heading", "character-form", "character-submit", "character-next", "character-back",
   "character-intro", "creation-step-label", "creation-step-track", "creation-progress-bar", "creation-progress-fill", "close-character", "cancel-character",
   "character-name", "character-race", "character-heritage", "character-gender", "character-class", "character-background",
@@ -215,7 +217,7 @@ const elements = Object.fromEntries([
   "half-elf-bonuses", "half-elf-bonus-one", "half-elf-bonus-two",
   "score-method", "score-method-note", "ability-score-fields", "roll-scores", "point-buy-remaining", "ability-bonus-note",
   "character-weapon", "character-armor", "character-shield", "character-cloak", "equipment-note", "starter-kit-summary",
-  "character-preview", "character-summary", "character-skin", "character-hair-style", "character-hair", "character-tunic", "character-garment", "character-adornment", "character-headwear", "character-face-paint", "character-error",
+  "character-preview", "character-summary", "character-skin", "character-hair-style", "character-hair", "character-tunic", "character-garment", "character-adornment", "character-headwear", "character-face-paint", "character-error", "character-body", "character-beard", "character-jewelry", "character-crest", "character-skin-label", "character-hair-label", "character-crest-label", "character-crest-field", "character-hair-style-field", "character-beard-field",
   "character-heading", "character-subtitle", "character-portrait", "character-equipment", "equipment-list", "inventory-list", "inventory-load", "inventory-security",
   "panel-equipment", "panel-gear", "panel-info", "panel-abilities",
   "class-guide-heading", "class-guide-copy", "class-training-copy", "character-level-progress",
@@ -223,7 +225,7 @@ const elements = Object.fromEntries([
   "ability-guide-note", "ability-guide-list", "open-ability-guide",
   "character-card-dialog", "close-character-card", "close-character-card-top", "city-screen", "store-screen", "dungeon-screen",
   "town-story", "return-to-city", "shop-message", "store-buy-heading", "store-buy-list", "store-sell-list", "store-carry-load",
-  "town-map", "town-location-copy", "town-interact-button", "town-interact-label", "town-dialog", "town-dialog-heading", "town-dialog-copy", "town-dialog-action", "town-dialog-shop", "town-dialog-close",
+  "town-map", "town-location-copy", "town-interact-button", "town-interact-label", "town-dialog", "town-dialog-heading", "town-dialog-copy", "town-dialog-action", "town-dialog-shop", "town-dialog-close", "town-dialog-portrait", "town-dialog-role", "town-dialog-x",
   "target-choice-dialog", "target-choice-heading", "target-choice-list", "target-choice-close",
   "cosmetic-shop-dialog", "cosmetic-shop-items", "cosmetic-shop-gold", "cosmetic-shop-message", "cosmetic-shop-close",
   "town-dialog-learn", "patolli-dialog", "patolli-rules", "patolli-rules-toggle", "patolli-rules-page-number", "patolli-rules-previous", "patolli-rules-next", "patolli-last-result", "patolli-setup", "patolli-wager", "patolli-wager-note", "patolli-start",
@@ -248,7 +250,11 @@ const elements = Object.fromEntries([
   "player-hp", "player-health-fill", "player-ac", "player-attack",
   "xp-line", "level-badge", "event-log", "header-expedition-kit",
   "toast", "message-box", "message-box-title", "message-box-text", "message-box-page",
-  "message-box-advance", "message-box-close", "save-state"
+  "message-box-advance", "message-box-close", "save-state",
+  "enemy-rank", "player-conditions", "map-status-chips", "renown-line", "bounty-list", "bestiary-list", "bestiary-count", "projects-summary",
+  "shop-portrait", "shop-title", "shop-keeper", "shop-tagline", "shop-purse", "shop-load-text", "shop-load-fill", "shop-perks",
+  "shop-tabs", "shop-categories", "shop-sell-all", "shop-grid", "shop-detail", "shop-detail-body",
+  "projects-dialog", "projects-list", "projects-gold", "projects-message", "projects-close", "projects-x", "house-dialog", "house-portrait", "house-eyebrow", "house-title", "house-tagline", "house-body", "house-close", "mirror-dialog", "mirror-fields", "mirror-preview", "mirror-message", "mirror-save", "mirror-cancel", "workshop-panel", "workshop-list"
 ].map((id) => [id, document.getElementById(id)]));
 
 function escapeMessage(error) {
@@ -557,11 +563,20 @@ function validatePack(raw) {
   return raw;
 }
 
-function enterDungeon() {
+function enterDungeon(options = {}) {
+  if (state.run.hp <= 0) {
+    showToast("You are still too weak to travel. Rest at the Ceiba House before returning to the tomb.");
+    if (state.run.location === "city" && TOWN_MAP[state.run.townPosition.y]?.[state.run.townPosition.x] === "D") {
+      state.run.townPosition = { x: 5, y: 6 };
+      render();
+    }
+    return;
+  }
   if (state.run.won || state.run.lost) {
     beginNewDelve();
     return;
   }
+  if (!options.skipLift && state.run.location === "city" && chooseDungeonEntry(() => enterDungeon({ skipLift: true }))) return;
   if (!state.run.hasEnteredDungeon) {
     state.run.hasEnteredDungeon = true;
     state.run.log.unshift(`You leave Chiltomatlan and enter ${getRoom().name}.`);
@@ -577,6 +592,7 @@ function enterDungeon() {
 
 function leaveStore() {
   if (state.run.location !== "store") return;
+  if (state.shop) state.shop.selected = null;
   state.run.location = "city";
   render();
 }
@@ -625,6 +641,7 @@ function traverseDungeonStair(stair) {
     refreshCompanionFormation();
     revealAroundPlayer();
   }
+  recordFloorReached(targetFloor);
   state.run.log.unshift(`You ${targetFloor > currentFloor ? "descend" : "ascend"} to floor ${targetFloor} of ${DUNGEON_FLOOR_COUNT}.`);
   state.run.log = state.run.log.slice(0, 30);
   render();
@@ -641,6 +658,8 @@ function returnToChiltomatlan() {
     state.run.log = state.run.log.slice(0, 30);
     secureExpeditionLoot();
     turnInTempleTreasure();
+    clearConditions();
+    claimReadyBounties();
     render();
     return;
   }
@@ -662,6 +681,8 @@ function returnToChiltomatlan() {
   state.run.log = state.run.log.slice(0, 30);
   secureExpeditionLoot();
   turnInTempleTreasure();
+  clearConditions();
+  claimReadyBounties();
   render();
 }
 
@@ -678,6 +699,12 @@ function turnInTempleTreasure() {
 
 function recoverInChiltomatlan() {
   elements["game-over-dialog"].close();
+  if (projectLevel("shrine") >= 1 && expeditionLoot().gold > 0) {
+    const saved = Math.floor(expeditionLoot().gold / 2 * 10) / 10;
+    expeditionLoot().gold = roundGold(expeditionLoot().gold - saved);
+    if (saved) state.run.log.unshift(`The Shrine of the Ceiba's keepers carry ${formatCurrency(saved)} of your gold home.`);
+  }
+  clearConditions();
   const lostLoot = discardUnsecuredLoot();
   state.run.hp = canHeal() ? state.run.maxHp : 0;
   state.run.lost = false;
@@ -710,7 +737,7 @@ function expeditionLoot() {
 function recordExpeditionLoot(gold = 0, items = []) {
   if (state.run.location !== "dungeon") return;
   const loot = expeditionLoot();
-  loot.gold += gold;
+  loot.gold = roundGold(loot.gold + gold);
   for (const { id, quantity } of items) {
     if (!quantity) continue;
     const existing = loot.items.find((entry) => entry.id === id);
@@ -741,7 +768,7 @@ function discardUnsecuredLoot() {
   const loot = expeditionLoot();
   const lostGold = Math.min(state.run.gold, loot.gold);
   const lostItems = loot.items.reduce((total, item) => total + item.quantity, 0);
-  state.run.gold -= lostGold;
+  state.run.gold = roundGold(state.run.gold - lostGold);
   for (const item of loot.items) {
     const quantity = Math.min(inventoryQuantity(item.id), item.quantity);
     if (quantity) removeInventoryItem(item.id, quantity, false);
@@ -750,12 +777,12 @@ function discardUnsecuredLoot() {
   const characterClass = CLASSES[state.run.character.class];
   if (!inventoryQuantity(`weapon:${equipment.weapon}`)) {
     const carriedWeapon = state.run.inventory.find((item) =>
-      item.id.startsWith("weapon:") && characterClass.weapons.includes(item.id.slice("weapon:".length)));
+      item.id.startsWith("weapon:") && characterClass.weapons.includes(gearBase(item.id.slice("weapon:".length))));
     equipment.weapon = carriedWeapon?.id.slice("weapon:".length) || characterClass.weapon;
   }
   if (equipment.armor !== "none" && !inventoryQuantity(`armor:${equipment.armor}`)) {
     const carriedArmor = state.run.inventory.find((item) =>
-      item.id.startsWith("armor:") && characterClass.armor.includes(item.id.slice("armor:".length)));
+      item.id.startsWith("armor:") && characterClass.armor.includes(gearBase(item.id.slice("armor:".length))));
     equipment.armor = carriedArmor?.id.slice("armor:".length) ||
       (characterClass.armor.includes("none") ? "none" : DEFAULT_CLASS_ARMOR[state.run.character.class]);
   }
@@ -771,14 +798,7 @@ function pauseGame() {
 
 function visitStore() {
   if (state.run.location !== "city") return;
-  state.run.location = "store";
-  state.storeCategory = "supplies";
-  elements["store-screen"].dataset.storeView = "buy";
-  document.querySelectorAll("[data-store-tab]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.storeTab === "buy"));
-  });
-  elements["shop-message"].textContent = `You have ${state.run.gold} gold.`;
-  render();
+  openShop("market");
 }
 
 function campAndRest() {
@@ -787,6 +807,7 @@ function campAndRest() {
     enemy.alive && distanceInSquares(enemy, state.run.player) <= 7
   )) {
     elements["party-message"].textContent = "Too close to danger to make camp. Find a quiet room first.";
+    showToast("Too close to danger to make camp. Find a quiet room first.");
     return;
   }
   const previousHours = state.run.gameHours;
@@ -798,6 +819,7 @@ function campAndRest() {
     return;
   }
   state.run.spellSlots = maxSpellSlots(state.run.character.class, state.run.level);
+  clearConditions(progress().conditions.length ? "Rest eases your ailments." : "");
   if (state.run.location === "city" && factionMember("ceiba-house")) {
     const day = Math.floor(state.run.gameHours / 24);
     if (day > state.run.factions.lastHouseProvisionDay) {
@@ -867,6 +889,10 @@ function campAndRest() {
       else if (member.hp > 0) member.hp = member.maxHp;
       else member.hp = 1;
     }
+  }
+  if (inventoryQuantity("copal") && removeInventoryItem("copal")) {
+    addLog("You burn copal as the camp settles. The fragrant smoke steadies everyone.");
+    grantBuff("steady");
   }
   let leftoverMeals = 0;
   for (const mealId of cookedMeals) {
@@ -961,8 +987,8 @@ function advanceSurvivalTime(resting = false, elapsedMinutes = 10) {
       const previousWaterLevel = needLevel(member.needs, "water");
       const previousSleepLevel = needLevel(member.needs, "sleep");
       const previousNutrition = nutritionStatus(member.needs).label;
-      member.needs.food = Math.max(0, member.needs.food - FOOD_DRAIN_PER_HOUR);
-      member.needs.water = Math.max(0, member.needs.water - WATER_DRAIN_PER_HOUR);
+      member.needs.food = Math.max(0, member.needs.food - (member.hero ? foodDrainPerHour() : FOOD_DRAIN_PER_HOUR));
+      member.needs.water = Math.max(0, member.needs.water - (member.hero ? waterDrainPerHour() : WATER_DRAIN_PER_HOUR));
       if (member.needs.water === 0) member.needs.waterZeroHours = Math.min(100000, member.needs.waterZeroHours + 1);
       else member.needs.waterZeroHours = 0;
       if (!resting) member.needs.hoursAwake = Math.min(100000, member.needs.hoursAwake + 1);
@@ -1016,14 +1042,14 @@ function buyStoreItem(itemId) {
     elements["shop-message"].textContent = `You need ${formatCurrency(price)} for ${item.name}.`;
     return;
   }
-  const projectedWeight = getCarriedWeight() - price / 50 + item.weight;
+  const projectedWeight = getCarriedWeight() + item.weight;
   if (projectedWeight > getCarryCapacity(state.run.character)) {
     elements["shop-message"].textContent = `There is no room for ${item.name}; your pack would exceed its carrying capacity.`;
     return;
   }
-  state.run.gold -= price;
+  state.run.gold = roundGold(state.run.gold - price);
   if (!addInventoryItem(itemId)) {
-    state.run.gold += price;
+    state.run.gold = roundGold(state.run.gold + price);
     elements["shop-message"].textContent = `There is no room for ${item.name}.`;
     return;
   }
@@ -1044,7 +1070,7 @@ function sellStoreItem(itemId) {
     ? `Sold ${item.name} for ${formatCurrency(value)}.`
     : `Sold ${item.name}; ${formatCurrency(received)} fits in your pack.`;
   addLog(`You sell ${item.name} for ${formatCurrency(received)}.`);
-  if (item.category === "Treasure") {
+  if (item.categoryId === "Treasure") {
     changeFactionStanding("traders-circle", 2, `you sell ${item.name} through Teyac's market`);
   }
   render();
@@ -1129,7 +1155,7 @@ function itemDetails(id) {
     const weapon = WEAPONS[key];
     const market = WEAPON_PRICES[key];
     return weapon && market
-      ? { id, name: t(weapon.name), description: t(weapon.description), weight: market[0], price: market[1], category: t("Weapon"), slot: "weapon", equipmentId: key }
+      ? { id, name: tieredGearName(weapon), description: tieredGearDescription(weapon) || t(weapon.description), weight: market[0], price: market[1], category: t("Weapon"), categoryId: "Weapon", slot: "weapon", equipmentId: key, tier: weapon.tier || null, trait: weapon.trait || null }
       : null;
   }
   if (id.startsWith("armor:")) {
@@ -1137,12 +1163,12 @@ function itemDetails(id) {
     const armor = ARMORS[key];
     const market = ARMOR_PRICES[key];
     return armor && market
-      ? { id, name: t(armor.name), description: t(armor.description), weight: market[0], price: market[1], category: t("Armor"), slot: "armor", equipmentId: key, strength: armor.strength }
+      ? { id, name: tieredGearName(armor), description: tieredGearDescription(armor) || t(armor.description), weight: market[0], price: market[1], category: t("Armor"), categoryId: "Armor", slot: "armor", equipmentId: key, strength: armor.strength, tier: armor.tier || null, trait: armor.trait || null }
       : null;
   }
   if (!GEAR_ITEMS[id]) return null;
   const item = GEAR_ITEMS[id];
-  return { id, ...item, name: t(item.name), description: t(item.description || ""), category: t(item.category) };
+  return { id, ...item, name: t(item.name), description: t(item.description || ""), category: t(item.category), categoryId: item.category };
 }
 
 function migrateLegacyTravelBundles(entries) {
@@ -1186,7 +1212,14 @@ function getCarryCapacity(character = state.run?.character) {
   return strength * 15;
 }
 
-function getCarriedWeight(inventory = state.run?.inventory || [], gold = state.run?.gold || 0) {
+// Secured gold stays in your strongbox at the Ceiba House; only gold found on the
+// current delve (not yet secured) is carried and weighs you down.
+function carriedGold() {
+  if (!state.run || state.run.location !== "dungeon") return 0;
+  return Math.max(0, Math.min(state.run.gold, state.run.unsecuredLoot?.gold || 0));
+}
+
+function getCarriedWeight(inventory = state.run?.inventory || [], gold = carriedGold()) {
   const gearWeight = inventory.reduce((weight, entry) => {
     const item = itemDetails(entry.id);
     return weight + (item ? item.weight * entry.quantity : 0);
@@ -1196,6 +1229,10 @@ function getCarriedWeight(inventory = state.run?.inventory || [], gold = state.r
 
 function formatWeight(weight) {
   return Number.isInteger(weight) ? String(weight) : weight.toFixed(1).replace(/\.0$/, "");
+}
+
+function roundGold(gold) {
+  return Math.max(0, Math.round(gold * 10) / 10);
 }
 
 function formatCurrency(gold) {
@@ -1233,7 +1270,8 @@ function inventoryQuantity(itemId) {
 function storeSellPrice(item) {
   const base = Math.max(0.1, Math.floor(item.price * 5) / 10);
   const personalBonus = inventoryQuantity("gold-ring") > 0 ? 1.1 : 1;
-  return Math.max(0.1, Math.round(base * personalBonus * (1 + traderSellBonusRate()) * 10) / 10);
+  const hallBonus = item.categoryId === "Treasure" && projectLevel("trade-hall") >= 1 ? 1.1 : 1;
+  return Math.max(0.1, Math.round(base * personalBonus * hallBonus * (1 + traderSellBonusRate()) * 10) / 10);
 }
 
 function inventorySkillBonus(skill, inventory = state.run?.inventory || []) {
@@ -1315,6 +1353,16 @@ const SHOP_STOCK = [
   ...["leather", "hide", "scale"].map((key) => `armor:${key}`)
 ];
 
+function shopStock() {
+  const stock = [...SHOP_STOCK, ...window.CryptsExotics.marketAdditions];
+  if (state.run && projectLevel("trade-hall") >= 2) {
+    const characterClass = CLASSES[state.run.character.class];
+    for (const weapon of characterClass.weapons.filter((id) => !WEAPONS[id]?.exotic).slice(0, 4)) stock.push(`weapon:${weapon}--fine`);
+    for (const armor of characterClass.armor.filter((id) => id !== "none" && id !== "chainmail" && !ARMORS[id]?.exotic)) stock.push(`armor:${armor}--fine`);
+  }
+  return stock.filter((id) => itemDetails(id));
+}
+
 function addInventoryItemsAsPossible(itemId, quantity) {
   let added = 0;
   for (let count = 0; count < quantity; count += 1) {
@@ -1379,18 +1427,20 @@ function dropEnemyTreasure(enemy) {
   if (state.run.gourmetGuideOwned && enemy.edible === true) {
     items.push({ id: "monster-meat", quantity: 1 });
   }
+  const bonus = state.run.mapId === GTFL_MAP_ID ? bonusEnemyLoot(enemy) : { items: [], gold: 0 };
+  items.push(...bonus.items);
   state.run.treasures.push({
     id: `treasure-${enemy.id}`,
     x: enemy.x,
     y: enemy.y,
-    gold,
+    gold: gold + bonus.gold,
     items
   });
   const itemText = items.map((item) => {
     const name = itemDetails(item.id).name;
     return `${item.quantity > 1 ? `${item.quantity} ` : ""}${name}${item.quantity > 1 ? "s" : ""}`;
   });
-  const contents = [formatCurrency(gold), ...itemText].join(", ");
+  const contents = [formatCurrency(gold + bonus.gold), ...itemText].join(", ");
   addLog(`${enemy.name} drops ${contents}. Walk over it to collect what you can carry.`);
 }
 
@@ -1401,7 +1451,7 @@ function collectTreasureAt(x, y) {
   const leftBehind = [];
   for (const treasure of treasures) {
     const goldCollected = addGoldWithinCapacity(treasure.gold);
-    treasure.gold -= goldCollected;
+    treasure.gold = roundGold(treasure.gold - goldCollected);
     const remainingItems = [];
     let itemsCollected = 0;
     for (const entry of treasure.items) {
@@ -1444,9 +1494,11 @@ function addGoldWithinCapacity(amount) {
   if (!Number.isFinite(amount) || amount <= 0) return 0;
   const capacity = getCarryCapacity(state.run.character);
   const gearWeight = getCarriedWeight(state.run.inventory, 0);
-  const maximumGold = Math.max(state.run.gold, Math.floor(Math.max(0, capacity - gearWeight) * 50));
-  const added = Math.max(0, Math.round(Math.min(amount, maximumGold - state.run.gold) * 10) / 10);
-  state.run.gold += added;
+  const securedGold = state.run.gold - carriedGold();
+  const maximumGold = state.run.location !== "dungeon" ? MAX_GOLD
+    : Math.max(state.run.gold, securedGold + Math.floor(Math.max(0, capacity - gearWeight) * 50));
+  const added = Math.max(0, Math.floor(Math.min(amount, maximumGold - state.run.gold, MAX_GOLD - state.run.gold) * 10) / 10);
+  state.run.gold = roundGold(state.run.gold + added);
   return added;
 }
 
@@ -1531,6 +1583,7 @@ function refreshCompanionFormation(dx = 0, dy = 0) {
 function finishPlayerTurn(elapsedMinutes = 10) {
   state.run.steps += 1;
   if (state.run.location === "dungeon" && !state.run.lost && !state.run.won) {
+    tickConditions();
     advanceSurvivalTime(false, elapsedMinutes);
     if (!state.run.lost) alliesTakeTurn();
     if (!state.run.lost) enemiesTakeTurn();
@@ -1625,7 +1678,8 @@ function movePlayer(dx, dy) {
     }
     const blocker = state.run.enemies.find((enemy) => enemy.alive && enemy.x === nx && enemy.y === ny);
     if (blocker) {
-      if (!moved && distanceInSquares(blocker, { x, y }) === 1) attackEnemy(blocker);
+      if (moved) break;
+      if (distanceInSquares(blocker, { x, y }) === 1) attackEnemy(blocker);
       return false;
     }
     const downedCompanion = state.run.party.find((companion) =>
@@ -1642,7 +1696,7 @@ function movePlayer(dx, dy) {
           state.dashReady = false;
           state.disengageReady = false;
           render();
-          return;
+          return false;
         }
       }
     }
@@ -1758,7 +1812,7 @@ function triggerHazard(x, y) {
   hazard.triggered = true;
   hazard.revealed = true;
   const ability = hazard.ability === "Constitution" ? "con" : "dex";
-  const modifier = savingThrowBonus(ability);
+  const modifier = savingThrowBonus(ability) + (equippedArmorTrait() === "sure-footed" ? 3 : 0);
   const check = randomInt(20) + modifier;
   if (check >= hazard.dc) {
     addLog(`You avoid ${hazard.name} with a ${hazard.ability} save (${check} vs. ${hazard.dc}).`);
@@ -1791,6 +1845,9 @@ function attackEnemy(enemy, { ranged = false, disadvantage = false } = {}) {
   const flanker = ranged ? null : flankingCompanion(enemy);
   const attackRoll = rollD20({ advantage: Boolean(flanker), disadvantage });
   const { die, rolls } = attackRoll;
+  const studied = bestiaryBonus(enemy);
+  stats.attackBonus += studied.attack;
+  stats.damageBonus += studied.damage;
   const total = die + stats.attackBonus;
   const attackKind = ranged ? "ranged attack" : "attack";
   const bonusSign = stats.attackBonus < 0 ? "−" : "+";
@@ -1798,7 +1855,7 @@ function attackEnemy(enemy, { ranged = false, disadvantage = false } = {}) {
     ? `(d20 ${die} ${bonusSign} ${Math.abs(stats.attackBonus)} = ${total})`
     : `(${attackRoll.mode} d20 ${rolls.join("/")} → ${die} ${bonusSign} ${Math.abs(stats.attackBonus)} = ${total}${flanker ? `; ${flanker.name} flanks` : ""})`;
   let damageDealt = 0;
-  if (die === 20) {
+  if (die >= criticalThreshold()) {
     const dice = /^(\d+)d(\d+)$/i.exec(stats.damageDice);
     const damage = Math.max(0, rollDice(`${Number(dice[1]) * 2}d${dice[2]}`).total + stats.damageBonus);
     enemy.hp = Math.max(0, enemy.hp - damage);
@@ -1813,10 +1870,11 @@ function attackEnemy(enemy, { ranged = false, disadvantage = false } = {}) {
     damageDealt = Math.min(enemy.hp + damage, damage);
     addLog(`Your ${attackKind} hits ${enemy.name} for ${damage} damage ${rollNote}.`);
   }
+  afterPlayerHit(enemy, damageDealt);
   if (enemy.hp <= 0) {
     resolveEnemyDefeat(enemy);
   } else if (damageDealt > 0) {
-    showCombatFeedback(die === 20 ? "critical" : "hit", `−${damageDealt} HP`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
+    showCombatFeedback(die >= criticalThreshold() ? "critical" : "hit", `−${damageDealt} HP`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
   }
   finishPlayerTurn();
 }
@@ -1825,6 +1883,7 @@ function resolveEnemyDefeat(enemy) {
   if (!enemy?.alive || enemy.hp > 0) return;
   enemy.alive = false;
   completeOptionalQuest(enemy);
+  onCreatureDefeated(enemy);
   dropEnemyTreasure(enemy);
   showCombatFeedback("defeat", `${enemy.name} defeated`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
   addExperience(enemy.xp);
@@ -1899,7 +1958,8 @@ function castSpell(spellId, chosenTarget = null) {
   const ability = spellcastingAbility(classId);
   const attackBonus = abilityModifier(state.run.character.scores[ability]) +
     2 + Math.floor(Math.max(0, state.run.level - 1) / 4) +
-    (BACKGROUNDS[state.run.character.background]?.spellAttackBonus || 0);
+    (BACKGROUNDS[state.run.character.background]?.spellAttackBonus || 0) +
+    heroStatModifiers().attack + bestiaryBonus(target).attack;
   const attackRoll = rollD20({ disadvantage: enemiesAdjacent().length > 0 });
   const die = attackRoll.die;
   const total = die + attackBonus;
@@ -2014,7 +2074,7 @@ function skillBonus(skill) {
   const proficiency = proficient ? 2 + Math.floor(Math.max(0, state.run.level - 1) / 4) : 0;
   const backgroundBonus = backgroundSkills.includes(skill) ? BACKGROUNDS[character.background]?.skillBonus || 0 : 0;
   return stats.modifiers[ability] + proficiency + backgroundBonus +
-    Number(hasBalancedNutrition(state.run.needs)) + inventorySkillBonus(skill);
+    Number(hasBalancedNutrition(state.run.needs)) + inventorySkillBonus(skill) + buffSkillBonus(skill);
 }
 
 function savingThrowBonus(ability) {
@@ -2022,7 +2082,7 @@ function savingThrowBonus(ability) {
   const characterClass = CLASSES[state.run.character?.class];
   const proficient = characterClass?.saves.includes(ability);
   const proficiency = proficient ? 2 + Math.floor(Math.max(0, state.run.level - 1) / 4) : 0;
-  return stats.modifiers[ability] + proficiency;
+  return stats.modifiers[ability] + proficiency + progressionSaveBonus();
 }
 
 function searchArea() {
@@ -2091,6 +2151,10 @@ function enemiesTakeTurn() {
     const distance = distanceInSquares(enemy, state.run.player);
     if (distance <= 7 || enemy.roomIndex === state.run.currentRoom) enemy.alerted = true;
     if (!enemy.alerted) continue;
+    if (enemySkipsTurn(enemy)) {
+      addLog(`${enemy.name} reels and loses its turn.`);
+      continue;
+    }
     if (distance === 1) {
       enemyAttack(enemy);
       continue;
@@ -2142,6 +2206,7 @@ function enemyAttack(enemy, opportunity = false) {
   const targets = partyMembers().filter((member) => member.hero ? state.run.hp > 0 : member.hp > 0);
   const target = targets[randomInt(targets.length) - 1];
   if (!target) return;
+  if (target.hero) Object.assign(target, { x: state.run.player.x, y: state.run.player.y });
   showStrikeEffect("enemy", enemy.x, enemy.y, target.x, target.y, {
     enemyId: enemy.id,
     companionId: target.hero ? "" : target.id
@@ -2158,6 +2223,7 @@ function enemyAttack(enemy, opportunity = false) {
       state.run.hp = Math.max(0, state.run.hp - damage);
       showCombatFeedback("player-hit", `−${damage} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
       checkDefeat();
+      maybeInflictCondition(enemy);
     } else {
       target.hp = Math.max(0, target.hp - damage);
       if (target.hp === 0) addLog(`${target.name} is knocked out! They need rest to recover.`);
@@ -2173,12 +2239,14 @@ function enemyAttack(enemy, opportunity = false) {
 }
 
 function usePotion() {
-  if (inventoryQuantity("healing-potion") < 1 || state.run.hp >= state.run.maxHp || state.run.lost || state.run.won) return;
+  const ailing = progress().conditions.length > 0;
+  if (inventoryQuantity("healing-potion") < 1 || (state.run.hp >= state.run.maxHp && !ailing) || state.run.lost || state.run.won) return;
   const healing = rollDice("2d4+2").total;
   const restored = Math.min(healing, state.run.maxHp - state.run.hp);
   state.run.hp += restored;
   removeInventoryItem("healing-potion");
-  addLog(`You drink a potion of healing and recover ${healing} hit points.`);
+  addLog(`You use your medicine and recover ${restored} hit point${restored === 1 ? "" : "s"}${ailing ? ", and your ailments ease" : ""}.`);
+  clearConditions();
   showCombatFeedback("heal", `+${restored} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
   finishPlayerTurn();
 }
@@ -2192,12 +2260,26 @@ function useInventoryItem(itemId) {
   if (FOOD_ITEMS[itemId]) {
     if (!removeInventoryItem(itemId)) return;
     applyMeal(state.run.needs, itemId);
+    if (FOOD_ITEMS[itemId].buff) grantBuff(FOOD_ITEMS[itemId].buff);
     addLog(`You eat ${FOOD_ITEMS[itemId].name}. Food rises by ${FOOD_ITEMS[itemId].food}; its nutrition supports ${Object.entries(FOOD_ITEMS[itemId].nutrients)
       .filter(([, amount]) => amount >= 30).map(([nutrient]) => NUTRIENT_NAMES[nutrient].toLowerCase()).join(" and ") || "your diet"}.`);
   } else if (itemId === "clean-water") {
     if (!removeInventoryItem(itemId)) return;
     drinkWater(state.run.needs);
     addLog("You drink clean water. Hydration rises by 70.");
+  } else if (itemId === "cacao-drink") {
+    if (!removeInventoryItem(itemId)) return;
+    state.run.needs.water = Math.min(100, state.run.needs.water + 40);
+    state.run.needs.waterZeroHours = 0;
+    state.run.needs.food = Math.min(100, state.run.needs.food + 15);
+    addLog("You drink frothed cacao. Water rises by 40 and food by 15.");
+  } else if (itemId === "ixpatli") {
+    if (!progress().conditions.length) {
+      showToast("You have no poison, bleeding, or weakness to treat.");
+      return;
+    }
+    if (!removeInventoryItem(itemId)) return;
+    clearConditions("You press an ixpatli poultice to the wound. Your ailments ease.");
   } else if (itemId === "torch") {
     if (state.run.location !== "dungeon") {
       showToast("Light a torch after entering the tomb.");
@@ -2499,6 +2581,10 @@ function moveTownPlayer(dx, dy) {
     talkToTownNpc(npc.id);
     return;
   }
+  if (TOWN_MAP[y]?.[x] === "H") {
+    openHouse();
+    return;
+  }
   if (!townCanOccupy(x, y)) {
     showToast("The buildings and town wall block that way.");
     return;
@@ -2524,7 +2610,7 @@ function talkToTownNpc(id) {
   }
   const conversations = {
     "gear-mender": {
-      copy: "Mahuiz has two unusual services: a once-hourly rewarded blessing for your equipped weapon and armor, and a private collection of extravagant regalia. His helmets and clothing are purely cosmetic.",
+      copy: "Mahuiz deals in things that shouldn't be here: Spanish steel from the sea giants' floating houses, samurai arms carried across the western sea, and extravagant regalia. He shows his finest pieces only to delvers who have gone deep. He also offers a once-hourly rewarded blessing for your equipped weapon and armor.",
       action: "Ad upgrade · Bless equipped gear",
       callback: claimTownGearReward
     },
@@ -2545,9 +2631,19 @@ function talkToTownNpc(id) {
       }
     },
     "temple-keeper": {
-      copy: `${TOMB_HISTORY} Xochi watches the jungle path. “When you are ready, follow the road south. The broken seal is the way into the tomb. The Empire's ban remains, but the choice to descend is yours.”`,
-      action: "Thank Xochi",
-      callback: () => elements["town-dialog"].close()
+      copy: `${TOMB_HISTORY} Xochi watches the jungle path. “When you are ready, follow the road south. The broken seal is the way into the tomb. The Empire's ban remains, but the choice to descend is yours.” She keeps the bounty board: finished bounties are paid when you return, and new work is posted as old work is done.`,
+      action: "Check the bounty board",
+      callback: () => {
+        elements["town-dialog"].close();
+        claimReadyBounties();
+        render();
+        if (state.utilityDrawer !== "journal") toggleUtilityDrawer("journal");
+      }
+    },
+    "master-builder": {
+      copy: `Tlacotl unrolls a bark-paper plan of Chiltomatlan. “Tomb gold built nothing here yet. Fund a project and the whole town grows, and so does every delve you make.” Built so far: ${PROJECT_IDS.filter((projectId) => projectLevel(projectId)).map((projectId) => t(PROGRESSION.projects[projectId].name)).join(", ") || "nothing yet"}.`,
+      action: "Plan town projects",
+      callback: openProjectsDialog
     },
     "patolli-player": {
       copy: "Ixchel keeps a well-used Patolli board in the plaza. Six carved pieces wait for each player, and every piece carries its own agreed wager. No gold changes hands until a match is settled.",
@@ -2576,7 +2672,12 @@ function talkToTownNpc(id) {
     !state.run.factions.milestones.includes("greenstone-echo-silenced")) {
     conversation.copy += " Xochi will consider you for the Wardens after you return with proof that you reached the tomb.";
   }
-  elements["town-dialog-heading"].textContent = npc.name;
+  const [npcName, ...npcRole] = t(npc.name).split(", ");
+  elements["town-dialog-heading"].textContent = npcName;
+  elements["town-dialog-role"].textContent = npcRole.join(", ") || "Chiltomatlan · a conversation";
+  elements["town-dialog-portrait"].src = `./resources/tokens/${id === "patolli-player" ? "patolli-board" : id}.png?v=${SPRITE_RESOURCE_VERSION}`;
+  elements["town-dialog"].dataset.npc = id;
+  renderPurses();
   let conversationCopy = conversation.copy;
   const rewardStatus = id === "gear-mender" ? gearRewardStatus() : null;
   if (rewardStatus) {
@@ -2603,7 +2704,8 @@ function talkToTownNpc(id) {
   elements["town-dialog-action"].onclick = conversation.callback;
   const cosmeticShopButton = elements["town-dialog-shop"];
   cosmeticShopButton.classList.toggle("hidden", id !== "gear-mender");
-  cosmeticShopButton.onclick = id === "gear-mender" ? openCosmeticShop : null;
+  cosmeticShopButton.textContent = "Browse Mahuiz's wares";
+  cosmeticShopButton.onclick = id === "gear-mender" ? () => openShop("mahuiz") : null;
   elements["town-dialog-action"].disabled = Boolean(rewardStatus &&
     (!rewardStatus.targets.length || rewardStatus.cooldownRemaining > 0 || !rewardStatus.adAvailable || rewardStatus.storageError));
   if (rewardStatus && !rewardStatus.adAvailable) {
@@ -2640,6 +2742,8 @@ function openCosmeticShop() {
     showToast("Walk beside Mahuiz in Chiltomatlan to browse his curiosities.");
     return;
   }
+  openShop("mahuiz", "regalia");
+  return;
   elements["town-dialog"].close();
   elements["cosmetic-shop-message"].textContent = "";
   renderCosmeticShop();
@@ -2884,6 +2988,9 @@ function contextualInteraction() {
     if (TOWN_MAP[position.y]?.[position.x] === "D") {
       return { label: "Enter the tomb", action: enterDungeon };
     }
+    if (besideHouse(position)) {
+      return { label: houseState().owned ? "Go home" : "House for sale", action: openHouse };
+    }
     return null;
   }
   if (state.run.location !== "dungeon") return null;
@@ -2899,9 +3006,10 @@ function contextualInteraction() {
     };
   }
   const stair = dungeonSignAt(state.run.player.x, state.run.player.y);
-  if (stair && ["stairs-up", "stairs-down", "exit"].includes(stair.type)) {
-    const label = stair.type === "stairs-down" ? `Descend · floor ${stair.targetFloor}`
-      : stair.type === "stairs-up" ? `Ascend · floor ${stair.targetFloor}` : "Leave the conquered tomb";
+  if (stair && ["stairs-up", "stairs-down", "exit", "lift"].includes(stair.type)) {
+    const label = stair.type === "lift" ? "Ride the lift to Chiltomatlan" : stair.role === "entrance" ? "Return to Chiltomatlan"
+      : stair.type === "stairs-down" ? `Descend · floor ${stair.targetFloor}`
+        : stair.type === "stairs-up" ? `Ascend · floor ${stair.targetFloor}` : "Leave the conquered tomb";
     return { label, action: () => traverseDungeonStair(stair) };
   }
   if (isAtDungeonEntrance()) {
@@ -2944,12 +3052,6 @@ function contextualInteraction() {
     x: targetRoom.anchorX ?? targetRoom.mapX + Math.floor(targetRoom.mapW / 2),
     y: targetRoom.anchorY ?? targetRoom.mapY + Math.floor(targetRoom.mapH / 2)
   };
-  if (targetPosition && distanceInSquares(targetPosition, state.run.player) === 1) {
-    return {
-      label: targetRoom.type === "exit" ? "Approach the exit" : "Return to entrance",
-      action: () => showToast("Move onto the stair or exit tile to use it.")
-    };
-  }
   if (doorways.length) {
     return {
       label: doorways.length > 1 ? `Doorway · choose (${doorways.length})`
@@ -2960,6 +3062,12 @@ function contextualInteraction() {
         label: `${state.run.openDoors.includes(door.index) ? "Close" : "Open"} doorway · ${door.x + 1}, ${door.y + 1}`,
         action: () => interactWithDoor(door)
       })))
+    };
+  }
+  if (targetPosition && distanceInSquares(targetPosition, state.run.player) === 1) {
+    return {
+      label: targetRoom.type === "exit" ? "Approach the exit" : "Return to entrance",
+      action: () => showToast("Move onto the stair or exit tile to use it.")
     };
   }
   return null;
@@ -2974,6 +3082,18 @@ function interact() {
   showToast(state.run?.location === "city"
     ? "Nothing nearby to interact with. Stand on the well to draw water."
     : "Nothing nearby to interact with. Move to a creature, treasure, revealed trap, or doorway.");
+}
+
+function townBuildingBounds(code) {
+  const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  TOWN_MAP.forEach((row, y) => [...row].forEach((cell, x) => {
+    if (cell !== code) return;
+    box.minX = Math.min(box.minX, x);
+    box.minY = Math.min(box.minY, y);
+    box.maxX = Math.max(box.maxX, x);
+    box.maxY = Math.max(box.maxY, y);
+  }));
+  return box;
 }
 
 function renderTownMap() {
@@ -3003,12 +3123,33 @@ function renderTownMap() {
       const npc = townNpcAt(x, y);
       const tile = document.createElement("button");
       tile.type = "button";
-      tile.className = `town-tile ${code === "#" ? "town-wall" : code === "I" ? "town-inn" : code === "M" ? "town-market" : code === "D" ? "town-gate" : code === "W" ? "town-well" : "town-street"}`;
+      tile.className = `town-tile ${code === "#" ? "town-wall" : code === "I" ? "town-inn" : code === "M" ? "town-market" : code === "H" ? "town-house" : code === "D" ? "town-gate" : code === "W" ? "town-well" : "town-street"}`;
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
+      if (code === "H") {
+        const house = houseState();
+        tile.style.backgroundImage = `url("${houseArtUrl(house.owned ? house.style : "calli")}")`;
+        tile.classList.toggle("is-for-sale", !house.owned);
+        const box = townBuildingBounds("H");
+        if (!house.owned && x === box.maxX && y === box.minY) {
+          const sign = document.createElement("span");
+          sign.className = "town-house-sign";
+          sign.textContent = formatCurrency(HOUSE_PRICE);
+          tile.append(sign);
+        }
+      }
+      if (code === "I" || code === "M" || code === "H") {
+        // Inn and market are each one painting spread across their whole footprint.
+        const box = townBuildingBounds(code);
+        const width = box.maxX - box.minX + 1;
+        const height = box.maxY - box.minY + 1;
+        tile.style.backgroundSize = `${width * 100}% ${height * 100}%`;
+        tile.style.backgroundPosition = `${width > 1 ? ((x - box.minX) / (width - 1)) * 100 : 50}% ${height > 1 ? ((y - box.minY) / (height - 1)) * 100 : 50}%`;
+      }
       const isPlayer = player.x === x && player.y === y;
       const label = npc ? `${npc.name}, speak with them` : code === "W" ? "Ceiba Well, draw clean water for the party" : code === "D" ? "Broken imperial seal, enter the tomb" :
-        code === "I" ? "Ceiba House inn" : code === "M" ? "Chiltomatlan market stalls" : code === "#" ? "Building or town wall" : "Town street";
+        code === "I" ? "Ceiba House inn" : code === "M" ? "Chiltomatlan market stalls" :
+        code === "H" ? (houseState().owned ? "Your house" : "An empty house for sale") : code === "#" ? "Building or town wall" : "Town street";
       tile.setAttribute("aria-label", isPlayer ? `${state.run.character.name}, you are here` : label);
       tile.title = label;
       if (isPlayer) {
@@ -3151,7 +3292,10 @@ function renderMap() {
           const enemy = enemiesAt.get(index);
           const enemySprite = createSprite(enemySpriteId(enemy), "tile-sprite");
           if (effect?.enemyId === enemy.id) enemySprite.classList.add(effect.kind === "heal" ? "heal-flash" : "hurt-flash");
-          addLayer(`Creature: ${enemy.name}`, enemySprite, "creature", enemy.id);
+          if (enemy.elite || enemy.guardian) {
+            tile.classList.add(enemy.guardian ? "has-guardian" : "has-elite");
+          }
+          addLayer(`${enemy.guardian ? "Guardian" : enemy.elite ? "Elite creature" : "Creature"}: ${enemy.name}`, enemySprite, "creature", enemy.id);
         }
         if (effect?.kind === "death" && effect.actor === "enemy" && !enemiesAt.has(index)) {
           const enemy = state.run.enemies.find((candidate) => candidate.id === effect.enemyId);
@@ -3225,7 +3369,7 @@ function renderMap() {
         tileLabel += ` · ${sign.name}`;
         const mark = document.createElement("span");
         mark.className = "map-sign-glyph";
-        const markerFile = sign.type === "exit" || sign.type.startsWith("stairs") ? "stairs-mark.png"
+        const markerFile = sign.type === "exit" || sign.type === "lift" || sign.type.startsWith("stairs") ? "stairs-mark.png"
           : sign.type === "portcullis" ? "portcullis-mark.png"
           : sign.type === "secret" ? "secret-mark.png"
             : sign.type === "trapped" || sign.type === "locked" ? "hazard-mark.png"
@@ -3388,6 +3532,7 @@ function renderActions() {
     "drink-water-button": "water",
     "camp-button": "kit",
     "forage-button": "chilis",
+    "cook-button": "soup",
     "interact-button": "tool",
     "spell-spark-button": "keepsake",
     "spell-shard-button": "keepsake",
@@ -3489,7 +3634,7 @@ function renderActions() {
   addButton(nearbyHazard ? "Disarm trap" : "Disarm · search first", disarmNearbyHazard, "f", true,
     ended || !nearbyHazard, elements["action-explore"], "disarm-button");
   addButton(`Medicine · ${inventoryQuantity("healing-potion")}`, usePotion, "h", true,
-    ended || inventoryQuantity("healing-potion") < 1 || state.run.hp >= state.run.maxHp,
+    ended || inventoryQuantity("healing-potion") < 1 || (state.run.hp >= state.run.maxHp && !progress().conditions.length),
     elements["action-supplies"], "drink-potion-button");
   addButton(`Drink water · ${inventoryQuantity("clean-water")}`, () => useInventoryItem("clean-water"), "w", true,
     ended || inventoryQuantity("clean-water") < 1 || state.run.needs.water >= 100,
@@ -3498,6 +3643,9 @@ function renderActions() {
     distanceInSquares(enemy, state.run.player) <= 7);
   addButton("Camp · cook, eat & sleep", campAndRest, "b", true, ended || nearbyThreat,
     elements["action-supplies"], "camp-button");
+  const dishes = availableRecipes().length;
+  addButton(`Cook a dish${dishes ? ` · ${dishes}` : ""}`, openCookMenu, "n", true,
+    ended || nearbyThreat, elements["action-supplies"], "cook-button");
   addButton("Forage · 1 hour", forageIngredients, "v", true,
     ended || getCarriedWeight() + GEAR_ITEMS["wild-ingredients"].weight > getCarryCapacity(state.run.character),
     elements["action-explore"], "forage-button");
@@ -3515,7 +3663,8 @@ function renderActions() {
   for (const [index, group] of groupedActions.entries()) {
     group.parentElement.hidden = group.childElementCount === 0;
   }
-  const needsSupplies = (state.run.hp <= state.run.maxHp / 2 && inventoryQuantity("healing-potion") > 0) ||
+  const needsSupplies = (progress().conditions.length > 0 && inventoryQuantity("healing-potion") > 0) ||
+    (state.run.hp <= state.run.maxHp / 2 && inventoryQuantity("healing-potion") > 0) ||
     state.run.needs.food < 25 || state.run.needs.water < 25;
   const contextualGroup = nearbyHazard ? "action-group-explore"
       : needsSupplies ? "action-group-supplies" : null;
@@ -3563,8 +3712,13 @@ function renderRoom() {
   const visibleEnemy = enemy && (enemy.alerted || distance <= 7);
   elements.encounter.classList.toggle("hidden", !visibleEnemy);
   if (visibleEnemy) {
-    elements["enemy-name"].textContent = t(enemy.name);
-    elements["enemy-description"].textContent = t(enemy.description || "Keep your guard up.");
+    elements["enemy-name"].textContent = enemy.title ? `${enemy.title} ${t(enemy.name.slice(enemy.title.length + 1))}` : t(enemy.name);
+    elements["enemy-rank"].textContent = enemy.greatGuardian ? "GREAT GUARDIAN" : enemy.guardian ? "GUARDIAN" : enemy.elite ? "ELITE" : t("HOSTILE");
+    elements.encounter.classList.toggle("is-elite", Boolean(enemy.elite));
+    elements.encounter.classList.toggle("is-guardian", Boolean(enemy.guardian));
+    const studied = bestiaryRank(enemy.templateId);
+    const inflicts = enemy.inflicts ? ` Can leave you ${t(PROGRESSION.conditions[enemy.inflicts.condition].name).toLowerCase()}.` : "";
+    elements["enemy-description"].textContent = `${t(enemy.description || "Keep your guard up.")}${inflicts}${studied && studied.kills >= 5 ? ` ${studied.title}: ${studied.description}` : ""}`;
     elements["enemy-health"].textContent = `${enemy.hp} / ${enemy.maxHp} HP`;
     elements["enemy-health-fill"].style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
     const flanker = flankingCompanion(enemy);
@@ -3611,12 +3765,13 @@ function renderCharacter() {
   elements["combat-player-ac"].textContent = stats.ac;
   elements["combat-player-attack"].textContent = `${stats.attackBonus >= 0 ? "+" : ""}${stats.attackBonus}`;
   elements["combat-potions"].textContent = inventoryQuantity("healing-potion");
+  renderStatusChips();
   const facing = state.run.player.facing || "south";
   elements["combat-player-portrait"].replaceChildren(createCodexCharacterSprite(character, "combatant-sprite", facing));
   elements["combat-character-name"].textContent = character.name;
   elements["character-heading"].textContent = character.name;
   const heritageName = RACES[character.race]?.heritages?.[character.heritage]?.name;
-  const genderLabel = { man: "Man", woman: "Woman", other: "Other" }[character.gender] || "Other";
+  const genderLabel = { man: "he/him", woman: "she/her", other: "they/them" }[character.gender] || "they/them";
   elements["character-subtitle"].textContent =
     `${heritageName || RACES[character.race]?.name || "Traveler"} ${CLASSES[character.class]?.name || "Adventurer"} · ${genderLabel}`;
   elements["character-portrait"].replaceChildren(createCodexCharacterSprite(character, "sidebar-sprite", facing));
@@ -3663,7 +3818,7 @@ function renderCharacter() {
   renderCharacterGuide(character, stats);
   const equipment = character.equipment || {};
   elements["character-equipment"].textContent =
-    `${WEAPONS[equipment.weapon]?.name || "Weapon"} · ${ARMORS[equipment.armor]?.name || "No armor"}${equipment.shield ? ` · ${GEAR_ITEMS.shield.name}` : ""}${equipment.cloak ? ` · ${GEAR_ITEMS["travel-cloak"].name}` : ""}`;
+    `${itemDetails(`weapon:${equipment.weapon}`)?.name || "Weapon"} · ${equipment.armor === "none" ? "No armor" : itemDetails(`armor:${equipment.armor}`)?.name || "No armor"}${equipment.shield ? ` · ${GEAR_ITEMS.shield.name}` : ""}${equipment.cloak ? ` · ${GEAR_ITEMS["travel-cloak"].name}` : ""}`;
   renderInventory();
   selectCharacterTab(state.characterTab);
 }
@@ -3921,7 +4076,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
     card.append(heading, description);
     return card;
   });
-  const pageSize = window.innerHeight <= 650 ? 1 : 2;
+  const pageSize = listPageSize("abilities");
   const pageCount = Math.max(1, Math.ceil(cards.length / pageSize));
   state.listPages.abilities = Math.max(0, Math.min(state.listPages.abilities || 0, pageCount - 1));
   elements["ability-guide-list"].replaceChildren(...cards.slice(
@@ -3997,9 +4152,9 @@ function renderPartyStatus() {
 
 function canEquipItem(item) {
   const characterClass = CLASSES[state.run.character.class];
-  if (item.slot === "weapon") return characterClass.weapons.includes(item.equipmentId);
+  if (item.slot === "weapon") return characterClass.weapons.includes(gearBase(item.equipmentId));
   if (item.slot === "armor") {
-    return characterClass.armor.includes(item.equipmentId) &&
+    return characterClass.armor.includes(gearBase(item.equipmentId)) &&
       (!item.strength || state.run.character.scores.str >= item.strength);
   }
   if (item.slot === "shield") return characterClass.shield;
@@ -4027,10 +4182,17 @@ function unequipInventoryItem(itemId) {
   render();
 }
 
+function listPageSize(kind) {
+  const height = window.innerHeight || 800;
+  if (kind === "store") return height <= 700 ? 4 : height <= 900 ? 5 : 7;
+  if (kind === "abilities") return height <= 650 ? 2 : height <= 860 ? 3 : 4;
+  return height <= 700 ? 3 : height <= 900 ? 4 : 6;
+}
+
 function renderInventoryList(listElement, inventory) {
   listElement.replaceChildren();
   const pageKey = listElement.id === "equipment-list" ? "equipment" : "inventory";
-  const pageSize = 2;
+  const pageSize = listPageSize("inventory");
   const pageCount = Math.max(1, Math.ceil(inventory.length / pageSize));
   state.listPages[pageKey] = Math.max(0, Math.min(state.listPages[pageKey], pageCount - 1));
   updateListPager(pageKey, inventory.length, pageSize);
@@ -4050,7 +4212,13 @@ function renderInventoryList(listElement, inventory) {
     icon.className = "inventory-item-icon";
     icon.alt = "";
     icon.draggable = false;
-    if (item.sprite && RARE_TREASURE_SPRITES.includes(item.sprite)) {
+    const gearKind = entry.id.startsWith("weapon:") ? "weapon" : entry.id.startsWith("armor:") ? "armor" : null;
+    const gearKey = gearKind ? entry.id.slice(gearKind.length + 1) : null;
+    row.classList.add(`rarity-${item.exotic || (gearKey && (WEAPONS[gearKey]?.exotic || ARMORS[gearKey]?.exotic)) ? "exotic" : item.tier || "common"}`);
+    if (gearKind && gearKey !== "none" && typeof codexGearIconUrl === "function") {
+      icon.src = codexGearIconUrl(gearKind, gearKey);
+      icon.classList.add("is-codex-gear");
+    } else if (item.sprite && RARE_TREASURE_SPRITES.includes(item.sprite)) {
       icon.src = `./resources/enemies/${item.sprite}.png?v=${SPRITE_RESOURCE_VERSION}`;
     } else {
       icon.src = `./resources/items/${inventoryIconFile(item)}.png?v=${SPRITE_RESOURCE_VERSION}`;
@@ -4063,8 +4231,9 @@ function renderInventoryList(listElement, inventory) {
     copy.className = "inventory-item-copy";
     const label = document.createElement("strong");
     const itemCount = entry.quantity > 1 ? ` ×${entry.quantity}` : "";
-    label.className = "inventory-item-name";
+    label.className = `inventory-item-name${item.tier ? ` tier-${item.tier}` : ""}`;
     label.textContent = `${item.name}${itemCount}`;
+    if (item.tier) row.classList.add(`tier-row-${item.tier}`);
     const itemMeta = document.createElement("span");
     itemMeta.className = "inventory-item-meta";
     const itemDetailsText = [item.category, `${formatWeight(item.weight * entry.quantity)} lb`];
@@ -4080,33 +4249,36 @@ function renderInventoryList(listElement, inventory) {
     itemMeta.textContent = itemDetailsText.join(" · ");
     const description = document.createElement("small");
     description.textContent = item.description || (item.slot
-      ? "Affects combat stats and changes your character sprite."
-      : item.category === "Treasure" || item.category === "Keepsake"
+      ? "Changes your combat stats and how your adventurer looks."
+      : item.categoryId === "Treasure" || item.categoryId === "Keepsake"
         ? "Keep as a story keepsake or sell it at the Chiltomatlan market."
         : "Trade at the Chiltomatlan market.");
     copy.append(label, itemMeta, description);
     const actions = document.createElement("span");
     actions.className = "inventory-item-actions";
-    if (["healing-potion", "torch", "healer-kit", "crowbar", "hempen-rope"].includes(entry.id) ||
+    if (["healing-potion", "torch", "healer-kit", "crowbar", "hempen-rope", "cacao-drink", "ixpatli"].includes(entry.id) ||
       FOOD_ITEMS[entry.id] || entry.id === "clean-water") {
       const use = document.createElement("button");
       use.type = "button";
       use.className = "inventory-equip";
       use.dataset.useItem = entry.id;
       use.textContent = FOOD_ITEMS[entry.id] ? "Eat"
-        : entry.id === "clean-water" ? "Drink"
+        : entry.id === "clean-water" || entry.id === "cacao-drink" ? "Drink"
+        : entry.id === "ixpatli" ? "Apply"
         : entry.id === "healing-potion" ? "Use medicine"
         : entry.id === "crowbar" ? "Pry open"
           : entry.id === "hempen-rope" ? "Set rope" : item.slot ? "Use" : "Use item";
       use.disabled = entry.id === "healing-potion"
-        ? state.run.hp >= state.run.maxHp || state.run.lost || state.run.won
+        ? (state.run.hp >= state.run.maxHp && !progress().conditions.length) || state.run.lost || state.run.won
         : entry.id === "torch"
           ? state.run.location !== "dungeon" || state.run.lost || state.run.won
           : FOOD_ITEMS[entry.id]
             ? state.run.needs.food >= 100 && Object.keys(NUTRIENT_NAMES).every((nutrient) =>
               state.run.needs.nutrition[nutrient] + FOOD_ITEMS[entry.id].nutrients[nutrient] >= 100)
-            : entry.id === "clean-water"
+            : entry.id === "clean-water" || entry.id === "cacao-drink"
               ? state.run.needs.water >= 100
+            : entry.id === "ixpatli"
+              ? !progress().conditions.length
             : entry.id === "healer-kit"
               ? (entry.uses ?? entry.quantity * HEALER_KIT_USES) < 1 || !state.run.party.some((companion) => companion.hp <= 0)
               : state.run.location !== "dungeon" || state.run.lost || state.run.won ||
@@ -4204,9 +4376,9 @@ function renderInventory() {
   const pack = inventory.filter((entry) => !itemDetails(entry.id).slot);
   const filtered = pack.filter((entry) => {
     const item = itemDetails(entry.id);
-    if (state.inventoryFilter === "supplies") return ["Food", "Drink", "Potion", "Supply"].includes(item.category);
-    if (state.inventoryFilter === "gear") return ["Kit", "Tool", "Clothing"].includes(item.category);
-    if (state.inventoryFilter === "valuables") return ["Treasure", "Keepsake"].includes(item.category);
+    if (state.inventoryFilter === "supplies") return ["Food", "Drink", "Potion", "Supply"].includes(item.categoryId);
+    if (state.inventoryFilter === "gear") return ["Kit", "Tool", "Clothing"].includes(item.categoryId);
+    if (state.inventoryFilter === "valuables") return ["Treasure", "Keepsake"].includes(item.categoryId);
     return true;
   });
   for (const button of elements["inventory-filters"].querySelectorAll("[data-inventory-filter]")) {
@@ -4230,7 +4402,7 @@ function inventoryIconFile(item) {
     Treasure: "treasure",
     Keepsake: "keepsake",
     Drink: "water"
-  })[item.category] || "supply";
+  })[item.categoryId] || "supply";
 }
 
 function selectCharacterTab(tab) {
@@ -4252,14 +4424,18 @@ const SHOP_CATEGORY_NAMES = {
 };
 
 function storeCategoryForItem(item) {
-  if (FOOD_ITEMS[item.id] || ["Food", "Drink"].includes(item.category) || item.id === "clean-water" ||
-    ["Supply", "Kit", "Tool"].includes(item.category)) return "supplies";
-  if (item.category === "Potion") return "consumables";
-  if (item.slot || ["Weapon", "Armor", "Clothing"].includes(item.category)) return "equipment";
+  if (FOOD_ITEMS[item.id] || ["Food", "Drink"].includes(item.categoryId) || item.id === "clean-water" ||
+    ["Supply", "Kit", "Tool"].includes(item.categoryId)) return "supplies";
+  if (item.categoryId === "Potion") return "consumables";
+  if (item.slot || ["Weapon", "Armor", "Clothing"].includes(item.categoryId)) return "equipment";
   return "miscellaneous";
 }
 
 function renderShop() {
+  renderShopScreen();
+}
+
+function renderLegacyShop() {
   const carried = getCarriedWeight();
   const capacity = getCarryCapacity(state.run.character);
   const discount = traderDiscountRate();
@@ -4272,7 +4448,7 @@ function renderShop() {
   elements["store-buy-heading"].textContent = SHOP_CATEGORY_NAMES[state.storeCategory] || SHOP_CATEGORY_NAMES.supplies;
   elements["store-buy-list"].replaceChildren();
   elements["store-sell-list"].replaceChildren();
-  for (const itemId of SHOP_STOCK) {
+  for (const itemId of shopStock()) {
     const item = itemDetails(itemId);
     if (storeCategoryForItem(item) !== state.storeCategory) continue;
     const row = document.createElement("div");
@@ -4325,8 +4501,8 @@ function renderShop() {
     row.append(details, sell);
     elements["store-sell-list"].append(row);
   }
-  renderPagedStoreList(elements["store-buy-list"], "storeBuy", 3);
-  renderPagedStoreList(elements["store-sell-list"], "storeSell", 3);
+  renderPagedStoreList(elements["store-buy-list"], "storeBuy", listPageSize("store"));
+  renderPagedStoreList(elements["store-sell-list"], "storeSell", listPageSize("store"));
 }
 
 function renderLog() {
@@ -4409,6 +4585,7 @@ function renderStartScreen() {
 
 function render() {
   if (!state.run) return;
+  renderPurses();
   document.body.classList.toggle("immersive-game", Boolean(state.gameStarted));
   document.body.classList.toggle("dungeon-game", state.gameStarted && state.run.location === "dungeon");
   const clockHour = Math.floor((state.run.gameMinutes ?? state.run.gameHours * 60) / 60) % 24;
@@ -4449,6 +4626,7 @@ function render() {
   renderCharacter();
   renderPartyStatus();
   renderFactions();
+  renderProgressJournal();
   renderLog();
   saveRun();
   if (state.run.lost && state.gameStarted) {
@@ -4530,18 +4708,20 @@ function validateSavedCharacter(character) {
   const baseValues = ABILITIES.map(([key]) => character.baseScores[key]);
   if (!character.legacy && character.scoreMethod === "point-buy" &&
     baseValues.reduce((total, score) => total + POINT_BUY_COST[score], 0) !== 27) return false;
-  const allowedHair = ["#211a17", "#59402b", "#a87a42", "#d8c58c", "#8b8d8c"];
-  if (!SKIN_TONES.some((tone) => tone.value === character.appearance.skin) ||
-    !allowedHair.includes(character.appearance.hair) || !TUNIC_COLORS.includes(character.appearance.tunic) ||
-    !["short", "long", "braids", "crest", "topknot", "shaved-sides"].includes(character.appearance.hairStyle) ||
+  const look = character.appearance;
+  if (!raceSkinTones(character.race).some((tone) => tone.value === look.skin) ||
+    !raceHairColors(character.race).some((color) => color.value === look.hair) || !TUNIC_COLORS.includes(look.tunic) ||
+    !HAIR_STYLES.includes(look.hairStyle) ||
+    !BODY_TYPES.includes(look.body) || !BEARD_STYLES.includes(look.beard) || !JEWELRY_STYLES.includes(look.jewelry) ||
+    !(CREST_STYLES[character.race] || ["none"]).includes(look.crest) ||
     !GARMENT_STYLES.includes(character.appearance.garment) ||
     !CLOTHING_ADORNMENTS.includes(character.appearance.adornment) ||
     !HEADWEAR_STYLES.includes(character.appearance.headwear) ||
     !FACE_PAINT_STYLES.includes(character.appearance.facePaint)) return false;
   const equipment = character.equipment;
   if (!WEAPONS[equipment.weapon] || !ARMORS[equipment.armor] ||
-    !CLASSES[character.class].weapons.includes(equipment.weapon) ||
-    !CLASSES[character.class].armor.includes(equipment.armor) ||
+    !CLASSES[character.class].weapons.includes(gearBase(equipment.weapon)) ||
+    !CLASSES[character.class].armor.includes(gearBase(equipment.armor)) ||
     typeof equipment.shield !== "boolean" || (equipment.shield && !CLASSES[character.class].shield) ||
     typeof equipment.cloak !== "boolean") return false;
   if (ARMORS[equipment.armor].strength && character.scores.str < ARMORS[equipment.armor].strength) return false;
@@ -4577,8 +4757,8 @@ function validateSavedCharacter(character) {
 }
 
 function validPatolliGame(game) {
-  if (!game || game.trackVersion !== 3 || !Number.isInteger(game.stakePerPiece) ||
-    game.stakePerPiece < 1 || game.stakePerPiece > 10000 ||
+  if (!game || game.trackVersion !== PATOLLI_TRACK_VERSION || !Number.isInteger(game.stakePerPiece) ||
+    game.stakePerPiece < 1 || game.stakePerPiece > MAX_GOLD ||
     !game.pieces || !["player", "opponent"].every((side) => Array.isArray(game.pieces[side]) &&
       game.pieces[side].length === 6 && game.pieces[side].every((piece, id) =>
         piece?.id === id && Number.isInteger(piece.progress) && piece.progress >= -1 &&
@@ -4764,6 +4944,12 @@ function parseSavedRun(saved, pack) {
   if (!Array.isArray(saved.openDoors) || saved.openDoors.length > MAP_TILE_SIZE * MAP_TILE_SIZE ||
     saved.openDoors.some((index) => !Number.isInteger(index))) return null;
   if (saved.townPosition === undefined) saved.townPosition = { x: 5, y: 4 };
+  if (Number.isInteger(saved.townPosition?.x) && Number.isInteger(saved.townPosition?.y) &&
+    townNpcAt(saved.townPosition.x, saved.townPosition.y)) saved.townPosition = { x: 5, y: 4 };
+  saved.progress = normalizeProgress(saved.progress, pack);
+  saved.house = normalizeHouse(saved.house);
+  if (Number.isInteger(saved.townPosition?.x) && Number.isInteger(saved.townPosition?.y) &&
+    TOWN_MAP[saved.townPosition.y]?.[saved.townPosition.x] === "H") saved.townPosition = { x: 5, y: 4 };
   if (!Number.isInteger(saved.townPosition?.x) || !Number.isInteger(saved.townPosition?.y) ||
     !townCanOccupy(saved.townPosition.x, saved.townPosition.y)) return null;
   if (saved.hasEnteredDungeon === undefined) saved.hasEnteredDungeon = true;
@@ -4797,7 +4983,7 @@ function parseSavedRun(saved, pack) {
   if (!saved.dungeonFloors || typeof saved.dungeonFloors !== "object" ||
     Array.isArray(saved.dungeonFloors) || Object.keys(saved.dungeonFloors).length > DUNGEON_FLOOR_COUNT - 1) return null;
   if (saved.floorStairs === undefined) saved.floorStairs = [];
-  if (!Array.isArray(saved.floorStairs) || saved.floorStairs.length > 6) return null;
+  if (!Array.isArray(saved.floorStairs) || saved.floorStairs.length > 7) return null;
   if (saved.gameHours === undefined) saved.gameHours = 8;
   if (!Number.isInteger(saved.gameHours) || saved.gameHours < 0 || saved.gameHours > 1_000_000) return null;
   if (saved.gameMinutes === undefined) saved.gameMinutes = saved.gameHours * 60;
@@ -4811,7 +4997,7 @@ function parseSavedRun(saved, pack) {
   if (saved.patolliGame === undefined) saved.patolliGame = null;
   if (saved.patolliGame !== null && (!saved.patolliGame || typeof saved.patolliGame !== "object" ||
     Array.isArray(saved.patolliGame))) return null;
-  if (saved.patolliGame && saved.patolliGame.trackVersion !== 3) {
+  if (saved.patolliGame && saved.patolliGame.trackVersion !== PATOLLI_TRACK_VERSION) {
     const previousGame = saved.patolliGame;
     if (previousGame.status === "active" && Number.isInteger(previousGame.stakePerPiece) &&
       previousGame.stakePerPiece > 0 && Array.isArray(previousGame.stakes) &&
@@ -4821,17 +5007,17 @@ function parseSavedRun(saved, pack) {
         if (stake.status === "active") return total + stake.playerStake;
         return total + (stake.winner === "player" ? stake.playerStake + stake.opponentStake : 0);
       }, 0) + (Number.isInteger(previousGame.playerPotContribution) ? previousGame.playerPotContribution : 0);
-      saved.gold = Math.min(10000, saved.gold + refundable);
+      saved.gold = Math.min(MAX_GOLD, saved.gold + refundable);
     } else if (previousGame.status === "active" && Number.isInteger(previousGame.wager) &&
       previousGame.wager > 0 && Number.isFinite(saved.gold)) {
-      saved.gold = Math.min(10000, saved.gold + previousGame.wager);
+      saved.gold = Math.min(MAX_GOLD, saved.gold + previousGame.wager);
     }
     saved.patolliGame = null;
   }
   const patolli = saved.patolliGame;
   if (patolli && !patolli.captures) patolli.captures = { player: 0, opponent: 0 };
   if (patolli !== null && (!validPatolliGame(patolli) ||
-    (patolli.status === "active" && saved.gold + patolli.stakePerPiece * 12 > 10000))) return null;
+    (patolli.status === "active" && saved.gold + patolli.stakePerPiece * 12 > MAX_GOLD))) return null;
   if (saved.factions === undefined) saved.factions = createFactionState();
   const factionState = saved.factions;
   const factionIds = Object.keys(FACTIONS);
@@ -4933,10 +5119,10 @@ function parseSavedRun(saved, pack) {
     !saved.terrain.every((tile) => ["stone", "wall", "floor", "corridor", "door"].includes(tile)) ||
     !Array.isArray(saved.seen) || saved.seen.length !== MAP_TILE_SIZE * MAP_TILE_SIZE ||
     !saved.seen.every((value) => typeof value === "boolean") ||
-    !Array.isArray(saved.enemies) || saved.enemies.length > 40 ||
-    !Array.isArray(saved.treasures) || saved.treasures.length > 40 ||
+    !Array.isArray(saved.enemies) || saved.enemies.length > 120 ||
+    !Array.isArray(saved.treasures) || saved.treasures.length > 160 ||
     !Array.isArray(saved.wells) || saved.wells.length > 2 ||
-    !Array.isArray(saved.hazards) || saved.hazards.length > 40 ||
+    !Array.isArray(saved.hazards) || saved.hazards.length > 120 ||
     !Number.isInteger(saved.steps) || saved.steps < 0) return null;
   if (saved.player.x < 0 || saved.player.x >= MAP_TILE_SIZE || saved.player.y < 0 || saved.player.y >= MAP_TILE_SIZE ||
     !["floor", "corridor", "door"].includes(saved.terrain[tileIndex(saved.player.x, saved.player.y)])) return null;
@@ -4946,8 +5132,9 @@ function parseSavedRun(saved, pack) {
     !Number.isInteger(saved.maxHp) || saved.maxHp < 1 || saved.maxHp > 10000 ||
     !Number.isInteger(saved.xp) || saved.xp < 0 || saved.xp > 1_000_000 ||
     !Number.isInteger(saved.level) || saved.level < 1 || saved.level > MAX_LEVEL) return null;
-  if (!Number.isFinite(saved.gold) || saved.gold < 0 || saved.gold > 10000 ||
-    saved.unsecuredLoot.gold > saved.gold) return null;
+  if (!Number.isFinite(saved.gold) || saved.gold < 0 || saved.gold > MAX_GOLD) return null;
+  saved.gold = roundGold(saved.gold);
+  saved.unsecuredLoot.gold = Math.min(roundGold(saved.unsecuredLoot.gold), saved.gold);
   if (saved.maxHp < 1 || saved.hp > saved.maxHp || rooms.some((room) => room.links.some((link) => !Number.isInteger(link) || link < 0 || link >= rooms.length))) return null;
   if (!saved.character) saved.character = makeLegacyCharacter();
   if (!saved.character.equipmentEnhancements) {
@@ -4963,12 +5150,13 @@ function parseSavedRun(saved, pack) {
     if (saved.character.appearance.adornment === undefined) saved.character.appearance.adornment = "none";
     if (saved.character.appearance.headwear === undefined) saved.character.appearance.headwear = "none";
     if (saved.character.appearance.facePaint === undefined) saved.character.appearance.facePaint = "none";
+    normalizeAppearance(saved.character.appearance, saved.character.race);
   }
   const savedClass = CLASSES[saved.character.class];
-  if (savedClass && saved.character.equipment && !savedClass.weapons.includes(saved.character.equipment.weapon)) {
+  if (savedClass && saved.character.equipment && !savedClass.weapons.includes(gearBase(saved.character.equipment.weapon))) {
     saved.character.equipment.weapon = savedClass.weapon;
   }
-  if (savedClass && saved.character.equipment && !savedClass.armor.includes(saved.character.equipment.armor)) {
+  if (savedClass && saved.character.equipment && !savedClass.armor.includes(gearBase(saved.character.equipment.armor))) {
     saved.character.equipment.armor = DEFAULT_CLASS_ARMOR[saved.character.class] || "none";
   }
   if (saved.spellSlots === undefined) saved.spellSlots = maxSpellSlots(saved.character.class, saved.level);
@@ -5078,7 +5266,7 @@ function parseSavedRun(saved, pack) {
     if (!treasure || typeof treasure.id !== "string" || treasureIds.has(treasure.id) ||
       !Number.isInteger(treasure.x) || !Number.isInteger(treasure.y) ||
       treasure.x < 0 || treasure.x >= MAP_TILE_SIZE || treasure.y < 0 || treasure.y >= MAP_TILE_SIZE ||
-      !Number.isInteger(treasure.gold) || treasure.gold < 0 || treasure.gold > 10000 ||
+      !Number.isFinite(treasure.gold) || treasure.gold < 0 || treasure.gold > MAX_GOLD ||
       (treasure.mainGoal !== undefined && typeof treasure.mainGoal !== "boolean") ||
       !Array.isArray(treasure.items) || treasure.items.length > 20 ||
       treasure.items.some((item) => !item || typeof item.id !== "string" || !itemDetails(item.id) ||
@@ -5112,7 +5300,8 @@ function parseSavedRun(saved, pack) {
     for (const enemy of saved.enemies) {
       const currentEnemy = starterPack.enemies.find((template) => template.id === enemy.templateId);
       if (!currentEnemy) continue;
-      enemy.name = currentEnemy.name;
+      enemy.name = typeof enemy.title === "string" && enemy.title.length <= 30
+        ? `${enemy.title} ${currentEnemy.name}` : currentEnemy.name;
       enemy.description = currentEnemy.description;
     }
   }
@@ -5134,11 +5323,14 @@ function parseSavedRun(saved, pack) {
         : -1;
       if (!stair || typeof stair.id !== "string" || stair.id.length > 40 ||
         stairIds.has(stair.id) || stairTiles.has(tile) ||
-        !["stairs-up", "stairs-down", "exit"].includes(stair.type) ||
+        !["stairs-up", "stairs-down", "exit", "lift"].includes(stair.type) ||
         typeof stair.name !== "string" || stair.name.length < 1 || stair.name.length > 50 ||
         tile < 0 || stair.x >= MAP_TILE_SIZE || stair.y >= MAP_TILE_SIZE ||
         saved.terrain[tile] !== "floor") return null;
-      if (stair.type === "exit") {
+      if (stair.type === "lift") {
+        if (!LIFT_FLOORS.includes(saved.dungeonFloor) || stair.role !== "entrance" || stair.id !== "warden-lift" ||
+          stair.targetFloor !== undefined) return null;
+      } else if (stair.type === "exit") {
         if (saved.dungeonFloor !== DUNGEON_FLOOR_COUNT || stair.role !== "exit" || stair.targetFloor !== undefined) return null;
       } else if (stair.role === "entrance") {
         if (saved.dungeonFloor !== 1 || stair.type !== "stairs-up" || stair.targetFloor !== undefined) return null;
@@ -5182,6 +5374,8 @@ function parseSavedRun(saved, pack) {
     }));
     if (!parseSavedRun(candidate, pack)) return null;
   }
+  saved.progress.deepestFloor = Math.max(saved.progress.deepestFloor, saved.dungeonFloor,
+    ...Object.keys(saved.dungeonFloors).map(Number).filter(Number.isInteger));
   return saved;
 }
 
@@ -5224,6 +5418,9 @@ function loadState() {
 }
 
 function connectEvents() {
+  connectProgressionEvents();
+  connectShopEvents();
+  connectHouseEvents();
   elements["message-box"].addEventListener("click", (event) => {
     event.stopPropagation();
     advanceRpgMessage();
@@ -5329,7 +5526,7 @@ function connectEvents() {
     if (event.target === elements["settings-dialog"]) elements["settings-dialog"].close();
   });
   elements["language-select"].addEventListener("change", () => {
-    const language = elements["language-select"].value === "es" ? "es" : "en";
+    const language = ["es", "nah"].includes(elements["language-select"].value) ? elements["language-select"].value : "en";
     try {
       localStorage.setItem(STORE_KEYS.language, language);
     } catch (error) {
@@ -5363,7 +5560,11 @@ function connectEvents() {
   elements["character-next"].addEventListener("click", () => advanceCharacterCreation(1));
   elements["character-back"].addEventListener("click", () => advanceCharacterCreation(-1));
   elements["character-race"].addEventListener("change", () => {
+    const race = elements["character-race"].value;
+    const previous = elements["character-race"].dataset.lastRace;
     syncHeritageOptions();
+    syncAppearanceOptions(race, race === "dwarf" && previous !== "dwarf" ? { beard: "full" } :
+      previous === "dwarf" && race !== "dwarf" ? { beard: "none" } : {});
     updateCharacterPreview();
   });
   elements["character-class"].addEventListener("change", () => {
@@ -5448,6 +5649,11 @@ function connectEvents() {
       else moveTowardTownNpc(npc);
       return;
     }
+    if (TOWN_MAP[y]?.[x] === "H") {
+      if (besideHouse()) openHouse();
+      else moveTowardHouse();
+      return;
+    }
     const dx = x - state.run.townPosition.x;
     const dy = y - state.run.townPosition.y;
     if (Math.max(Math.abs(dx), Math.abs(dy)) === 1) moveTownPlayer(dx, dy);
@@ -5460,6 +5666,7 @@ function connectEvents() {
     moveTownPlayer(dx, dy);
   });
   elements["town-dialog-close"].addEventListener("click", () => elements["town-dialog"].close());
+  elements["town-dialog-x"].addEventListener("click", () => elements["town-dialog"].close());
   elements["target-choice-close"].addEventListener("click", () => elements["target-choice-dialog"].close());
   elements["target-choice-dialog"].addEventListener("click", (event) => {
     if (event.target === elements["target-choice-dialog"]) elements["target-choice-dialog"].close();
