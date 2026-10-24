@@ -14,6 +14,7 @@
 @font-face { font-family: "Alegreya Sans"; src: url("./resources/fonts/alegreya-sans-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
 @font-face { font-family: "NahuatlOne"; src: url("./resources/fonts/nahuatl-one.woff2") format("woff2"); font-weight: 400; font-display: swap; unicode-range: U+ED00-F5FF; }
 @font-face { font-family: "Unifont"; src: url("./resources/fonts/unifont-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Unifont"; src: url("./resources/fonts/unifont-cjk-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; unicode-range: U+1100-11FF, U+2E80-2FDF, U+3000-31FF, U+3400-4DBF, U+4E00-9FFF, U+AC00-D7AF, U+F900-FAFF, U+FF00-FFEF; }
 @font-face { font-family: "Alegreya SC"; src: url("./resources/fonts/alegreya-sc-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
 :root {
@@ -61,26 +62,27 @@
 }
 
 body.dark-mode {
-  --paper: #1d1612;
-  --paper-deep: #160f0c;
-  --card: #2b211b;
-  --card-2: #33281f;
-  --line: #0b0705;
-  --text: #f4e7c9;
-  --text-2: #dcc7a2;
-  --muted: #b9a27f;
-  --rule: #c45a42;
-  --red: #b94a34;
-  --red-deep: #8d3324;
-  --gold: #e6b84c;
-  --jade: #38a088;
-  --jade-deep: #2b7d6a;
-  --blue: #5a95bd;
-  --inverse-bg: #f1e2c2;
-  --inverse-text: #1d1612;
-  --shadow: 0 3px 0 #000;
-  --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.5);
-  --paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .8 0 0 0 0 .6 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* Deep jade: polished greenstone in shadow, with bone-white ink and the same mineral pigments. */
+  --paper: #0f2620;
+  --paper-deep: #0a1c17;
+  --card: #15332b;
+  --card-2: #1b3d34;
+  --line: #03100c;
+  --text: #ecf1de;
+  --text-2: #c9dcc6;
+  --muted: #95b3a3;
+  --rule: #d0674c;
+  --red: #c4553c;
+  --red-deep: #943a27;
+  --gold: #e8bd52;
+  --jade: #4fbf9f;
+  --jade-deep: #3a9c80;
+  --blue: #6aa6cf;
+  --inverse-bg: #e6eed8;
+  --inverse-text: #0f2620;
+  --shadow: 0 3px 0 #010806;
+  --shadow-soft: 0 12px 30px rgba(0, 10, 7, 0.55);
+  --paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .9 0 0 0 0 .75 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   color-scheme: dark;
 }
 
@@ -629,9 +631,9 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
 
 .touch-dpad {
   display: grid;
-  grid-template-columns: repeat(3, var(--dpad-size, 52px));
-  grid-template-rows: repeat(3, var(--dpad-size, 52px));
-  gap: 5px;
+  grid-template-columns: repeat(3, calc(var(--dpad-size, 52px) * var(--pad-scale, 1)));
+  grid-template-rows: repeat(3, calc(var(--dpad-size, 52px) * var(--pad-scale, 1)));
+  gap: calc(5px * var(--pad-scale, 1));
   align-self: end;
   justify-self: center;
 }
@@ -643,7 +645,7 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
   border-radius: 10px;
   background: var(--card);
   color: var(--text);
-  font: 800 20px/1 var(--font-ui);
+  font: 800 calc(20px * var(--pad-scale, 1))/1 var(--font-ui);
   box-shadow: 0 2px 0 var(--line);
   touch-action: none;
   user-select: none;
@@ -816,10 +818,10 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
 .dungeon-map {
   --view-size: 9;
   display: grid;
-  grid-template-columns: repeat(var(--view-size), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--view-size), minmax(0, 1fr));
-  width: 100cqmin;
-  height: 100cqmin;
+  grid-template-columns: repeat(var(--view-cols, var(--view-size)), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--view-rows, var(--view-size)), minmax(0, 1fr));
+  width: var(--map-width, 100cqmin);
+  height: var(--map-height, 100cqmin);
   border: 2px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
@@ -1752,6 +1754,7 @@ body.dark-mode .ability-score-value.score-high { color: #7fd3b9; }
 .inventory-item-name { font: 800 15.5px/1.2 var(--font-ui); }
 .inventory-item-meta { color: var(--red); font: 700 12px/1.2 var(--font-caps); letter-spacing: 0.03em; }
 .inventory-item-copy small { color: var(--text-2); font-size: 13px; line-height: 1.35; }
+.inventory-item-copy .relic-rite { display: block; margin-top: 3px; color: var(--jade, #2f7a5e); font-style: italic; }
 .inventory-item-actions { display: grid; gap: 6px; }
 .inventory-equip {
   min-height: 38px;
@@ -3517,6 +3520,31 @@ body.dark-mode .inventory-row.rarity-exotic { --rarity: #c48ae0; }
   .action-primary .button { font-size: 14px; padding: 6px 8px; }
 }
 
+/* Japanese, Korean and Chinese: Alegreya has no CJK glyphs, so name each language's own system
+   faces (Mincho/Myungjo/Song for display, Gothic/Sans for UI) before the generic fallback. The
+   Unifont choice uses the bundled CJK subset above instead. */
+html:lang(ja) body:not(.font-unifont) {
+  --font-display: "Alegreya", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", "Noto Serif CJK JP", serif;
+  --font-ui: "Alegreya Sans", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", "Noto Sans CJK JP", system-ui, sans-serif;
+  --font-caps: "Alegreya SC", "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", "Noto Serif CJK JP", serif;
+}
+html:lang(ko) body:not(.font-unifont) {
+  --font-display: "Alegreya", "AppleMyungjo", "Noto Serif KR", "Noto Serif CJK KR", "Batang", serif;
+  --font-ui: "Alegreya Sans", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Noto Sans CJK KR", system-ui, sans-serif;
+  --font-caps: "Alegreya SC", "AppleMyungjo", "Noto Serif KR", "Noto Serif CJK KR", "Batang", serif;
+}
+html:lang(zh) body:not(.font-unifont) {
+  --font-display: "Alegreya", "Songti SC", "STSong", "Noto Serif SC", "Noto Serif CJK SC", "SimSun", serif;
+  --font-ui: "Alegreya Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-caps: "Alegreya SC", "Songti SC", "STSong", "Noto Serif SC", "Noto Serif CJK SC", "SimSun", serif;
+}
+/* CJK faces have no italics; slanting them synthetically looks broken, and wide letter-spacing
+   meant for small caps pulls ideographs apart. */
+body[data-script="cjk"] { font-synthesis: weight; }
+body[data-script="cjk"] :is(em, i, cite, .eyebrow, .kicker) { font-style: normal; }
+body[data-script="cjk"] * { letter-spacing: 0 !important; }
+body[data-script="cjk"] { line-break: strict; }
+
 /* Nahuatl (Unifont): the same Nahuatl text set in the GNU Unifont pixel face. */
 body.font-unifont {
   --font-display: "Unifont", "Alegreya", Georgia, serif;
@@ -3825,3 +3853,47 @@ button.bestiary-entry:hover { background: var(--card); }
 .sound-mute-toggle { min-width: 38px; height: 38px; padding: 0 8px; font: 700 18px/1 var(--font-ui); }
 .sound-mute-toggle.is-muted { color: var(--muted); text-decoration: line-through; }
 .settings-range { width: 100%; accent-color: var(--red); }
+
+/* ---------- Settings menu (v23) ---------- */
+.settings-dialog[open] { max-height: calc(100dvh - 24px); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+.settings-body { display: grid; gap: 14px; min-height: 0; overflow-y: auto; padding: 0 4px 4px 0; overscroll-behavior: contain; }
+.settings-group { display: grid; gap: 8px; padding-top: 12px; border-top: 2px solid color-mix(in srgb, var(--line) 22%, transparent); }
+.settings-group:first-child { border-top: 0; padding-top: 0; }
+.settings-group-heading { margin: 0; font: 700 13px/1.2 var(--font-caps); letter-spacing: 0.08em; text-transform: uppercase; color: var(--rule); }
+.settings-group > label:not(.settings-toggle) { margin-top: 2px; }
+.settings-zoom { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
+.settings-zoom .quiet-button { width: 44px; height: 44px; padding: 0; font: 800 22px/1 var(--font-ui); }
+.settings-run-actions .button { width: 100%; }
+.game-settings-toggle { width: 44px; height: 44px; padding: 0; font: 400 22px/1 var(--font-ui); flex: none; }
+.game-settings-toggle span { display: block; line-height: 1; }
+@media (max-width: 699px) {
+  .topbar-actions { grid-template-areas: "portrait resources journal" "portrait resources settings"; grid-template-rows: auto auto; }
+  .game-settings-toggle { grid-area: settings; width: 44px; height: 38px; font-size: 20px; }
+  #journal-toggle { height: 38px; }
+}
+
+/* Movement pad size (Settings › Controls). Large is the default. */
+body { --pad-scale: 1.2; }
+body.pad-size-normal { --pad-scale: 1; }
+body.pad-size-xl { --pad-scale: 1.4; }
+.touch-dpad button { border-radius: calc(10px * var(--pad-scale, 1)); }
+.touch-dpad .dpad-wait { font-size: calc(11.5px * var(--pad-scale, 1)); }
+
+/* The tomb map fills its area; pinching it zooms instead of scaling the page. */
+.dungeon-map-viewport { touch-action: none; }
+
+/* Narrow phones: the bigger movement pad leaves a slimmer action column, so the
+   Inspect button and the three action groups sit in a 2 × 2 grid under the main action. */
+@media (max-width: 460px) {
+  .action-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: none; gap: 5px; }
+  .action-primary { grid-area: auto; grid-column: 1 / -1; }
+  .action-primary .button { min-height: 48px; font-size: 14.5px; padding: 6px 10px; }
+  .action-groups { display: contents; }
+  .look-toggle { grid-area: auto; order: 4; }
+  .action-group > summary, .look-toggle { flex-direction: row; min-height: 42px; gap: 4px; padding: 3px 5px; font-size: 11.5px; }
+  .action-group > summary img, .look-toggle img { width: 18px; height: 18px; }
+  .turn-status { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}
+@media (max-width: 460px) {
+  .topbar-meter-label .meter-word { display: none; }
+}

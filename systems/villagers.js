@@ -40,7 +40,7 @@ const pickLine = (lines) => lines[Math.floor(Math.random() * lines.length)];
 
 function timeOfDayWord() {
   const hour = villageHour();
-  return hour < 5 ? "night" : hour < 12 ? "morning" : hour < 18 ? "afternoon" : hour < 22 ? "evening" : "night";
+  return t(hour < 5 ? "night" : hour < 12 ? "morning" : hour < 18 ? "afternoon" : hour < 22 ? "evening" : "night");
 }
 
 function villagerTier(id) {
@@ -59,10 +59,20 @@ function villagerLines(villager, tierId) {
   return ["..."];
 }
 
+// Villager speech goes through the catalog before names and numbers are filled in, so each
+// language keeps its own word order around {name}, {gift}, {floor}, and {time}.
+function sayVillager(text) {
+  const quotes = { ja: ["「", "」"], fr: ["«\u00a0", "\u00a0»"], de: ["„", "“"] }[window.cryptsLocale?.language] || ["“", "”"];
+  return `${quotes[0]}${text}${quotes[1]}`;
+}
+
 function fillVillagerLine(text, id) {
   const record = villagerRecord(id);
-  const gift = record.lastGift ? itemDetails(record.lastGift)?.name?.toLowerCase() || "gift" : "gift";
-  return String(text)
+  const language = window.cryptsLocale?.language || "en";
+  const giftName = record.lastGift ? t(itemDetails(record.lastGift)?.name || "gift") : t("gift");
+  // English, Spanish, French, and Portuguese write a common noun lowercase mid-sentence.
+  const gift = ["en", "es", "fr", "pt"].includes(language) ? giftName.toLowerCase() : giftName;
+  return String(t(text))
     .replaceAll("{name}", state.run.character.name)
     .replaceAll("{floor}", String(progress().deepestFloor || 1))
     .replaceAll("{time}", timeOfDayWord())
@@ -143,14 +153,14 @@ function renderVillagerDialog() {
   const slot = villagerWhereabouts(id);
   const near = villagerNearby(id);
   elements["villager-portrait"].replaceChildren(villagerSprite(id, "villager-portrait-sprite"));
-  elements["villager-eyebrow"].textContent = `${villager.role} · ${villager.pronouns}`;
-  elements["villager-name"].textContent = villager.name;
+  elements["villager-eyebrow"].textContent = `${t(villager.role)} · ${t(villager.pronouns)}`;
+  elements["villager-name"].textContent = t(villager.name);
   elements["villager-doing"].textContent = slot
-    ? `${near ? "Here" : "Now"}: ${slot.doing}.`
+    ? t(near ? "Here: {0}." : "Now: {0}.", { 0: t(slot.doing) })
     : "Home for the night. Find them tomorrow.";
   elements["villager-hearts"].textContent = `${t(villagerTier(id).label)} ${heartsFor(record.d)}`;
   elements["villager-hearts"].title = `${record.d} / 100`;
-  elements["villager-speech"].textContent = view.speech || (record.met ? villager.summary : "You haven't met yet.");
+  elements["villager-speech"].textContent = view.speech || (record.met ? t(villager.summary) : t("You haven't met yet."));
   const actions = [];
   const button = (label, action, secondary = true, disabled = false) => {
     const element = document.createElement("button");
@@ -213,7 +223,7 @@ function renderVillagerDialog() {
     const today = villageDay();
     const village = villageState();
     if (!near) {
-      if (!view.speech) elements["villager-speech"].textContent = `${record.met ? villager.summary : "You haven't met yet."} Walk up to them in town to talk.`;
+      if (!view.speech) elements["villager-speech"].textContent = `${record.met ? t(villager.summary) : t("You haven't met yet.")} ${t("Walk up to them in town to talk.")}`;
     } else {
       button(record.talkDay === today ? "Chat · again tomorrow" : record.met ? "Chat" : "Introduce yourself",
         () => chatWithVillager(id), false, record.talkDay === today);
@@ -242,7 +252,7 @@ function openVillagers() {
     ...Object.entries(VILLAGE.villagers).map(([id, villager]) => {
       const slot = villagerWhereabouts(id);
       return {
-        label: `${villager.name} · ${slot ? slot.doing : "home for the night"} · ${heartsFor(villagerRecord(id).d)}`,
+        label: `${t(villager.name)} · ${t(slot ? slot.doing : "home for the night")} · ${heartsFor(villagerRecord(id).d)}`,
         action: () => openVillager(id)
       };
     }),
@@ -274,15 +284,15 @@ function chatWithVillager(id) {
   const record = villagerRecord(id);
   const opener = villagerOpener(id);
   const view = state.villagerView;
-  view.speech = `“${fillVillagerLine(opener.text, id)}”`;
+  view.speech = sayVillager(fillVillagerLine(opener.text, id));
   view.mode = "reply";
   if (opener.kind === "story") {
     view.options = opener.story.replies.map((reply) => ({
-      label: `${t(VILLAGE.REPLY_STYLES[reply.style])} · “${reply.label}”`,
+      label: `${t(VILLAGE.REPLY_STYLES[reply.style])} · ${sayVillager(t(reply.label))}`,
       action: () => {
         record.story += 1;
         changeDisposition(id, reply.d);
-        finishVillagerChat(id, reply.style, `“${fillVillagerLine(reply.reply, id)}”`);
+        finishVillagerChat(id, reply.style, sayVillager(fillVillagerLine(reply.reply, id)));
       }
     }));
   } else {
@@ -291,7 +301,7 @@ function chatWithVillager(id) {
     const styles = Object.keys(VILLAGE.REPLY_STYLES).filter((style) => style !== "flirt" || close);
     const intro = opener.kind === "intro";
     view.options = styles.filter((style) => !intro || VILLAGE.PLAYER_INTRO[style]).map((style) => ({
-      label: `${t(VILLAGE.REPLY_STYLES[style])} · “${intro ? VILLAGE.PLAYER_INTRO[style] : pickLine(VILLAGE.PLAYER_LINES[style])}”`,
+      label: `${t(VILLAGE.REPLY_STYLES[style])} · ${sayVillager(t(intro ? VILLAGE.PLAYER_INTRO[style] : pickLine(VILLAGE.PLAYER_LINES[style])))}`,
       action: () => answerVillager(id, style)
     }));
   }
@@ -307,7 +317,7 @@ function answerVillager(id, style) {
   if (style === "flirt" && !record.courting && villageState().spouse !== id && record.d < VILLAGE.COURT_AT) value = Math.min(value, 1);
   const outcome = value >= 2 ? "good" : value >= 1 ? "neutral" : "bad";
   changeDisposition(id, VILLAGE.CHAT_POINTS[outcome]);
-  finishVillagerChat(id, style, `“${fillVillagerLine(pickLine(villager.reactions[outcome]), id)}”`);
+  finishVillagerChat(id, style, sayVillager(fillVillagerLine(pickLine(villager.reactions[outcome]), id)));
 }
 
 function finishVillagerChat(id, style, speech) {
@@ -345,7 +355,7 @@ function askVillager(id, questionId) {
   const view = state.villagerView;
   view.mode = "ask";
   view.question = question.id;
-  view.speech = `“${fillVillagerLine(t(question.a), id)}”`;
+  view.speech = sayVillager(fillVillagerLine(question.a, id));
   renderVillagerDialog();
   saveRun();
 }
@@ -377,7 +387,7 @@ function giveVillagerGift(id, itemId) {
   addLog(`You give ${itemDetails(itemId).name} to ${villager.name}.`);
   sfx(reaction === "dislikes" ? "enemyMiss" : "gift");
   state.villagerView.mode = "menu";
-  state.villagerView.speech = `“${fillVillagerLine(villager.giftReplies[reaction], id)}”`;
+  state.villagerView.speech = sayVillager(fillVillagerLine(villager.giftReplies[reaction], id));
   renderVillagerDialog();
   render();
   saveRun();
@@ -393,7 +403,7 @@ function askToCourt(id) {
     record.courting = true;
     addLog(`You and ${villager.name} are courting.`);
   }
-  state.villagerView.speech = `“${fillVillagerLine(yes ? villager.courtYes : villager.courtNo, id)}”`;
+  state.villagerView.speech = sayVillager(fillVillagerLine(yes ? villager.courtYes : villager.courtNo, id));
   renderVillagerDialog();
   saveRun();
 }
@@ -412,7 +422,7 @@ function proposeTo(id) {
     village.spouse = id;
     addLog(`You marry ${villager.name}. They move into your house.`);
   }
-  state.villagerView.speech = `“${fillVillagerLine(yes ? villager.proposeYes : villager.proposeNo, id)}”`;
+  state.villagerView.speech = sayVillager(fillVillagerLine(yes ? villager.proposeYes : villager.proposeNo, id));
   renderVillagerDialog();
   saveRun();
 }
@@ -432,7 +442,7 @@ function spouseMorningMeal() {
   for (const nutrient of Object.keys(needs.nutrition || {})) needs.nutrition[nutrient] = Math.max(needs.nutrition[nutrient], 80);
   grantBuff(pickLine(["hearty", "fiery", "steady", "keen-eyed"]));
   changeDisposition(partner.id, 1);
-  addLog(`${partner.name} cooks for you before you go: food, water, and a balanced meal. “${fillVillagerLine(pickLine(partner.lines.partner), partner.id)}”`);
+  addLog(`${t("{0} cooks for you before you go: food, water, and a balanced meal.", { 0: t(partner.name) })} ${sayVillager(fillVillagerLine(pickLine(partner.lines.partner), partner.id))}`);
 }
 
 function connectVillagerEvents() {

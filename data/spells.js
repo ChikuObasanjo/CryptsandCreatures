@@ -25,7 +25,7 @@ window.CryptsSpells = {
       healing: "1d8"
     },
     "sacred-flame": {
-      name: "Sacred Flame", description: "A column of the sun's fire falls on a foe you can see.",
+      name: "Copal Flame", description: "A column of the sun's fire falls on a foe you can see.",
       damage: "1d6", range: 7, free: true
     },
     "radiant-seal": {
@@ -77,7 +77,7 @@ window.CryptsSpells = {
       damage: "3d6", range: 7
     },
     "eldritch-bolt": {
-      name: "Eldritch Bolt", description: "A bolt of your patron's night-power hunts a creature you can see.",
+      name: "Night Bolt", description: "A bolt of your patron's night-power hunts a creature you can see.",
       damage: "1d8", range: 7, free: true
     },
     "void-lance": {

@@ -34,7 +34,7 @@ window.CryptsContent = {
     "The keeper lays out a weapon and a Travel Bundle. The deeper halls will test both.",
     "In the lamplight, choose the colors and details that make this adventurer yours."
   ],
-  tombHistory: "Nearly a century ago, an ancient tomb was uncovered outside Chiltomatlan. Its walls name no king, kingdom, or homeland. The Empire sent eagle warriors and temple priests to investigate, but they could not pass the inner halls. They sealed the entrance and declared the tomb forbidden. Since then, the promise of its hidden treasure has drawn adventurers to Chiltomatlan. The old seal has cracked enough to let you enter the outer chambers.",
+  tombHistory: "Nearly a century ago, an ancient tomb was uncovered outside Chiltomatlan. Its walls name no king, kingdom, or homeland. The Empire sent eagle warriors and temple priests to investigate, but they could not pass the inner halls. They sealed the entrance and declared the tomb forbidden. Since then, the promise of its hidden treasure has drawn adventurers to Chiltomatlan. The old seal has cracked enough to let you enter the outer chambers. The oldest songs in Chiltomatlan say the town was not built near the tomb by chance, but where new life comes up.",
   starterPack: {
     schemaVersion: 1,
     id: "tomb-beneath-the-ceiba",

@@ -4,16 +4,20 @@ function getRoomsOfType(type) {
   return state.pack.rooms.filter((room) => room.type === type);
 }
 
+// Rooms can belong to a band of floors (minFloor/maxFloor); outside it they aren't used.
 function chooseRoom(type, index) {
-  const options = getRoomsOfType(type);
-  if (!options.length) throw new Error(`The active pack has no ${type} room.`);
+  const all = getRoomsOfType(type);
+  if (!all.length) throw new Error(`The active pack has no ${type} room.`);
+  const depth = state.run?.dungeonFloor || 1;
+  const fitting = all.filter((room) => (room.minFloor || 1) <= depth && depth <= (room.maxFloor || DUNGEON_FLOOR_COUNT));
+  const options = fitting.length ? fitting : all;
   return options[index % options.length];
 }
 
 function shuffle(list) {
   const result = [...list];
   for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = randomInt(i + 1) - 1;
+    const j = Math.min(i, Math.max(0, randomInt(i + 1) - 1));
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
@@ -69,7 +73,9 @@ function generateGtflDungeon() {
     return {
       ...template,
       text: isStart && depth === 1
-        ? "The old imperial seal lies broken at this threshold. The surface entrance is the one safe route back to Chiltomatlan."
+        ? (window.CryptsLore?.entrance || "The old imperial seal lies broken at this threshold. The surface entrance is the one safe route back to Chiltomatlan.")
+        : isStart && window.CryptsLore?.floors[depth] && !isBoss
+          ? window.CryptsLore.floors[depth]
         : isTreasure
           ? "A carved vault lies among the old offerings. Search its passages, then choose how much farther to descend."
           : isBoss && depth === 13
@@ -444,7 +450,9 @@ function generateGtflDungeonV3() {
     return {
       ...template,
       text: isStart && depth === 1
-        ? "The old imperial seal lies broken at this threshold. The surface entrance is the one safe route back to Chiltomatlan."
+        ? (window.CryptsLore?.entrance || "The old imperial seal lies broken at this threshold. The surface entrance is the one safe route back to Chiltomatlan.")
+        : isStart && window.CryptsLore?.floors[depth] && !isBoss
+          ? window.CryptsLore.floors[depth]
         : isTreasure
           ? "A carved vault lies at the end of a quiet passage. Search it, then choose how much farther to descend."
           : isBoss && depth === DUNGEON_FLOOR_COUNT

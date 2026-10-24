@@ -5,6 +5,7 @@ Every unique item has its own file here, named after the item. Paint over any of
 ## Armor
 
 - `armor-chainmail.png` — Foreign iron chain mail
+- `armor-copper-scale.png` — P'urhépecha copper-scale coat
 - `armor-do-maru.png` — Lacquered dō-maru
 - `armor-ehuatl.png` — Feathered ehuatl
 - `armor-gilded-half-plate.png` — Gilded Spanish half-plate
@@ -13,9 +14,13 @@ Every unique item has its own file here, named after the item. Paint over any of
 - `armor-jaguar-shirt.png` — Jaguar-pelt war shirt
 - `armor-leather.png` — Treated hide vest
 - `armor-maguey-jerkin.png` — Maguey-fiber jerkin
+- `armor-mixtec-gold.png` — Mixtec gold-bell vest
+- `armor-norse-byrnie.png` — Norse mail byrnie
 - `armor-o-yoroi.png` — Ō-yoroi great armor
+- `armor-salt-cotton.png` — Salt-packed cotton armor
 - `armor-scale.png` — Ichcahuipilli (quilted cotton)
 - `armor-spanish-cuirass.png` — Spanish steel cuirass
+- `armor-spondylus-plate.png` — Spondylus-shell breastplate
 - `armor-tlahuiztli.png` — Tlahuiztli war suit
 - `shield.png` — Feathered shield
 
@@ -114,6 +119,9 @@ Every unique item has its own file here, named after the item. Paint over any of
 - `copper-axe-money.png` — Copper axe-money
 - `copper-bells.png` — Copper coyolli bells
 - `crystal-skull.png` — Rock-crystal skull
+- `dark-maize.png` — Maize that grew in the dark
+- `day-sign-chip.png` — Chip of the unending count
+- `empty-cradleboard.png` — Empty cradleboard
 - `feather-shield.png` — Feather-mosaic shield
 - `gold-labret.png` — Gold lip plug
 - `gold-pendant.png` — Cast gold pendant
@@ -123,12 +131,18 @@ Every unique item has its own file here, named after the item. Paint over any of
 - `jade-pectoral.png` — Jade Pectoral
 - `jadeite-mask.png` — Jadeite funerary mask
 - `jaguar-pelt.png` — Jaguar pelt
+- `lords-cup-sherd.png` — Sherd of a lord's cup
+- `net-sinker.png` — Stone net-sinker
 - `obsidian-eccentric.png` — Obsidian eccentric
 - `obsidian-mirror.png` — Obsidian Mirror
 - `quachtli.png` — Bolt of quachtli cotton
 - `quetzal-plumes.png` — Bundle of quetzal plumes
+- `rising-water.png` — Gourd of rising water
 - `salt-cakes.png` — Bundle of salt cakes
+- `scraped-cartouche.png` — Stone with a scraped name
+- `seal-fragment.png` — Fragment of the imperial seal
 - `spondylus-shell.png` — Spondylus shell
+- `tally-cord.png` — Expedition tally cord
 - `tecali-vase.png` — Tecali alabaster vase
 - `tecciztli.png` — Conch-shell trumpet
 - `terracotta-figurine.png` — Terracotta Figurine
@@ -139,8 +153,10 @@ Every unique item has its own file here, named after the item. Paint over any of
 
 - `weapon-arquebus.png` — Matchlock arquebus
 - `weapon-atlatl.png` — Atlatl and darts
+- `weapon-copper-axe.png` — P'urhépecha copper axe
 - `weapon-cuauhololli.png` — Cuauhololli war club
 - `weapon-dagger.png` — Obsidian belt knife
+- `weapon-flint-lance.png` — Maya flint lance
 - `weapon-greataxe.png` — Stone-edged war axe
 - `weapon-greatsword.png` — Great obsidian-edged blade
 - `weapon-handaxe.png` — Stone-edged hand axe
@@ -152,6 +168,7 @@ Every unique item has its own file here, named after the item. Paint over any of
 - `weapon-mace.png` — Hardwood club
 - `weapon-macuahuitl.png` — Macuahuitl
 - `weapon-nodachi.png` — Nōdachi
+- `weapon-purepecha-bow.png` — P'urhépecha war bow
 - `weapon-quarterstaff.png` — Hardwood staff
 - `weapon-rapier.png` — obsidian blade
 - `weapon-scimitar.png` — Obsidian-edged short blade
@@ -160,9 +177,11 @@ Every unique item has its own file here, named after the item. Paint over any of
 - `weapon-spanish-broadsword.png` — Spanish steel broadsword
 - `weapon-spanish-halberd.png` — Spanish halberd
 - `weapon-spear.png` — Tepoztopilli spear
+- `weapon-stingray-spine.png` — Stingray-spine dagger
 - `weapon-tematlatl.png` — Tematlatl sling
 - `weapon-tlacalhuaztli.png` — Tlacalhuaztli blowgun
 - `weapon-toledo-rapier.png` — Toledo steel rapier
+- `weapon-ulfberht-sword.png` — Ulfberht sword
 - `weapon-warhammer.png` — Stone-headed war club
 - `weapon-yari.png` — Yari spear
 - `weapon-yumi.png` — Yumi longbow
@@ -213,6 +232,7 @@ Every unique item has its own file here, named after the item. Paint over any of
 - `wear-jaguar-helmet.png` — Jaguar helm
 - `wear-kabuto-helmet.png` — Kabuto with golden horns
 - `wear-morion-helmet.png` — Spanish morion
+- `wear-norse-helm.png` — Norse spectacle helm
 - `wear-quetzal-headdress.png` — Quetzal-plume headdress
 - `wear-skull-band.png` — Bone-bead headband
 - `wear-tzitzimitl-helmet.png` — Tzitzimitl crown

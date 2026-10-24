@@ -11,7 +11,7 @@
     <meta name="description" content="Explore a forbidden tomb, manage your supplies, and return to Chiltomatlan to prepare for another descent.">
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.png" type="image/png" sizes="512x512">
-    <link rel="stylesheet" href="./styles.css?v=322">
+    <link rel="stylesheet" href="./styles.css?v=325">
     <title>Crypts &amp; Creatures</title>
   </head>
   <body>
@@ -33,7 +33,7 @@
             <div class="topbar-meter-resource health-meter-resource" title="Current hit points" data-i18n-attr="title:Current hit points">
               <span class="resource-glyph health-glyph" aria-hidden="true">♥</span>
               <div class="topbar-meter-copy">
-                <div class="topbar-meter-label"><strong>HP <span id="header-health">0 / 0</span></strong></div>
+                <div class="topbar-meter-label"><strong><span class="meter-word">HP</span> <span id="header-health">0 / 0</span></strong></div>
                 <div id="header-health-meter" class="supply-meter-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Hit points" data-i18n-attr="aria-label:Hit points">
                   <span id="header-health-fill"></span>
                 </div>
@@ -42,7 +42,7 @@
             <div class="topbar-meter-resource food-meter-resource" title="Food drains during dungeon turns" data-i18n-attr="title:Food drains during dungeon turns">
               <img src="./resources/items/ration.png?v=77" alt="" aria-hidden="true">
               <div class="topbar-meter-copy">
-                <div class="topbar-meter-label"><strong>Food <span id="header-food">100%</span></strong><small><span id="header-rations">0</span> meals</small></div>
+                <div class="topbar-meter-label"><strong><span class="meter-word">Food</span> <span id="header-food">100%</span></strong><small><span id="header-rations">0</span> meals</small></div>
                 <div id="header-food-meter" class="supply-meter-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Food meter">
                   <span id="header-food-fill"></span>
                 </div>
@@ -51,7 +51,7 @@
             <div class="topbar-meter-resource water-meter-resource" title="Water drains during dungeon turns" data-i18n-attr="title:Water drains during dungeon turns">
               <img src="./resources/items/water.png?v=77" alt="" aria-hidden="true">
               <div class="topbar-meter-copy">
-                <div class="topbar-meter-label"><strong>Water <span id="header-water">100%</span></strong><small><span id="header-water-stock">0</span> gourds</small></div>
+                <div class="topbar-meter-label"><strong><span class="meter-word">Water</span> <span id="header-water">100%</span></strong><small><span id="header-water-stock">0</span> gourds</small></div>
                 <div id="header-water-meter" class="supply-meter-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Water meter">
                   <span id="header-water-fill"></span>
                 </div>
@@ -68,7 +68,7 @@
               <strong id="header-clock">Day 1 · 08:00</strong>
             </span>
           </div>
-          <button id="sound-mute-toggle" class="quiet-button sound-mute-toggle" type="button" aria-pressed="false" aria-label="Mute sound" title="Mute sound">♪</button>
+          <button id="game-settings-toggle" class="quiet-button game-settings-toggle" type="button" aria-haspopup="dialog" aria-label="Settings" title="Settings" data-i18n-attr="aria-label:Settings;title:Settings"><span aria-hidden="true">⚙&#xFE0E;</span></button>
           <button id="journal-toggle" class="quiet-button utility-toggle hidden" type="button" aria-expanded="false" aria-controls="side-drawer">
             <span class="utility-icon" aria-hidden="true">▤</span> Journal
           </button>
@@ -98,36 +98,69 @@
           </div>
           <button class="quiet-button close-settings" id="close-settings" type="button" aria-label="Close settings" data-i18n-attr="aria-label:Close settings">×</button>
         </div>
-        <label for="language-select" data-i18n="Language">Language</label>
-        <select id="language-select" name="language">
-          <option value="en" data-i18n="English">English</option>
-          <option value="es" data-i18n="Spanish">Spanish</option>
-          <option value="nah" data-i18n="Nahuatl">Nahuatl</option>
-          <option value="nah-abugida" data-i18n="Nahuatl (abugida script)">Nahuatl (abugida script)</option>
-        </select>
-        <p class="muted" data-i18n="Choose the language used throughout the game.">Choose the language used throughout the game.</p>
-        <label for="font-select" data-i18n="Typeface">Typeface</label>
-        <select id="font-select" name="font">
-          <option value="unifont" data-i18n="Unifont (pixel)">Unifont (pixel)</option>
-          <option value="codex" data-i18n="Codex serif">Codex serif</option>
-        </select>
-        <p class="muted" data-i18n="The lettering used for all text in the game.">The lettering used for all text in the game.</p>
-        <label for="dark-mode-toggle" class="settings-toggle">
-          <span data-i18n="Dark mode">Dark mode</span>
-          <input id="dark-mode-toggle" name="darkMode" type="checkbox">
-        </label>
-        <p class="muted" data-i18n="Use dark surfaces with brighter, easier-to-read text.">Use dark surfaces with brighter, easier-to-read text.</p>
-        <label for="sound-effects-toggle" class="settings-toggle">
-          <span data-i18n="Sound effects">Sound effects</span>
-          <input id="sound-effects-toggle" name="soundEffects" type="checkbox" checked>
-        </label>
-        <label for="music-toggle" class="settings-toggle">
-          <span data-i18n="Music">Music</span>
-          <input id="music-toggle" name="music" type="checkbox" checked>
-        </label>
-        <label for="sound-volume" data-i18n="Volume">Volume</label>
-        <input id="sound-volume" class="settings-range" name="volume" type="range" min="0" max="100" step="5" value="70">
-        <p class="muted" data-i18n="Drums, rattles, bells, clay flutes, and the conch: songs for the town and the tomb, and sounds for what happens in them.">Drums, rattles, bells, clay flutes, and the conch: songs for the town and the tomb, and sounds for what happens in them.</p>
+        <div class="settings-body">
+        <section class="settings-group" aria-labelledby="settings-display-heading">
+          <h3 id="settings-display-heading" class="settings-group-heading" data-i18n="Display">Display</h3>
+          <label for="language-select" data-i18n="Language">Language</label>
+          <select id="language-select" name="language">
+            <option value="en" data-i18n="English">English</option>
+            <option value="es" data-i18n="Spanish">Spanish</option>
+            <option value="nah" data-i18n="Nahuatl">Nahuatl</option>
+            <option value="nah-abugida" data-i18n="Nahuatl (abugida script)">Nahuatl (abugida script)</option>
+            <option value="fr" data-no-translate>Français</option>
+            <option value="de" data-no-translate>Deutsch</option>
+            <option value="pt" data-no-translate>Português</option>
+            <option value="ja" data-no-translate>日本語</option>
+            <option value="ko" data-no-translate>한국어</option>
+            <option value="zh" data-no-translate>简体中文</option>
+          </select>
+          <label for="font-select" data-i18n="Typeface">Typeface</label>
+          <select id="font-select" name="font">
+            <option value="unifont" data-i18n="Unifont (pixel)">Unifont (pixel)</option>
+            <option value="codex" data-i18n="Codex serif">Codex serif</option>
+          </select>
+          <label for="dark-mode-toggle" class="settings-toggle">
+            <span data-i18n="Dark mode">Dark mode</span>
+            <input id="dark-mode-toggle" name="darkMode" type="checkbox">
+          </label>
+          <p class="muted" data-i18n="Deep jade surfaces with brighter, easier-to-read text.">Deep jade surfaces with brighter, easier-to-read text.</p>
+        </section>
+        <section class="settings-group" aria-labelledby="settings-controls-heading">
+          <h3 id="settings-controls-heading" class="settings-group-heading" data-i18n="Controls">Controls</h3>
+          <label for="pad-size-select" data-i18n="Movement buttons">Movement buttons</label>
+          <select id="pad-size-select" name="padSize">
+            <option value="normal" data-i18n="Standard">Standard</option>
+            <option value="large" data-i18n="Large">Large</option>
+            <option value="xl" data-i18n="Extra large">Extra large</option>
+          </select>
+          <label for="map-zoom" data-i18n="Map zoom">Map zoom</label>
+          <div class="settings-zoom">
+            <button id="map-zoom-out" class="quiet-button" type="button" aria-label="Zoom out" title="Zoom out" data-i18n-attr="aria-label:Zoom out;title:Zoom out">−</button>
+            <input id="map-zoom" class="settings-range" name="mapZoom" type="range" min="-3" max="2" step="1" value="0">
+            <button id="map-zoom-in" class="quiet-button" type="button" aria-label="Zoom in" title="Zoom in" data-i18n-attr="aria-label:Zoom in;title:Zoom in">+</button>
+          </div>
+          <p class="muted" data-i18n="Zoom out to see more of the tomb, or in for bigger tiles. You can also pinch the map, or press + and −.">Zoom out to see more of the tomb, or in for bigger tiles. You can also pinch the map, or press + and −.</p>
+        </section>
+        <section class="settings-group" aria-labelledby="settings-sound-heading">
+          <h3 id="settings-sound-heading" class="settings-group-heading" data-i18n="Sound">Sound</h3>
+          <label for="sound-effects-toggle" class="settings-toggle">
+            <span data-i18n="Sound effects">Sound effects</span>
+            <input id="sound-effects-toggle" name="soundEffects" type="checkbox" checked>
+          </label>
+          <label for="music-toggle" class="settings-toggle">
+            <span data-i18n="Music">Music</span>
+            <input id="music-toggle" name="music" type="checkbox" checked>
+          </label>
+          <label for="sound-volume" data-i18n="Volume">Volume</label>
+          <input id="sound-volume" class="settings-range" name="volume" type="range" min="0" max="100" step="5" value="70">
+          <p class="muted" data-i18n="Drums, rattles, bells, clay flutes, and the conch: songs for the town and the tomb, and sounds for what happens in them.">Drums, rattles, bells, clay flutes, and the conch: songs for the town and the tomb, and sounds for what happens in them.</p>
+        </section>
+        <section id="settings-run-actions" class="settings-group settings-run-actions hidden" aria-labelledby="settings-game-heading">
+          <h3 id="settings-game-heading" class="settings-group-heading" data-i18n="Game">Game</h3>
+          <button id="settings-quit" class="button secondary" type="button" data-i18n="Quit to main menu">Quit to main menu</button>
+          <p class="muted" data-i18n="Your run is saved. Choose Continue on the main menu to pick it up where you left off.">Your run is saved. Choose Continue on the main menu to pick it up where you left off.</p>
+        </section>
+        </div>
       </dialog>
 
       <dialog id="character-dialog" class="character-dialog" aria-labelledby="character-dialog-heading">
@@ -562,7 +595,7 @@
               <div><p class="eyebrow" data-i18n="YOUR CREW">YOUR CREW</p><h3 id="party-heading">Party · <span id="party-count">1 / 4</span></h3></div>
             </div>
             <div id="town-party-list" class="party-list"></div>
-            <p id="party-message" class="muted small" aria-live="polite" data-i18n="Companions you meet in the world may join you in a future expedition.">Companions you meet in the world may join you in a future expedition.</p>
+            <p id="party-message" class="muted small" aria-live="polite" data-i18n="You walk the tomb alone, and every step of the way back is yours.">You walk the tomb alone, and every step of the way back is yours.</p>
           </section>
           <section id="dungeon-party-panel" class="panel party-status-panel" aria-labelledby="dungeon-party-heading" hidden>
             <div class="section-heading">
@@ -796,8 +829,8 @@
           <button class="button secondary venue-header-action" id="patolli-rules-toggle" type="button" aria-expanded="false" data-i18n="Read the rules">Read the rules</button>
         </header>
         <section id="patolli-rules" class="patolli-rules-page" aria-label="Patolli rules" hidden data-i18n-attr="aria-label:Patolli rules">
-          <p class="patolli-rules-lead" data-i18n="Patolli is a historic Mesoamerican game, but surviving accounts vary. Ixchel's gold-stake match is a house-rule adaptation, not a claim to reproduce every historical version.">Patolli is a historic Mesoamerican game, but surviving accounts vary. Ixchel's gold-stake match is a house-rule adaptation, not a claim to reproduce every historical version.</p>
-          <p class="story-copy" data-patolli-rule-page="0" data-i18n="Toss five beans. One to four marked beans move that many spaces; five marked beans move ten. A piece leaves reserve only on a toss of exactly one, landing on its own start square. A toss of zero passes the turn in this house-rule version.">Toss five beans. One to four marked beans move that many spaces; five marked beans move ten. A piece leaves reserve only on a toss of exactly one, landing on its own start square. A toss of zero passes the turn in this house-rule version.</p>
+          <p class="patolli-rules-lead" data-i18n="Ixchel plays Patolli by the plaza's own rules, with gold riding on every piece.">Ixchel plays Patolli by the plaza's own rules, with gold riding on every piece.</p>
+          <p class="story-copy" data-patolli-rule-page="0" data-i18n="Toss five beans. One to four marked beans move that many spaces; five marked beans move ten. A piece leaves reserve only on a toss of exactly one, landing on its own start square. A toss of zero passes the turn.">Toss five beans. One to four marked beans move that many spaces; five marked beans move ten. A piece leaves reserve only on a toss of exactly one, landing on its own start square. A toss of zero passes the turn.</p>
           <p class="story-copy" data-patolli-rule-page="1" hidden data-i18n="Squares are numbered from your own START, so your pieces always count upward from 1 to 52 and then go HOME; the faint chevrons show the way. You must land exactly at HOME; a move that overshoots is illegal. No piece may share a space. You may capture one opposing piece only on a gold center crossroads; it returns to reserve and its matched wager is claimed.">Squares are numbered from your own START, so your pieces always count upward from 1 to 52 and then go HOME; the faint chevrons show the way. You must land exactly at HOME; a move that overshoots is illegal. No piece may share a space. You may capture one opposing piece only on a gold center crossroads; it returns to reserve and its matched wager is claimed.</p>
           <p class="story-copy" data-patolli-rule-page="2" hidden data-i18n="Every arm has two penalty triangles, one in each lane. Landing on one sends one wager unit to the pot; if that piece's wager is already spent, the piece leaves the board and the other player claims its wager. Landing on any of the eight rounded end squares grants another turn. Here, six matched gold wagers are played as one short match: the first to claim four wins; if all six resolve without a majority, it is a draw. This wager-and-scoring system is Ixchel's local variation. Gold is fictional, and no expedition time passes.">Every arm has two penalty triangles, one in each lane. Landing on one sends one wager unit to the pot; if that piece's wager is already spent, the piece leaves the board and the other player claims its wager. Landing on any of the eight rounded end squares grants another turn. Here, six matched gold wagers are played as one short match: the first to claim four wins; if all six resolve without a majority, it is a draw. This wager-and-scoring system is Ixchel's local variation. Gold is fictional, and no expedition time passes.</p>
           <nav class="patolli-rules-controls" aria-label="Patolli rules pages" data-i18n-attr="aria-label:Patolli rules pages">
@@ -895,20 +928,21 @@
         <button id="message-box-advance" class="button secondary" type="button" data-i18n="Continue">Continue</button>
       </div>
     </section>
-    <script src="./data/locales.js?v=10" defer></script>
-    <script src="./data/items.js?v=7" defer></script>
+    <script src="./data/locales.js?v=13" defer></script>
+    <script src="./data/items.js?v=8" defer></script>
     <script src="./data/progression.js?v=3" defer></script>
-    <script src="./data/enemies.js?v=6" defer></script>
-    <script src="./data/content.js?v=3" defer></script>
-    <script src="./data/spells.js?v=1" defer></script>
-    <script src="./data/character-options.js?v=8" defer></script>
+    <script src="./data/enemies.js?v=7" defer></script>
+    <script src="./data/content.js?v=4" defer></script>
+    <script src="./data/spells.js?v=2" defer></script>
+    <script src="./data/character-options.js?v=9" defer></script>
     <script src="./data/exotics.js?v=4" defer></script>
-    <script src="./data/wardrobe.js?v=4" defer></script>
-    <script src="./data/goods.js?v=1" defer></script>
+    <script src="./data/wardrobe.js?v=5" defer></script>
+    <script src="./data/goods.js?v=2" defer></script>
     <script src="./data/tomb-gear.js?v=1" defer></script>
     <script src="./systems/patolli.js?v=6" defer></script>
-    <script src="./systems/progression.js?v=7" defer></script>
-    <script src="./systems/codex-figure.js?v=12" defer></script>
+    <script src="./systems/progression.js?v=8" defer></script>
+    <script src="./systems/relics.js?v=1" defer></script>
+    <script src="./systems/codex-figure.js?v=13" defer></script>
     <script src="./systems/shop.js?v=5" defer></script>
     <script src="./systems/house.js?v=7" defer></script>
     <script src="./systems/camp.js?v=1" defer></script>
@@ -917,12 +951,13 @@
     <script src="./systems/equipment-sheet.js?v=3" defer></script>
     <script src="./systems/sheets.js?v=4" defer></script>
     <script src="./data/villagers.js?v=5" defer></script>
-    <script src="./systems/villagers.js?v=4" defer></script>
+    <script src="./data/lore.js?v=1" defer></script>
+    <script src="./systems/villagers.js?v=5" defer></script>
     <script src="./systems/characters.js?v=23" defer></script>
     <script src="./systems/look-editor.js?v=1" defer></script>
-    <script src="./systems/dungeons.js?v=103" defer></script>
+    <script src="./systems/dungeons.js?v=106" defer></script>
     <script src="./admob.config.js?v=1" defer></script>
     <script type="module" src="./systems/rewarded-ads.js?v=1"></script>
-    <script src="./app.js?v=193" defer></script>
+    <script src="./app.js?v=198" defer></script>
   </body>
 </html>

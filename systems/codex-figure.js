@@ -1164,9 +1164,10 @@ function codexLegs(palette, outfit, race, near) {
     const sole = near ? "M102 191 L128 191 L128 194 L102 194 Z" : "M75 191 L100 191 L100 194 L75 194 Z";
     parts.push(codexShape(sole, c.hide, 1.8));
     // The sandal's tall heel guard, rounded at the top like the painted cactli.
-    parts.push(codexShape(near ? "M101.6 191 L101.6 181.4 C101.6 178.4 104.6 177.4 107 178.6 L108.6 179.6 L108.2 191 Z"
-      : "M74.6 191 L74.6 181.4 C74.6 178.4 77.6 177.4 80 178.6 L81.6 179.6 L81.2 191 Z", c.white, 1.8));
-    parts.push(codexLine(near ? "M108 184 L116 182 M108 188 L120 186" : "M81 184 L89 182 M81 188 L93 186", 1.6, c.red));
+    // A low painted heel guard and crossed ankle ties, as on the codex sandals.
+    parts.push(codexShape(near ? "M102.4 191 L102.6 185 C103 182.4 105.6 181.6 107.6 182.6 L108.4 191 Z"
+      : "M75.4 191 L75.6 185 C76 182.4 78.6 181.6 80.6 182.6 L81.4 191 Z", c.red, 1.5));
+    parts.push(codexLine(near ? "M104 181 L113 186.5 M112.8 180.6 L105 186.6 M110 190.6 L117 184.2" : "M77 181 L86 186.5 M85.8 180.6 L78 186.6 M83 190.6 L90 184.2", 1.1, c.hide));
   } else {
     parts.push(codexLine(near ? "M118 184 C121 185 122 187 121 189" : "M91 184 C94 185 95 187 94 189", 1.2, palette.skinDark));
   }
@@ -1279,21 +1280,56 @@ function codexTail(palette, race) {
   return "";
 }
 
-// Painted-paper treatment for figures: a slight hand wobble on every line, uneven watercolor
-// wash inside the fills, and a fine pigment grain, matching the scanned codex art.
-const CODEX_WATERCOLOR_FILTER =
-  `<filter id="codex-ink" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">` +
-  `<feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="7" result="noise"/>` +
-  `<feDisplacementMap in="SourceGraphic" in2="noise" scale="1.7" xChannelSelector="R" yChannelSelector="G" result="drawn"/>` +
-  `<feColorMatrix in="drawn" type="saturate" values="0.86" result="muted"/>` +
-  `<feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="3" seed="23" result="wash"/>` +
-  `<feColorMatrix in="wash" type="matrix" values="0.34 0 0 0 0.74  0.34 0 0 0 0.73  0.34 0 0 0 0.71  0 0 0 0 1" result="washTone"/>` +
-  `<feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="41" result="grain"/>` +
-  `<feColorMatrix in="grain" type="matrix" values="0.16 0 0 0 0.9  0.16 0 0 0 0.89  0.16 0 0 0 0.87  0 0 0 0 1" result="grainTone"/>` +
+// Painted-paper treatment, after the Florentine Codex pages the rest of the game's art comes
+// from: every figure is painted twice. First the watercolor wash: the fills alone, lifted
+// toward the paper, with soft bleeding edges, pigment pooling at the rims, and grain, set a
+// hair off the drawing the way a painter's wash never quite meets the line. Then the
+// drawing: the ink lines alone in a warm sepia with a slight hand wobble, multiplied over
+// the wash so the paper and color show through. Front shapes are white in the drawing pass,
+// which hides the lines behind them without covering the wash.
+const CODEX_SEPIA = "#3d2a1f";
+const CODEX_PAINT_DEFS =
+  `<filter id="codex-wash" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">` +
+  `<feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="11" result="bleed"/>` +
+  `<feDisplacementMap in="SourceGraphic" in2="bleed" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="spread"/>` +
+  `<feColorMatrix in="spread" type="saturate" values="0.8" result="soft"/>` +
+  `<feComponentTransfer in="soft" result="lifted"><feFuncR type="linear" slope="0.8" intercept="0.17"/><feFuncG type="linear" slope="0.8" intercept="0.155"/><feFuncB type="linear" slope="0.8" intercept="0.13"/></feComponentTransfer>` +
+  `<feMorphology in="spread" operator="erode" radius="1.6" result="inner"/>` +
+  `<feComposite in="spread" in2="inner" operator="out" result="rim"/>` +
+  `<feColorMatrix in="rim" type="matrix" values="0 0 0 0 0.55  0 0 0 0 0.45  0 0 0 0 0.36  0 0 0 0.38 0" result="rimTone"/>` +
+  `<feTurbulence type="fractalNoise" baseFrequency="0.026" numOctaves="3" seed="23" result="wash"/>` +
+  `<feColorMatrix in="wash" type="matrix" values="0.3 0 0 0 0.77  0.3 0 0 0 0.76  0.3 0 0 0 0.74  0 0 0 0 1" result="washTone"/>` +
+  `<feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="41" result="grain"/>` +
+  `<feColorMatrix in="grain" type="matrix" values="0.18 0 0 0 0.88  0.18 0 0 0 0.87  0.18 0 0 0 0.85  0 0 0 0 1" result="grainTone"/>` +
   `<feBlend in="washTone" in2="grainTone" mode="multiply" result="paperTone"/>` +
-  `<feBlend in="muted" in2="paperTone" mode="multiply" result="painted"/>` +
-  `<feComposite in="painted" in2="drawn" operator="in"/>` +
-  `</filter>`;
+  `<feBlend in="lifted" in2="paperTone" mode="multiply" result="painted"/>` +
+  `<feComposite in="painted" in2="spread" operator="in" result="body"/>` +
+  `<feMerge><feMergeNode in="body"/><feMergeNode in="rimTone"/></feMerge>` +
+  `</filter>` +
+  `<filter id="codex-ink" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">` +
+  `<feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="7" result="noise"/>` +
+  `<feDisplacementMap in="SourceGraphic" in2="noise" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="drawn"/>` +
+  // Lay the drawing on white, then turn darkness into sepia ink: white (front shapes and
+  // empty paper) becomes clear, so only the lines remain.
+  `<feFlood flood-color="#fff" result="sheet"/>` +
+  `<feComposite in="drawn" in2="sheet" operator="over" result="onSheet"/>` +
+  `<feColorMatrix in="onSheet" type="matrix" values="0 0 0 0 0.24  0 0 0 0 0.165  0 0 0 0 0.12  -0.33 -0.33 -0.33 0 0.985" result="ink"/>` +
+  `<feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="5" result="dry"/>` +
+  `<feColorMatrix in="dry" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.4 1.85" result="dryMask"/>` +
+  `<feComposite in="ink" in2="dryMask" operator="in"/>` +
+  `</filter>` +
+  `<style>` +
+  `.codex-wash [stroke="#2e211a"]{stroke:none}` +
+  `.codex-drawing [fill]:not([fill="none"]):not([fill="#2e211a"]){fill:#fff}` +
+  `.codex-drawing [stroke]:not([stroke="#2e211a"]):not([stroke="none"]){stroke:#fff}` +
+      `</style>`;
+// Kept for anything that still asks for the older single-pass filter by name.
+const CODEX_WATERCOLOR_FILTER = CODEX_PAINT_DEFS;
+
+function codexPaint(markup) {
+  return `<g class="codex-wash" filter="url(#codex-wash)"><g transform="translate(0.9 0.7)">${markup}</g></g>` +
+    `<g class="codex-drawing" filter="url(#codex-ink)">${markup}</g>`;
+}
 
 // What the figure is wearing. Adventurers dress with items (character.dressByItems):
 // basic garments, headwear, and necklaces are drawn in their dye colors, everything else
@@ -1322,6 +1358,18 @@ function codexDressed(character) {
   };
 }
 
+// Held weapons lean forward from the fist, so the blade clears the face the way codex
+// warriors carry theirs; long shafts lean less, and bows and guns stay upright.
+function codexWeaponTilt(id) {
+  const weapon = (typeof WEAPONS !== "undefined" && WEAPONS[id]) || {};
+  const base = (typeof WEAPONS !== "undefined" && WEAPONS[weapon.baseId || id]) || weapon;
+  const art = base.art || "";
+  const icon = base.icon || "sword";
+  if (["yumi", "purebow", "arquebus"].includes(art) || icon === "bow" || id === "light-crossbow") return 0;
+  if (["halberd", "yari", "flintlance"].includes(art) || icon === "staff" || icon === "spear") return 8;
+  return 20;
+}
+
 function buildCodexFigureSvg(character, facing = "east") {
   character = codexDressed(character);
   const equipment = character?.equipment || {};
@@ -1348,7 +1396,7 @@ function buildCodexFigureSvg(character, facing = "east") {
     codexLimb("M99 80 L100 92", 11, palette.skin),
     `<g transform="translate(100 88) scale(${shape.head}) translate(-100 -88)">${head.front}</g>`,
     equipment.shield && !character?.iconMode ? codexArm(palette, outfit, false, false) : "",
-    character?.iconMode || weaponId === "none" ? "" : `<g transform="translate(12 0)">${codexWeapon(weaponId)}</g>`,
+    character?.iconMode || weaponId === "none" ? "" : `<g transform="rotate(${codexWeaponTilt(weaponId)} 135 97) translate(12 0)">${codexWeapon(weaponId)}</g>`,
     equipment.shield && !character?.iconMode ? codexShield(palette) : "",
     character?.iconMode ? "" : codexArm(palette, outfit, true, weaponId !== "none")
   ].join("");
@@ -1360,7 +1408,8 @@ function buildCodexFigureSvg(character, facing = "east") {
     `<clipPath id="codex-shield"><circle cx="126" cy="130" r="17.5"/></clipPath>` +
     `<clipPath id="codex-mantle"><path d="M100 86 L120 94 L116 136 L80 138 L78 104 C90 102 96 96 100 86 Z"/></clipPath>` +
     `<clipPath id="codex-torso-clip"><path d="M77 90 C88 83 108 82 119 89 L122 102 L119 136 L79 138 L74 103 Z"/></clipPath></defs>` +
-    `<g filter="url(#codex-ink)">${oriented}</g></svg>`;
+    `<ellipse cx="100" cy="193.5" rx="30" ry="3.6" fill="${CODEX_SEPIA}" opacity="0.16"/>` +
+    `${codexPaint(oriented)}</svg>`;
 }
 
 function codexFigureKey(character, facing) {
@@ -1421,11 +1470,11 @@ function codexGearIconUrl(kind, id) {
     const centerY = (top + bottom) / 2;
     const size = Math.max(60, (bottom - top) * 0.74 + 34);
     svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${124 - size / 2} ${centerY - size / 2} ${size} ${size}" width="160" height="160">${filter}` +
-      `<g filter="url(#codex-ink)" transform="rotate(42 124 ${centerY})">${codexWeapon(id)}</g></svg>`;
+      `${codexPaint(`<g transform="rotate(42 124 ${centerY})">${codexWeapon(id)}</g>`)}</svg>`;
   } else if (kind === "back") {
     // Banners are shown on their own, without the wearer.
     svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="28 0 76 120" width="160" height="160">${filter}` +
-      `<g filter="url(#codex-ink)">${codexBackDevice(id)}</g></svg>`;
+      `${codexPaint(codexBackDevice(id))}</svg>`;
   } else {
     const figure = JSON.parse(JSON.stringify(CODEX_ICON_MANNEQUIN));
     figure.iconMode = true;

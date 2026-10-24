@@ -10,13 +10,13 @@
 // sentence by sentence, and lists joined with " · " part by part.
 
 (() => {
-  const catalogUrls = {
-    en: "./data/locales/en.json",
-    es: "./data/locales/es.json",
-    nah: "./data/locales/nah.json"
-  };
+  const CATALOG_IDS = ["en", "es", "nah", "fr", "de", "pt", "ja", "ko", "zh"];
+  const catalogUrls = Object.fromEntries(CATALOG_IDS.map((id) => [id, `./data/locales/${id}.json`]));
   // Languages that reuse another catalog with their own presentation.
-  const LANGUAGE_CATALOG = { en: "en", es: "es", nah: "nah", "nah-abugida": "nah" };
+  const LANGUAGE_CATALOG = { ...Object.fromEntries(CATALOG_IDS.map((id) => [id, id])), "nah-abugida": "nah" };
+  // The lang attribute for each catalog, so browsers choose the right glyphs and line breaking.
+  const HTML_LANG = { zh: "zh-Hans", nah: "nah" };
+  const LANGUAGE_KEY = "crypts-and-creatures.language.v1";
   // Older saves may name the retired "nah-unifont" option; Unifont is now everyone's typeface.
   const LANGUAGE_ALIASES = { "nah-unifont": "nah" };
   const catalogs = {};
@@ -156,19 +156,29 @@
     }
   }
 
-  const ready = Promise.all(Object.entries(catalogUrls).map(async ([locale, url]) => {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      catalogs[locale] = await response.json();
-    } catch (error) {
-      // English keys double as the English text, so the game stays playable without catalogs.
-      console.warn(`Could not load the ${locale} language catalog: ${error.message}`);
-      catalogs[locale] = {};
-    }
-    addSentencePairs(catalogs[locale], catalogs.en || {});
-    matchers[locale] = compileMatchers(catalogs[locale]);
-  }));
+  // Catalogs load when they are first needed: English and the saved language at startup,
+  // any other the first time the player picks it.
+  const loading = {};
+  function loadCatalog(locale) {
+    if (!catalogUrls[locale]) return Promise.resolve();
+    loading[locale] ||= (async () => {
+      try {
+        const response = await fetch(catalogUrls[locale]);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        catalogs[locale] = await response.json();
+      } catch (error) {
+        // English keys double as the English text, so the game stays playable without catalogs.
+        console.warn(`Could not load the ${locale} language catalog: ${error.message}`);
+        catalogs[locale] = {};
+      }
+      addSentencePairs(catalogs[locale], catalogs.en || {});
+      matchers[locale] = compileMatchers(catalogs[locale]);
+    })();
+    return loading[locale];
+  }
+  let savedLanguage = "en";
+  try { savedLanguage = localStorage.getItem(LANGUAGE_KEY) || "en"; } catch { /* private mode */ }
+  const ready = Promise.all([...new Set(["en", LANGUAGE_CATALOG[LANGUAGE_ALIASES[savedLanguage] || savedLanguage] || "en"])].map(loadCatalog));
 
   const activeCatalog = () => LANGUAGE_CATALOG[language] || "en";
 
@@ -181,7 +191,10 @@
   }
 
   // Sentence boundaries: end punctuation followed by a space and a capital (so "72.2 lb" and "vs. 12" stay whole).
-  const splitSentences = (text) => text.split(/(?<=[.!?…]["”’»)]?)\s+(?=["“«¿¡(]?[A-ZÁÉÍÓÚÑ])/);
+  const splitSentences = (text) => text.split(/(?<=[.!?…](?:[\u00a0\u202f]?[»])?["“”’)]?)\s+(?=["“«¿¡(「『]?[\p{Lu}\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af])|(?<=[。！？][」』”’]?)\s*(?=[^\s」』”’])/u);
+  // CJK sentences run together without a space; Latin-script sentences keep one.
+  const joinSentences = (pieces) => pieces.reduce((text, piece) => (!text ? piece
+    : /[。！？」』][”’]?$/.test(text) || /^[「『]/.test(piece) ? text + piece : `${text} ${piece}`), "");
 
   // Results are remembered per language: the same labels are rendered over and over.
   const memo = new Map();
@@ -216,6 +229,9 @@
         // Short patterns such as "{0} and {1}" only apply to names, numbers, and known terms.
         if (entry.literalLength < 8 && captures.some((value, index) => values[index] === null
           && (value.split(/\s+/).length > 4 || /(^|\s)[a-z]/.test(value)))) continue;
+        // Nor do loose ones such as "{0} needs {1}." swallow a whole untranslated sentence.
+        if (entry.literalLength < 14 && captures.some((value, index) => values[index] === null
+          && value.split(/\s+/).length > 6)) continue;
         for (let index = 0; index < values.length; index += 1) values[index] ??= captures[index];
         const template = catalog[entry.key];
         return template.replace(/\{(\w+)\}/g, (whole, name) => {
@@ -228,7 +244,7 @@
     const sentences = splitSentences(text);
     if (sentences.length > 1) {
       const translated = sentences.map((sentence) => translateText(sentence, depth + 1));
-      if (translated.some((piece) => piece !== null)) return translated.map((piece, index) => piece ?? sentences[index]).join(" ");
+      if (translated.some((piece) => piece !== null)) return joinSentences(translated.map((piece, index) => piece ?? sentences[index]));
       return null;
     }
     // Lists joined with " · ", " — " or "; " translate piece by piece.
@@ -330,7 +346,13 @@
     apply(nextLanguage) {
       const requested = LANGUAGE_ALIASES[nextLanguage] || nextLanguage;
       language = Object.prototype.hasOwnProperty.call(LANGUAGE_CATALOG, requested) ? requested : "en";
-      document.documentElement.lang = activeCatalog() === "en" ? "en" : activeCatalog();
+      const locale = activeCatalog();
+      if (!catalogs[locale]) {
+        // Show the game in English for the moment it takes to fetch the catalog, then switch.
+        loadCatalog(locale).then(() => { if (activeCatalog() === locale) { memo.clear(); window.cryptsLocale.apply(language); } });
+      }
+      document.documentElement.lang = HTML_LANG[locale] || locale;
+      document.body.dataset.script = ["ja", "ko", "zh"].includes(locale) ? "cjk" : "latin";
       document.body.classList.toggle("nahuatl-abugida", language === "nah-abugida");
       applyStaticTranslations();
       observer.disconnect();

@@ -22,7 +22,8 @@ function createProgress() {
     bounties: { active: [], completed: 0, nextId: 1 },
     conditions: [],
     buffs: [],
-    dishesCooked: 0
+    dishesCooked: 0,
+    loreHeard: []
   };
 }
 
@@ -57,6 +58,9 @@ function normalizeProgress(raw, pack) {
     Number.isInteger(entry.until) && entry.until >= 0 && entry.until <= 60_000_000)
     .filter((entry, index, list) => list.findIndex((other) => other.id === entry.id) === index);
   progress.dishesCooked = int(raw.dishesCooked, 0, 1_000_000, 0);
+  const knownRemarks = new Set(Object.values(window.CryptsLore?.townsfolk || {}).flat().map((remark) => remark.id));
+  progress.loreHeard = Array.isArray(raw.loreHeard)
+    ? [...new Set(raw.loreHeard.filter((id) => knownRemarks.has(id)))] : [];
   return progress;
 }
 

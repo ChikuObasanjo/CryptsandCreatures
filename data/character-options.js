@@ -50,14 +50,14 @@ const RACES = {
   },
   elf: {
     name: "Elf", bonuses: { dex: 2 }, description: "A long-lived people of the cloud forest who keep the old calendars by heart and hear a jaguar before it moves.",
-    heritages: { high: { name: "High elf", bonuses: { int: 1 } }, wood: { name: "Wood elf", bonuses: { wis: 1 } }, drow: { name: "Drow", bonuses: { cha: 1 } } }
+    heritages: { high: { name: "High elf", bonuses: { int: 1 } }, wood: { name: "Wood elf", bonuses: { wis: 1 } }, drow: { name: "Cenote elf", bonuses: { cha: 1 } } }
   },
   halfling: {
     name: "Halfling", bonuses: { dex: 2 }, description: "Small, quick folk from the edges of the milpa, welcome at every hearth and fearless in places too narrow for anyone else.",
-    heritages: { lightfoot: { name: "Lightfoot", bonuses: { cha: 1 } }, stout: { name: "Stout", bonuses: { con: 1 } } }
+    heritages: { lightfoot: { name: "Quickfoot", bonuses: { cha: 1 } }, stout: { name: "Stout", bonuses: { con: 1 } } }
   },
   dragonborn: {
-    name: "Dragonborn", bonuses: { str: 2, cha: 1 }, description: "Scaled descendants of the feathered serpent. A family's colors, crest, and horns are its lineage written on the body."
+    name: "Serpentkin", bonuses: { str: 2, cha: 1 }, description: "Scaled descendants of the feathered serpent. A family's colors, crest, and horns are its lineage written on the body."
   },
   gnome: {
     name: "Gnome", bonuses: { int: 2 }, description: "Bright-eyed tinkerers and day-count keepers who tally everything, from loom threads to the stars.",
@@ -67,10 +67,10 @@ const RACES = {
     name: "Half-elf", bonuses: { cha: 2 }, description: "Children of two peoples, at home among both and fully claimed by neither; choose two different abilities for +1."
   },
   "half-orc": {
-    name: "Half-orc", bonuses: { str: 2, con: 1 }, description: "Tusked and broad-shouldered, said to carry a drop of the first world's giants: strong, stubborn, and loyal."
+    name: "Giantkin", bonuses: { str: 2, con: 1 }, description: "Tusked and broad-shouldered, said to carry a drop of the first world's giants: strong, stubborn, and loyal."
   },
   tiefling: {
-    name: "Tiefling", bonuses: { cha: 2, int: 1 }, description: "Marked by a bargain an ancestor struck with the lords of Mictlan, the underworld: horns, a tail, and ember-bright eyes."
+    name: "Mictlan-born", bonuses: { cha: 2, int: 1 }, description: "Marked by a bargain an ancestor struck with the lords of Mictlan, the underworld: horns, a tail, and ember-bright eyes."
   }
 };
 const SKILLS = {
@@ -104,7 +104,7 @@ const CLASSES = {
 const BACKGROUNDS = {
   acolyte: { name: "Acolyte", description: "Raised sweeping temple steps and tending copal fires, guided by the ritual calendar.", skills: "Insight, Religion", skillIds: ["insight", "religion"], skillBonus: 1 },
   criminal: { name: "Criminal", description: "Lived on the edges of the market, where quick hands outran the judges.", skills: "Deception, Stealth", skillIds: ["deception", "stealth"], skillBonus: 1 },
-  "folk-hero": { name: "Folk Hero", description: "Earned a name in the villages by standing up to a tribute collector.", skills: "Animal Handling, Survival", skillIds: ["animal-handling", "survival"], skillBonus: 1 },
+  "folk-hero": { name: "Village Hero", description: "Earned a name in the villages by standing up to a tribute collector.", skills: "Animal Handling, Survival", skillIds: ["animal-handling", "survival"], skillBonus: 1 },
   noble: { name: "Noble", description: "Born to a noble house, raised on flower-songs, family histories, and obligations.", skills: "History, Persuasion", skillIds: ["history", "persuasion"], skillBonus: 1 },
   sage: { name: "Sage", description: "Spent years copying codices and arguing over the meaning of old glyphs.", skills: "Arcana, History", skillIds: ["arcana", "history"], skillBonus: 1, spellAttackBonus: 1 },
   soldier: { name: "Soldier", description: "Drilled in the warriors' house and tested on the field of flowery war.", skills: "Athletics, Intimidation", skillIds: ["athletics", "intimidation"], skillBonus: 1, attackBonus: 1 }

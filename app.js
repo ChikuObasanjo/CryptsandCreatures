@@ -31,8 +31,52 @@ const STORE_KEYS = {
   run: "crypts-and-creatures.run.v1",
   language: "crypts-and-creatures.language.v1",
   darkMode: "crypts-and-creatures.dark-mode.v1",
-  font: "crypts-and-creatures.font.v1"
+  font: "crypts-and-creatures.font.v1",
+  padSize: "crypts-and-creatures.pad-size.v1",
+  mapZoom: "crypts-and-creatures.map-zoom.v1"
 };
+// Map zoom: 0 shows 7 tiles across the short side on phones and 9 on wider screens;
+// each step in (+) shows two fewer, each step out (−) two more.
+const MAP_ZOOM_MIN = -3;
+const MAP_ZOOM_MAX = 2;
+const PAD_SIZES = ["normal", "large", "xl"];
+let mapZoom = 0;
+function applyPadSize(size) {
+  const choice = PAD_SIZES.includes(size) ? size : "large";
+  document.body.classList.toggle("pad-size-normal", choice === "normal");
+  document.body.classList.toggle("pad-size-xl", choice === "xl");
+  return choice;
+}
+function setMapZoom(next, { announce = false } = {}) {
+  const value = Math.max(MAP_ZOOM_MIN, Math.min(MAP_ZOOM_MAX, Math.round(Number(next) || 0)));
+  const changed = value !== mapZoom;
+  mapZoom = value;
+  const slider = document.getElementById("map-zoom");
+  if (slider) slider.value = String(value);
+  const zoomOut = document.getElementById("map-zoom-out");
+  const zoomIn = document.getElementById("map-zoom-in");
+  if (zoomOut) zoomOut.disabled = value <= MAP_ZOOM_MIN;
+  if (zoomIn) zoomIn.disabled = value >= MAP_ZOOM_MAX;
+  try { localStorage.setItem(STORE_KEYS.mapZoom, String(value)); } catch { /* private mode */ }
+  if (changed && state.gameStarted && state.run?.location === "dungeon") {
+    renderMap();
+    if (announce) showToast(t("Map zoom {0}", { 0: value > 0 ? `+${value}` : String(value) }));
+  }
+  return value;
+}
+function dungeonViewShape() {
+  const across = Math.max(3, (window.matchMedia("(max-width: 540px)").matches ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom);
+  const viewport = elements["dungeon-map-viewport"];
+  const width = viewport?.clientWidth || 0;
+  const height = viewport?.clientHeight || 0;
+  if (width < 60 || height < 60) return { cols: across, rows: across, tile: 0 };
+  const tile = Math.floor(Math.min(width, height) / across);
+  const odd = (count) => {
+    const whole = Math.max(3, Math.min(19, Math.floor(count)));
+    return whole % 2 ? whole : whole - 1;
+  };
+  return { cols: odd(width / tile), rows: odd(height / tile), tile };
+}
 const FONT_CHOICES = ["unifont", "codex"];
 function applyFontChoice(font) {
   const choice = FONT_CHOICES.includes(font) ? font : "unifont";
@@ -107,7 +151,7 @@ const NUTRIENT_DECAY_HOURS = 12;
 const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
-const SPRITE_RESOURCE_VERSION = 81;
+const SPRITE_RESOURCE_VERSION = 82;
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
@@ -609,6 +653,7 @@ function enterDungeon(options = {}) {
     state.run.log = state.run.log.slice(0, 30);
   }
   upgradeGreatTempleContent();
+  if (state.run.location !== "dungeon") state.run.relicRites = {};
   state.run.location = "dungeon";
   render();
 }
@@ -2327,6 +2372,7 @@ function enemiesTakeTurn() {
     const distance = distanceInSquares(enemy, state.run.player);
     if (distance <= 7 || enemy.roomIndex === state.run.currentRoom) enemy.alerted = true;
     if (!enemy.alerted) continue;
+    if (enemySleeps(enemy)) continue;
     if (enemySkipsTurn(enemy)) {
       addLog(`${enemy.name} reels and loses its turn.`);
       continue;
@@ -2434,6 +2480,7 @@ function itemUseBlocked(entry) {
   const id = entry.id;
   const inDungeon = state.run.location === "dungeon";
   if (state.run.lost || state.run.won) return "The expedition is over.";
+  if (RELIC_RITES[id]) return relicRiteBlocked(entry);
   const trapWithin = (reach, needSight) => state.run.hazards.some((hazard) => !hazard.triggered && hazard.revealed &&
     distanceInSquares(hazard, state.run.player) <= reach && (!needSight || hasLineOfSight(state.run.player, hazard)));
   if (id === "healing-potion") return state.run.hp >= state.run.maxHp && !progress().conditions.length ? "You're unhurt and have no ailments." : null;
@@ -2489,6 +2536,14 @@ function eatBestMeal() {
 
 function useInventoryItem(itemId) {
   if (state.run.lost || state.run.won || !inventoryQuantity(itemId)) return;
+  if (RELIC_RITES[itemId]) {
+    const used = useRelicRite(itemId);
+    if (used === true) {
+      if (state.run.location === "dungeon") finishPlayerTurn();
+      else render();
+    }
+    return;
+  }
   if (itemId === "healing-potion") {
     usePotion();
     return;
@@ -2677,7 +2732,7 @@ function characterAsiLevels() {
 
 function openLevelUpChoice() {
   elements["level-up-heading"].textContent = `Level ${state.run.level} training`;
-  elements["level-up-copy"].textContent = `${CLASSES[state.run.character.class].name} gains an Ability Score Improvement at this level. Increase one ability by 2 or two different abilities by 1 each (maximum 20). Other class features and spellcasting remain outside this compact ruleset.`;
+  elements["level-up-copy"].textContent = `${CLASSES[state.run.character.class].name} grows stronger at this level. Raise one ability by 2, or two different abilities by 1 each (up to 20).`;
   for (const [id, selected] of [["level-up-one", true], ["level-up-two", false]]) {
     const select = elements[id];
     const previous = select.value;
@@ -2711,7 +2766,7 @@ function applyLevelUpChoice() {
     state.run.character.scores[ability] = Math.min(20, state.run.character.scores[ability] + amount);
   }
   state.run.asiLevelsChosen.push(state.run.level);
-  addLog(`You record your level ${state.run.level} Ability Score Improvement.`);
+  addLog(`Your level ${state.run.level} training is complete.`);
   elements["level-up-dialog"].close();
   checkLevelUp();
   render();
@@ -2892,6 +2947,21 @@ function moveTownPlayer(dx, dy) {
   render();
 }
 
+// One thing a townsperson lets slip about the tomb on each visit: the newest remark you
+// haven't heard yet, among those your deepest delve has earned; once heard, they rotate.
+function townsfolkRemark(id) {
+  const remarks = window.CryptsLore?.townsfolk?.[id];
+  if (!remarks?.length || !state.run?.progress) return null;
+  const record = progress();
+  record.loreHeard ||= [];
+  const open = remarks.filter((remark) => remark.minFloor <= (record.deepestFloor || 1));
+  if (!open.length) return null;
+  const fresh = open.filter((remark) => !record.loreHeard.includes(remark.id));
+  const remark = fresh.length ? fresh[fresh.length - 1] : open[Math.floor(Math.random() * open.length)];
+  if (!record.loreHeard.includes(remark.id)) record.loreHeard.push(remark.id);
+  return t(remark.text);
+}
+
 function talkToTownNpc(id) {
   if (state.run.location !== "city") return;
   syncVillagerPositions();
@@ -2953,6 +3023,11 @@ function talkToTownNpc(id) {
   };
   const conversation = conversations[id];
   if (!conversation) throw new Error(`No conversation is defined for townsperson ${id}.`);
+  const remark = townsfolkRemark(id);
+  if (remark) {
+    const quotes = { ja: ["「", "」"], fr: ["«\u00a0", "\u00a0»"], de: ["„", "“"] }[window.cryptsLocale?.language] || ["“", "”"];
+    conversation.copy = `${quotes[0]}${remark}${quotes[1]} ${t(conversation.copy)}`;
+  }
   const factionId = npc.faction;
   const faction = factionId ? FACTIONS[factionId] : null;
   const standing = factionId ? factionStanding(factionId) : 0;
@@ -3487,14 +3562,21 @@ function renderMap() {
     state.run.wellsInitialized = true;
   }
   refreshCompanionFormation();
-  const viewSize = window.matchMedia("(max-width: 540px)").matches
-    ? MOBILE_MAP_VIEW_SIZE
-    : DESKTOP_MAP_VIEW_SIZE;
-  const halfView = Math.floor(viewSize / 2);
+  const { cols: viewCols, rows: viewRows, tile: tilePixels } = dungeonViewShape();
   const { x: playerX, y: playerY } = state.run.player;
-  const originX = playerX - halfView;
-  const originY = playerY - halfView;
-  elements["dungeon-map"].style.setProperty("--view-size", viewSize);
+  const originX = playerX - Math.floor(viewCols / 2);
+  const originY = playerY - Math.floor(viewRows / 2);
+  const mapStyle = elements["dungeon-map"].style;
+  mapStyle.setProperty("--view-cols", viewCols);
+  mapStyle.setProperty("--view-rows", viewRows);
+  if (tilePixels) {
+    mapStyle.setProperty("--map-width", `${viewCols * tilePixels}px`);
+    mapStyle.setProperty("--map-height", `${viewRows * tilePixels}px`);
+  } else {
+    mapStyle.removeProperty("--map-width");
+    mapStyle.removeProperty("--map-height");
+  }
+  elements["dungeon-map"].dataset.zoom = String(mapZoom);
   const fragment = document.createDocumentFragment();
   const enemiesAt = new Map(state.run.enemies.filter((enemy) => enemy.alive).map((enemy) => [tileIndex(enemy.x, enemy.y), enemy]));
   const companionsAt = new Map(state.run.party.map((companion) => [tileIndex(companion.x, companion.y), companion]));
@@ -3512,8 +3594,8 @@ function renderMap() {
   ).map((enemy) => tileIndex(enemy.x, enemy.y)));
   const hazardsAt = new Map(state.run.hazards.filter((hazard) => !hazard.triggered && hazard.revealed)
     .map((hazard) => [tileIndex(hazard.x, hazard.y), hazard]));
-  for (let y = originY; y < originY + viewSize; y += 1) {
-    for (let x = originX; x < originX + viewSize; x += 1) {
+  for (let y = originY; y < originY + viewRows; y += 1) {
+    for (let x = originX; x < originX + viewCols; x += 1) {
       const tile = document.createElement("div");
       const inBounds = x >= 0 && x < MAP_TILE_SIZE && y >= 0 && y < MAP_TILE_SIZE;
       const index = inBounds ? tileIndex(x, y) : -1;
@@ -4161,10 +4243,9 @@ function renderCharacterGuide(character, stats) {
     const abilityName = ABILITIES.find(([key]) => key === spellAbility)?.[1] || spellAbility;
     training.push(`${abilityName} shapes spell attack accuracy and healing for your magic.`);
   } else if (HALF_CASTER_CLASSES.has(character.class)) {
-    training.push("This class's implemented spellcasting begins at level 2.");
+    training.push("This calling's spells awaken at level 2.");
   }
   training.push("Attribute modifiers shown here reflect your current food, water, sleep, and nutrition effects; spell attacks use your class's listed ability score.");
-  training.push("This compact ruleset implements core attacks, skill checks, and the abilities listed in the Field Guide; many full 5e class features are not modeled.");
   elements["class-training-copy"].textContent = training.join(" ");
 
   const nextLevelXp = state.run.level < MAX_LEVEL ? XP_THRESHOLDS[state.run.level + 1] : null;
@@ -4349,7 +4430,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
       abilities.push({
         name: t(spell.name),
         status: !inDungeon ? "Dungeon action" : !available ? "No spell slots"
-          : !target ? "Needs target in sight" : spell.free ? "Cantrip · no slot" : slotStatus,
+          : !target ? "Needs target in sight" : spell.free ? "At will · no slot" : slotStatus,
         state: available && inDungeon && target ? "available" : "context",
         description: `${t(spell.description)} Make a ${abilityName}-based spell attack against a creature within ${spell.range} squares and line of sight, dealing ${spellDamageAtLevel(spell.damage, state.run.level)} damage on a hit. ${spell.free ? "This spell uses no slot" : "Spend 1 spell slot"} and your turn.`
       });
@@ -4359,7 +4440,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
       name: "Class spellcasting",
       status: "Locked until level 2",
       state: "locked",
-      description: "Paladin and Ranger spellcasting is not available at level 1 in this ruleset. At level 2, spell slots and the implemented field spells unlock."
+      description: "Paladins and Rangers learn their first spells at level 2."
     });
   }
 
@@ -4551,15 +4632,21 @@ function renderInventoryList(listElement, inventory) {
         ? "Keep as a story keepsake or sell it at the Chiltomatlan market."
         : "Trade at the Chiltomatlan market.");
     copy.append(label, itemMeta, description);
+    if (RELIC_RITES[entry.id]) {
+      const rite = document.createElement("small");
+      rite.className = "relic-rite";
+      rite.textContent = RELIC_RITES[entry.id].rite;
+      copy.append(rite);
+    }
     const actions = document.createElement("span");
     actions.className = "inventory-item-actions";
     if (["healing-potion", "torch", "ocote", "maguey-salve", "picietl", "chili-smoke", "healer-kit", "crowbar", "hempen-rope", "cacao-drink", "ixpatli"].includes(entry.id) ||
-      FOOD_ITEMS[entry.id] || entry.id === "clean-water") {
+      FOOD_ITEMS[entry.id] || entry.id === "clean-water" || RELIC_RITES[entry.id]) {
       const use = document.createElement("button");
       use.type = "button";
       use.className = "inventory-equip";
       use.dataset.useItem = entry.id;
-      use.textContent = FOOD_ITEMS[entry.id] ? (GEAR_ITEMS[entry.id]?.category === "Drink" ? "Drink" : "Eat")
+      use.textContent = RELIC_RITES[entry.id] ? RELIC_RITES[entry.id].verb : FOOD_ITEMS[entry.id] ? (GEAR_ITEMS[entry.id]?.category === "Drink" ? "Drink" : "Eat")
         : entry.id === "maguey-salve" ? "Apply"
         : entry.id === "picietl" ? "Chew"
         : entry.id === "chili-smoke" ? "Crack open"
@@ -4615,7 +4702,7 @@ function updateListPager(key, total, pageSize) {
 }
 
 function setDialogCopy(id, text) {
-  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+  const sentences = text.match(/[^.!?。！？]+[.!?。！？]+(?:\u00a0»)?["“”’»」』)]*|[^.!?。！？]+$/g) || [text];
   const pages = [];
   let page = "";
   for (const sentence of sentences) {
@@ -5626,12 +5713,14 @@ function parseSavedRun(saved, pack) {
     wellIds.add(well.id);
   }
   if (fixedMap && pack === starterPack) {
-    for (const room of saved.rooms) {
-      const currentRoom = starterPack.rooms.find((template) => template.type === room.type);
-      if (!currentRoom) continue;
+    // Refresh room names and descriptions from the current content, matched by template.
+    // The first room of a floor, the treasure vault, and the final chamber keep their own text.
+    saved.rooms.forEach((room, index) => {
+      const currentRoom = starterPack.rooms.find((template) => template.id === room.id);
+      if (!currentRoom) return;
       room.name = currentRoom.name;
-      room.text = currentRoom.text;
-    }
+      if (index !== 0 && !room.mainTreasure && !room.optionalQuest) room.text = currentRoom.text;
+    });
     for (const enemy of saved.enemies) {
       const currentEnemy = starterPack.enemies.find((template) => template.id === enemy.templateId);
       if (!currentEnemy) continue;
@@ -5855,15 +5944,73 @@ function connectEvents() {
     render();
   });
   elements["new-game"].addEventListener("click", () => openCharacterBuilder());
-  elements["open-settings"].addEventListener("click", () => elements["settings-dialog"].showModal());
-  document.getElementById("pause-settings")?.addEventListener("click", () => elements["settings-dialog"].showModal());
+  const openSettings = () => {
+    stopHeldMovement();
+    document.getElementById("settings-run-actions")?.classList.toggle("hidden", !(state.gameStarted && state.run));
+    if (!elements["settings-dialog"].open) elements["settings-dialog"].showModal();
+  };
+  elements["open-settings"].addEventListener("click", openSettings);
+  document.getElementById("pause-settings")?.addEventListener("click", openSettings);
+  document.getElementById("game-settings-toggle")?.addEventListener("click", openSettings);
+  document.getElementById("pad-size-select")?.addEventListener("change", (event) => {
+    const size = applyPadSize(event.target.value);
+    try { localStorage.setItem(STORE_KEYS.padSize, size); } catch { /* private mode */ }
+    if (state.gameStarted && state.run?.location === "dungeon") renderMap();
+  });
+  document.getElementById("map-zoom")?.addEventListener("input", (event) => setMapZoom(event.target.value));
+  document.getElementById("map-zoom-in")?.addEventListener("click", () => setMapZoom(mapZoom + 1));
+  document.getElementById("map-zoom-out")?.addEventListener("click", () => setMapZoom(mapZoom - 1));
+  // Pinch the tomb map to zoom; ctrl/⌘ + wheel does the same with a mouse or trackpad.
+  const pinch = { pointers: new Map(), start: 0 };
+  const pinchDistance = () => {
+    const [a, b] = [...pinch.pointers.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  const mapViewport = elements["dungeon-map-viewport"];
+  // Re-fit the tile grid whenever the map area changes size (first layout, rotation, drawers).
+  if ("ResizeObserver" in window) {
+    let lastSize = "";
+    new ResizeObserver(() => {
+      const size = `${mapViewport.clientWidth}x${mapViewport.clientHeight}`;
+      if (size === lastSize) return;
+      lastSize = size;
+      if (state.gameStarted && state.run?.location === "dungeon") renderMap();
+    }).observe(mapViewport);
+  }
+  mapViewport.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "touch") return;
+    pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pinch.pointers.size === 2) pinch.start = pinchDistance();
+  });
+  mapViewport.addEventListener("pointermove", (event) => {
+    if (!pinch.pointers.has(event.pointerId)) return;
+    pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pinch.pointers.size !== 2 || !pinch.start) return;
+    const ratio = pinchDistance() / pinch.start;
+    if (ratio > 1.3 || ratio < 0.77) {
+      setMapZoom(mapZoom + (ratio > 1 ? 1 : -1));
+      pinch.start = pinchDistance();
+      state.suppressMapTapUntil = Date.now() + 450;
+    }
+  });
+  const endPinch = (event) => {
+    pinch.pointers.delete(event.pointerId);
+    if (pinch.pointers.size < 2) pinch.start = 0;
+  };
+  mapViewport.addEventListener("pointerup", endPinch);
+  mapViewport.addEventListener("pointercancel", endPinch);
+  mapViewport.addEventListener("wheel", (event) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    setMapZoom(mapZoom + (event.deltaY < 0 ? 1 : -1));
+  }, { passive: false });
   connectSoundSettings();
   elements["close-settings"].addEventListener("click", () => elements["settings-dialog"].close());
   elements["settings-dialog"].addEventListener("click", (event) => {
     if (event.target === elements["settings-dialog"]) elements["settings-dialog"].close();
   });
   elements["language-select"].addEventListener("change", () => {
-    const language = ["es", "nah", "nah-abugida"].includes(elements["language-select"].value) ? elements["language-select"].value : "en";
+    const language = ["es", "nah", "nah-abugida", "fr", "de", "pt", "ja", "ko", "zh"].includes(elements["language-select"].value) ? elements["language-select"].value : "en";
     try {
       localStorage.setItem(STORE_KEYS.language, language);
     } catch (error) {
@@ -6097,11 +6244,16 @@ function connectEvents() {
     renderShop();
   });
   elements["resume-game"].addEventListener("click", () => elements["pause-dialog"].close());
-  elements["return-to-title"].addEventListener("click", () => {
-    elements["pause-dialog"].close();
+  const quitToMainMenu = () => {
+    stopHeldMovement();
+    for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close();
+    if (state.utilityDrawer) closeUtilityDrawer(false);
+    if (state.run) saveRun();
     state.gameStarted = false;
     renderStartScreen();
-  });
+  };
+  elements["return-to-title"].addEventListener("click", quitToMainMenu);
+  document.getElementById("settings-quit")?.addEventListener("click", quitToMainMenu);
   elements["return-after-delving"].addEventListener("click", returnToChiltomatlan);
   elements["town-interact-button"].addEventListener("click", interact);
   elements["dungeon-map"].addEventListener("pointerover", (event) => {
@@ -6165,6 +6317,7 @@ function connectEvents() {
     if (document.hidden) clearTouchMovementInput();
   });
   elements["dungeon-map"].addEventListener("click", (event) => {
+    if (Date.now() < (state.suppressMapTapUntil || 0)) return;
     const tile = event.target.closest(".map-tile");
     if (!tile || state.run?.location !== "dungeon") return;
     const x = Number(tile.dataset.x);
@@ -6239,6 +6392,13 @@ function connectEvents() {
     if (event.key === "Escape" && elements["pause-dialog"].open) {
       event.preventDefault();
       elements["pause-dialog"].close();
+      return;
+    }
+    if ((event.key === "+" || event.key === "=" || event.key === "-" || event.key === "_") && !event.ctrlKey && !event.metaKey &&
+      state.gameStarted && state.run?.location === "dungeon" && !document.querySelector("dialog[open]") &&
+      !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement)) {
+      event.preventDefault();
+      setMapZoom(mapZoom + (event.key === "+" || event.key === "=" ? 1 : -1), { announce: true });
       return;
     }
     if (event.key === "Escape" && !document.querySelector("dialog[open]") && state.run?.location === "dungeon") {
@@ -6348,6 +6508,15 @@ function start() {
   elements["font-select"].value = applyFontChoice(font);
   document.body.classList.toggle("dark-mode", darkMode);
   elements["dark-mode-toggle"].checked = darkMode;
+  let padSize = "large";
+  let savedZoom = 0;
+  try {
+    padSize = localStorage.getItem(STORE_KEYS.padSize) || "large";
+    savedZoom = Number(localStorage.getItem(STORE_KEYS.mapZoom) || 0);
+  } catch { /* private mode */ }
+  const padSelect = document.getElementById("pad-size-select");
+  if (padSelect) padSelect.value = applyPadSize(padSize);
+  setMapZoom(savedZoom);
   loadState();
   connectEvents();
   renderStartScreen();
