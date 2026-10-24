@@ -4,7 +4,8 @@ window.CryptsEnemies = {
   sprites: [
     "cenote-stalker", "yohualtepoztli", "camazotz", "duende",
     "jungle-jaguar", "feathered-serpent", "tomb-bat", "maztican-cave-locust",
-    "mictlaneca", "quinametli", "caxtiltecatl", "axolocatl", "tzitzimitl", "cihuateotl"
+    "mictlaneca", "quinametli", "caxtiltecatl", "axolocatl", "tzitzimitl", "cihuateotl",
+    "xolo-hound", "colotl", "tlacatecolotl", "huay-chivo", "itzpapalotl", "cipactli"
   ],
   starter: [
     { id: "maztican-cave-locust", name: "Hueychapolin", description: "A grasshopper the size of a dog, fat on the tomb's mushrooms. Roasted, it tastes like chapulines with ambition.", sprite: "maztican-cave-locust", edible: true, hp: 4, ac: 13, attackBonus: 3, damage: "1d4", initiativeBonus: 2, xp: 10 },
@@ -20,6 +21,12 @@ window.CryptsEnemies = {
     { id: "axolocatl", name: "Axolocatl", description: "A gilled salamander-person of the cenotes who retreats to damp places in the dry season. Territorial, but not cruel.", sprite: "axolocatl", edible: true, hp: 11, ac: 12, attackBonus: 4, damage: "1d6+2", initiativeBonus: 2, xp: 50 },
     { id: "yohualtepoztli", name: "Yohualtepoztli", description: "The Night Axe: a headless spirit whose open chest thuds like an axe biting wood. If you hear it, it is already close.", sprite: "yohualtepoztli", hp: 9, ac: 12, attackBonus: 3, damage: "1d6+1", initiativeBonus: 0, xp: 25 },
     { id: "cenote-stalker", name: "Cenote Stalker", description: "An ahuizotl: a small, dog-like water beast with a hand at the end of its tail. It drowns the careless and takes only their eyes, teeth, and nails.", sprite: "cenote-stalker", edible: true, hp: 12, ac: 13, attackBonus: 4, damage: "1d6+2", initiativeBonus: 2, xp: 40 },
+    { id: "xolo-hound", name: "Xolotl Hound", description: "A hairless black dog of the underworld with bones painted on its ribs. It is supposed to guide the dead across the river, and it does not like the living.", sprite: "xolo-hound", hp: 9, ac: 12, attackBonus: 4, damage: "1d6+1", initiativeBonus: 3, xp: 30 },
+    { id: "colotl", name: "Colotl", description: "A scorpion as long as a canoe that hunts in the dry, hot chambers. Its sting burns for days. Its tail meat, roasted, is a delicacy.", sprite: "colotl", edible: true, hp: 10, ac: 14, attackBonus: 4, damage: "1d6+1", initiativeBonus: 1, xp: 40 },
+    { id: "tlacatecolotl", name: "Tlacatecolotl", description: "An owl-man: a sorcerer who sold himself to the night. His hoot drains the strength from your arms.", sprite: "tlacatecolotl", hp: 16, ac: 13, attackBonus: 5, damage: "1d8+2", initiativeBonus: 2, xp: 90 },
+    { id: "huay-chivo", name: "Huay Chivo", description: "A witch who walks at night as a goat-headed beast, with burning red eyes and a sour smell.", sprite: "huay-chivo", hp: 18, ac: 13, attackBonus: 5, damage: "1d8+3", initiativeBonus: 2, xp: 110 },
+    { id: "itzpapalotl", name: "Itzpapalotl", description: "The Obsidian Butterfly, a skeletal goddess whose wings are edged with blades of black glass.", sprite: "itzpapalotl", hp: 30, ac: 16, attackBonus: 7, damage: "2d6+4", initiativeBonus: 3, xp: 450 },
+    { id: "cipactli", name: "Cipactli", description: "The great caiman of the first waters, with a mouth at every joint. The gods made the earth from one of its kind.", sprite: "cipactli", edible: true, hp: 40, ac: 15, attackBonus: 7, damage: "2d8+3", initiativeBonus: 0, xp: 500 },
     { id: "camazotz", name: "Camazotz", description: "The death bat of the underworld, as tall as a man and utterly silent. It takes heads in the dark.", sprite: "camazotz", hp: 20, ac: 14, attackBonus: 5, damage: "1d8+2", initiativeBonus: 1, xp: 75 }
   ]
 };

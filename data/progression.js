@@ -40,7 +40,8 @@
       name: `${tier.label} ${base.name}${trait ? ` · ${trait.name}` : ""}`,
       baseId,
       tier: tierId,
-      trait: traitId || null
+      // Gear with a built-in trait (foreign and tomb pieces) keeps it when reforged.
+      trait: traitId || base.trait || null
     };
     prices[key] = [weight, Math.max(tier.minimumPrice, Math.round(price * tier.priceMultiplier))];
   };
@@ -61,6 +62,16 @@
       addTieredEntry(items.armors, items.armorPrices, baseId, "relic", traitId, armorTraits);
     }
   }
+
+  // Gear added later (Mahuiz's foreign wares, tomb armor, new market goods) gets its
+  // Fine and Masterwork versions here, so the Obsidian Workshop can reforge it.
+  items.addGearTiers = (kind, baseId) => {
+    const catalog = kind === "weapon" ? items.weapons : items.armors;
+    const prices = kind === "weapon" ? items.weaponPrices : items.armorPrices;
+    if (!catalog[baseId] || !prices[baseId]) return;
+    addTieredEntry(catalog, prices, baseId, "fine");
+    addTieredEntry(catalog, prices, baseId, "masterwork");
+  };
 
   // Camp dishes. Each restores food like a meal and grants a temporary boon.
   const buffs = {
@@ -116,7 +127,13 @@
       cihuateotl: { condition: "weakened", chance: 30 },
       duende: { condition: "weakened", chance: 20 },
       mictlaneca: { condition: "weakened", chance: 25 },
-      tzitzimitl: { condition: "weakened", chance: 35 }
+      tzitzimitl: { condition: "weakened", chance: 35 },
+      "xolo-hound": { condition: "bleed", chance: 25 },
+      colotl: { condition: "poison", chance: 40 },
+      tlacatecolotl: { condition: "weakened", chance: 35 },
+      "huay-chivo": { condition: "bleed", chance: 30 },
+      itzpapalotl: { condition: "bleed", chance: 40 },
+      cipactli: { condition: "bleed", chance: 30 }
     },
     eliteTitles: ["Elder", "Jade-marked", "Night-touched", "Obsidian-scarred", "Star-bitten"],
     projects: {

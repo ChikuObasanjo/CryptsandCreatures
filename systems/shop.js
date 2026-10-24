@@ -14,11 +14,11 @@ const SHOP_VENDORS = {
     canSell: true,
     categories: [
       ["all", "All", "kit"], ["provisions", "Provisions", "ration"], ["remedies", "Remedies", "potion"],
-      ["tools", "Trail gear", "tool"], ["weapons", "Weapons", "weapon"], ["armor", "Armor", "armor"]
+      ["tools", "Trail gear", "tool"], ["wardrobe", "Wardrobe", "clothing"], ["weapons", "Weapons", "weapon"], ["armor", "Armor", "armor"]
     ],
     sellCategories: [
       ["all", "All", "kit"], ["treasure", "Treasure", "treasure"], ["provisions", "Provisions", "ration"],
-      ["tools", "Trail gear", "tool"], ["weapons", "Weapons", "weapon"], ["armor", "Armor", "armor"]
+      ["tools", "Trail gear", "tool"], ["wardrobe", "Wardrobe", "clothing"], ["weapons", "Weapons", "weapon"], ["armor", "Armor", "armor"]
     ]
   },
   mahuiz: {
@@ -57,10 +57,9 @@ function openShop(vendor = "market", category = "all") {
 // ---------- Catalog entries ----------
 
 function shopIconUrl(entry) {
-  if (entry.kind === "cosmetic") {
-    return codexGearIconUrl(COSMETICS[entry.cosmeticId].slot === "helmet" ? "helmet" : "clothes", entry.cosmeticId);
-  }
+  if (entry.kind === "cosmetic") return codexGearIconUrl(COSMETICS[entry.cosmeticId].slot, entry.cosmeticId);
   const item = entry.item;
+  if (item.slot === "wear") return codexGearIconUrl(item.wearSlot, item.cosmeticId);
   if (item.slot === "weapon") return codexGearIconUrl("weapon", item.equipmentId);
   if (item.slot === "armor") return codexGearIconUrl("armor", item.equipmentId);
   const sprite = item.sprite || inventoryIconFile(item);
@@ -75,6 +74,7 @@ function shopCategoryFor(entry, vendor) {
     const origin = (item.slot === "weapon" ? WEAPONS : ARMORS)[item.equipmentId]?.origin;
     return origin || "regalia";
   }
+  if (item.slot === "wear") return "wardrobe";
   if (item.categoryId === "Treasure" || item.categoryId === "Keepsake") return "treasure";
   if (item.slot === "weapon") return "weapons";
   if (item.slot === "armor" || item.slot === "shield" || item.categoryId === "Clothing") return "armor";
@@ -93,9 +93,9 @@ function shopEntry(id, vendor, view) {
     return {
       id, kind: "cosmetic", cosmeticId, name: t(cosmetic.name), description: t(cosmetic.description),
       price: cosmetic.price, weight: 0, rarity: "exotic",
-      owned: cosmetics.owned.includes(cosmeticId), equipped: cosmetics[cosmetic.slot] === cosmeticId,
+      owned: inventoryQuantity(`wear:${cosmeticId}`) > 0, equipped: cosmetics[cosmetic.slot] === cosmeticId,
       locked: progress().deepestFloor < unlockFloor, unlockFloor,
-      typeLabel: cosmetic.slot === "helmet" ? "Regalia · helmet" : "Regalia · clothing"
+      typeLabel: cosmetic.slot === "helmet" ? "Regalia · head" : cosmetic.slot === "back" ? "Regalia · banner" : "Regalia · clothing"
     };
   }
   const item = itemDetails(id);
@@ -107,7 +107,7 @@ function shopEntry(id, vendor, view) {
     id, kind: "item", item, name: item.name, description: item.description || "",
     price: view === "sell" ? storeSellPrice(item) : vendor === "mahuiz" ? item.price : storeBuyPrice(item),
     weight: item.weight,
-    rarity: item.tier || (gear?.exotic ? "exotic" : "common"),
+    rarity: item.exotic ? "exotic" : item.tier || (gear?.exotic ? "exotic" : "common"),
     carried, equipped: isEquipped(id),
     sellable: view === "sell" ? carried - (isEquipped(id) ? 1 : 0) : 0,
     locked: view === "buy" && progress().deepestFloor < unlockFloor, unlockFloor,
@@ -222,6 +222,7 @@ function shopBuy(id, quantity, equip = false) {
   if (!bought) return;
   if (id === "dungeon-gourmet-guide") state.run.gourmetGuideOwned = true;
   const total = roundGold(entry.price * bought);
+  sfx("coins");
   addLog(`You buy ${bought > 1 ? `${bought} × ` : ""}${entry.name} from ${shop.vendor === "mahuiz" ? "Mahuiz" : "Teyac"} for ${formatCurrency(total)}.`);
   let message = `Bought ${bought > 1 ? `${bought} × ` : ""}${entry.name} for ${formatCurrency(total)}.`;
   if (equip && entry.item.slot && canEquipItem(entry.item)) {
@@ -243,8 +244,14 @@ function shopBuyCosmetic(entry) {
       renderShopScreen();
       return;
     }
+    if (!addInventoryItem(`wear:${entry.cosmeticId}`)) {
+      shopSetMessage(`There is no room in your pack for ${entry.name}.`);
+      renderShopScreen();
+      return;
+    }
     state.run.gold = roundGold(state.run.gold - cosmetic.price);
-    character.cosmetics.owned.push(entry.cosmeticId);
+    if (!character.cosmetics.owned.includes(entry.cosmeticId)) character.cosmetics.owned.push(entry.cosmeticId);
+    sfx("coins");
     addLog(`You buy ${entry.name} from Mahuiz for ${formatCurrency(cosmetic.price)}.`);
   }
   character.cosmetics[cosmetic.slot] = entry.equipped ? null : entry.cosmeticId;
@@ -270,6 +277,7 @@ function shopSell(id, quantity) {
   }
   shopState().quantity = 1;
   if (!inventoryQuantity(id) || inventoryQuantity(id) <= (isEquipped(id) ? 1 : 0)) shopState().selected = null;
+  sfx("coins");
   shopSetMessage(`Sold ${sold > 1 ? `${sold} × ` : ""}${entry.name} for ${formatCurrency(received)}.`);
   render();
 }
@@ -292,6 +300,7 @@ function shopSellAllTreasure() {
   addLog(`You sell ${count} treasure${count === 1 ? "" : "s"} to Teyac for ${formatCurrency(total)}.`);
   changeFactionStanding("traders-circle", Math.min(10, 2 * count), "you sell recovered treasure through Teyac's market");
   shopState().selected = null;
+  sfx("gold");
   shopSetMessage(`Sold ${count} treasure${count === 1 ? "" : "s"} for ${formatCurrency(total)}.`);
   render();
 }
@@ -303,12 +312,7 @@ function shopIconImage(entry, className) {
   image.className = className;
   image.alt = "";
   image.draggable = false;
-  image.src = shopIconUrl(entry);
-  image.onerror = () => {
-    image.onerror = null;
-    image.src = `./resources/items/supply.png?v=${SPRITE_RESOURCE_VERSION}`;
-  };
-  return image;
+  return setItemArt(image, entry.kind === "cosmetic" ? `wear:${entry.cosmeticId}` : entry.id);
 }
 
 function categoryIcon(icon) {
@@ -467,12 +471,14 @@ function renderShopDetail(entry) {
   // Preview: try gear and regalia on your adventurer; otherwise a large icon.
   const preview = document.createElement("div");
   preview.className = "shop-preview";
-  const isGear = entry.kind === "cosmetic" || ["weapon", "armor"].includes(entry.item?.slot);
+  const isGear = entry.kind === "cosmetic" || ["weapon", "armor", "wear"].includes(entry.item?.slot);
   if (isGear && !entry.locked) {
     const character = JSON.parse(JSON.stringify(state.run.character));
     if (entry.kind === "cosmetic") {
       const cosmetic = COSMETICS[entry.cosmeticId];
       character.cosmetics = { ...(character.cosmetics || {}), [cosmetic.slot]: entry.cosmeticId };
+    } else if (entry.item.slot === "wear") {
+      character.cosmetics = { ...(character.cosmetics || {}), [entry.item.wearSlot]: entry.item.cosmeticId };
     } else {
       character.equipment[entry.item.slot] = entry.item.equipmentId;
       if (entry.item.slot === "armor") character.cosmetics = { ...(character.cosmetics || {}), clothes: null };

@@ -173,8 +173,355 @@ function generateGtflDungeon() {
   return { rooms, terrain, mapId: GTFL_MAP_ID, floorStairs, layoutVersion: 2 };
 }
 
+
+// ---------- Layout v3: carved chambers and winding passages ----------
+// Rooms of several shapes are scattered across the map (halls, pillared halls, cross-shaped
+// shrines, round caverns, L-shaped galleries, small cells), joined by a spanning tree plus a
+// few extra loops. Corridors are dug with a weighted path search, so they bend, reuse
+// each other, and sometimes pass through other chambers.
+const V3_SHAPES = ["hall", "hall", "pillared", "cross", "round", "ell", "cell"];
+
+function v3RoomSize(shape) {
+  const odd = (min, max) => min + 2 * (randomInt(Math.floor((max - min) / 2) + 1) - 1);
+  if (shape === "cell") return { w: 5, h: 5 };
+  if (shape === "pillared") return { w: odd(9, 11), h: odd(7, 9) };
+  if (shape === "cross" || shape === "round") return { w: odd(7, 9), h: odd(7, 9) };
+  if (shape === "ell") return { w: odd(7, 9), h: odd(7, 9) };
+  return { w: odd(5, 9), h: odd(5, 7) };
+}
+
+// Interior floor mask for a room: true where the chamber floor is (walls are added around it).
+function v3RoomFloor(room, x, y) {
+  const lx = x - room.mapX;
+  const ly = y - room.mapY;
+  if (lx < 1 || ly < 1 || lx > room.mapW - 2 || ly > room.mapH - 2) return false;
+  const cx = (room.mapW - 1) / 2;
+  const cy = (room.mapH - 1) / 2;
+  if (room.shape === "round") {
+    const rx = (room.mapW - 2) / 2;
+    const ry = (room.mapH - 2) / 2;
+    return ((lx - cx) / rx) ** 2 + ((ly - cy) / ry) ** 2 <= 1.02;
+  }
+  if (room.shape === "cross") {
+    const arm = Math.max(1, Math.floor((Math.min(room.mapW, room.mapH) - 2) / 6));
+    return Math.abs(lx - cx) <= arm || Math.abs(ly - cy) <= arm;
+  }
+  if (room.shape === "ell") {
+    // An L: the full top band and the full left band, with the anchor at the corner of the L.
+    const band = Math.floor((room.mapW - 2) / 2);
+    const vband = Math.floor((room.mapH - 2) / 2);
+    const flipX = room.flipX;
+    const flipY = room.flipY;
+    const fx = flipX ? room.mapW - 1 - lx : lx;
+    const fy = flipY ? room.mapH - 1 - ly : ly;
+    return fx <= band + 1 || fy <= vband + 1;
+  }
+  return true;
+}
+
+function v3IsPillar(room, x, y) {
+  if (room.shape !== "pillared") return false;
+  const lx = x - room.mapX;
+  const ly = y - room.mapY;
+  const cx = (room.mapW - 1) / 2;
+  const cy = (room.mapH - 1) / 2;
+  if (lx < 2 || ly < 2 || lx > room.mapW - 3 || ly > room.mapH - 3) return false;
+  if (Math.abs(lx - cx) <= 1 && Math.abs(ly - cy) <= 1) return false;
+  return lx % 2 === 0 && ly % 2 === 0 && (lx === 2 || lx === room.mapW - 3 || ly === 2 || ly === room.mapH - 3);
+}
+
+function generateGtflDungeonV3() {
+  const depth = state.run.dungeonFloor;
+  const size = MAP_TILE_SIZE;
+  const target = 13 + randomInt(4) + Math.min(2, Math.floor(depth / 5));
+  const placed = [];
+  const fits = (rect) => rect.mapX >= 1 && rect.mapY >= 1 && rect.mapX + rect.mapW <= size - 1 && rect.mapY + rect.mapH <= size - 1 &&
+    placed.every((other) => rect.mapX + rect.mapW + 2 <= other.mapX || other.mapX + other.mapW + 2 <= rect.mapX ||
+      rect.mapY + rect.mapH + 2 <= other.mapY || other.mapY + other.mapH + 2 <= rect.mapY);
+  // The boss gets a grand hall first so it always fits.
+  const wanted = ["boss-hall", ...Array.from({ length: target - 1 }, () => V3_SHAPES[randomInt(V3_SHAPES.length) - 1])];
+  for (const entry of wanted) {
+    const shape = entry === "boss-hall" ? (randomInt(2) === 1 ? "pillared" : "hall") : entry;
+    for (let attempt = 0; attempt < 400; attempt += 1) {
+      const dims = entry === "boss-hall" ? { w: 9 + 2 * (randomInt(2) - 1), h: 9 } : v3RoomSize(shape);
+      const rect = {
+        shape, boss: entry === "boss-hall",
+        mapW: dims.w, mapH: dims.h,
+        mapX: 1 + randomInt(size - dims.w - 2) - 1,
+        mapY: 1 + randomInt(size - dims.h - 2) - 1,
+        flipX: randomInt(2) === 1, flipY: randomInt(2) === 1
+      };
+      if (!fits(rect)) continue;
+      rect.anchorX = rect.mapX + Math.floor(rect.mapW / 2);
+      rect.anchorY = rect.mapY + Math.floor(rect.mapH / 2);
+      if (shape === "ell") {
+        // Put the anchor in the corner block of the L, which is always floor.
+        rect.anchorX = rect.flipX ? rect.mapX + rect.mapW - 3 : rect.mapX + 2;
+        rect.anchorY = rect.flipY ? rect.mapY + rect.mapH - 3 : rect.mapY + 2;
+      }
+      placed.push(rect);
+      break;
+    }
+  }
+  if (placed.length < 11) throw new Error("Could not fit enough tomb chambers on this floor.");
+
+  // Carve floors, pillars, then the walls that ring every chamber.
+  const terrain = Array(size * size).fill("stone");
+  const roomFloor = new Int16Array(size * size).fill(-1);
+  const pillars = new Set();
+  placed.forEach((room, index) => {
+    for (let y = room.mapY; y < room.mapY + room.mapH; y += 1) {
+      for (let x = room.mapX; x < room.mapX + room.mapW; x += 1) {
+        if (!v3RoomFloor(room, x, y)) continue;
+        if (v3IsPillar(room, x, y)) {
+          terrain[tileIndex(x, y)] = "wall";
+          pillars.add(tileIndex(x, y));
+        } else {
+          terrain[tileIndex(x, y)] = "floor";
+          roomFloor[tileIndex(x, y)] = index;
+        }
+      }
+    }
+  });
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (terrain[tileIndex(x, y)] !== "stone") continue;
+      let touches = false;
+      for (let dy = -1; dy <= 1 && !touches; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx >= 0 && ny >= 0 && nx < size && ny < size && roomFloor[tileIndex(nx, ny)] >= 0) { touches = true; break; }
+        }
+      }
+      if (touches) terrain[tileIndex(x, y)] = "wall";
+    }
+  }
+
+  // Connections: a minimum spanning tree over chamber centers, plus extra loops.
+  const centerDistance = (a, b) => Math.hypot(a.anchorX - b.anchorX, a.anchorY - b.anchorY);
+  const edges = [];
+  const inTree = new Set([0]);
+  while (inTree.size < placed.length) {
+    let best = null;
+    for (const a of inTree) {
+      for (let b = 0; b < placed.length; b += 1) {
+        if (inTree.has(b)) continue;
+        const distance = centerDistance(placed[a], placed[b]);
+        if (!best || distance < best.distance) best = { a, b, distance };
+      }
+    }
+    inTree.add(best.b);
+    edges.push([best.a, best.b]);
+  }
+  const linked = (a, b) => edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+  placed.forEach((room, a) => {
+    if (randomInt(100) > 38) return;
+    const candidates = placed.map((other, b) => ({ b, distance: centerDistance(room, other) }))
+      .filter(({ b, distance }) => b !== a && !linked(a, b) && distance < 20)
+      .sort((first, second) => first.distance - second.distance);
+    if (candidates[0]) edges.push([a, candidates[0].b]);
+  });
+
+  // Dig each passage with a weighted search: stone is cheap, existing corridors cheaper,
+  // crossing a wall makes a door, and walking through another chamber is allowed but costly.
+  const doors = new Set();
+  const orthogonal = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const wallCrossable = (x, y) => {
+    const index = tileIndex(x, y);
+    if (pillars.has(index)) return false;
+    const floorSides = orthogonal.filter(([dx, dy]) => roomFloor[tileIndex(x + dx, y + dy)] >= 0);
+    const openSides = orthogonal.filter(([dx, dy]) => {
+      const type = terrain[tileIndex(x + dx, y + dy)];
+      return type === "stone" || type === "corridor";
+    });
+    // A door needs floor straight through on one side and open ground on the opposite side.
+    return floorSides.some(([dx, dy]) => openSides.some(([ox, oy]) => ox === -dx && oy === -dy));
+  };
+  const noise = new Float32Array(size * size).map(() => Math.random() * 1.6);
+  const digPath = (from, to, fromIndex, toIndex) => {
+    const startIndex = tileIndex(from.anchorX, from.anchorY);
+    const goalIndex = tileIndex(to.anchorX, to.anchorY);
+    const cost = new Float32Array(size * size).fill(Infinity);
+    const previous = new Int32Array(size * size).fill(-1);
+    cost[startIndex] = 0;
+    const open = [[0, startIndex]];
+    while (open.length) {
+      let bestIndex = 0;
+      for (let i = 1; i < open.length; i += 1) if (open[i][0] < open[bestIndex][0]) bestIndex = i;
+      const [, current] = open.splice(bestIndex, 1)[0];
+      if (current === goalIndex) break;
+      const cx = current % size;
+      const cy = Math.floor(current / size);
+      const currentWall = terrain[current] === "wall" && !doors.has(current);
+      for (const [dx, dy] of orthogonal) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (nx < 1 || ny < 1 || nx >= size - 1 || ny >= size - 1) continue;
+        const next = tileIndex(nx, ny);
+        const type = terrain[next];
+        let step;
+        if (doors.has(next)) step = 1;
+        else if (type === "wall") {
+          if (currentWall || !wallCrossable(nx, ny)) continue;
+          const crowded = orthogonal.some(([ax, ay]) => doors.has(tileIndex(nx + ax, ny + ay))) ? 30 : 0;
+          step = 9 + crowded;
+        } else if (type === "floor") {
+          const owner = roomFloor[next];
+          step = owner === fromIndex || owner === toIndex ? 1 : 7;
+        } else if (type === "corridor") step = 1.2;
+        else step = 2.4 + noise[next];
+        if (currentWall && type === "wall") continue;
+        const total = cost[current] + step;
+        if (total < cost[next]) {
+          cost[next] = total;
+          previous[next] = current;
+          const h = Math.abs(nx - to.anchorX) + Math.abs(ny - to.anchorY);
+          open.push([total + h * 1.2, next]);
+        }
+      }
+    }
+    if (previous[goalIndex] < 0) return false;
+    for (let index = goalIndex; index >= 0 && index !== startIndex; index = previous[index]) {
+      if (terrain[index] === "stone") terrain[index] = "corridor";
+      else if (terrain[index] === "wall") {
+        terrain[index] = "door";
+        doors.add(index);
+      }
+    }
+    return true;
+  };
+  for (const [a, b] of edges) {
+    if (!digPath(placed[a], placed[b], a, b)) throw new Error("A tomb passage could not be dug.");
+  }
+
+  // Roles: start, boss (farthest by passage count), main treasure (a quiet dead end), stairs spread out.
+  const adjacency = placed.map(() => []);
+  for (const [a, b] of edges) {
+    if (!adjacency[a].includes(b)) adjacency[a].push(b);
+    if (!adjacency[b].includes(a)) adjacency[b].push(a);
+  }
+  const bossIndex = placed.findIndex((room) => room.boss);
+  const hops = (origin) => {
+    const distance = placed.map(() => Infinity);
+    distance[origin] = 0;
+    const queue = [origin];
+    while (queue.length) {
+      const current = queue.shift();
+      for (const next of adjacency[current]) {
+        if (distance[next] !== Infinity) continue;
+        distance[next] = distance[current] + 1;
+        queue.push(next);
+      }
+    }
+    return distance;
+  };
+  const fromBoss = hops(bossIndex);
+  const startIndex = placed.map((room, index) => ({ index, score: fromBoss[index] * 10 + centerDistance(room, placed[bossIndex]) }))
+    .filter(({ index }) => index !== bossIndex && placed[index].shape !== "pillared")
+    .sort((first, second) => second.score - first.score)[0].index;
+  const fromStart = hops(startIndex);
+  const deadEnds = placed.map((room, index) => index)
+    .filter((index) => index !== startIndex && index !== bossIndex && adjacency[index].length === 1);
+  const treasurePool = (deadEnds.length ? deadEnds : placed.map((room, index) => index)
+    .filter((index) => index !== startIndex && index !== bossIndex))
+    .sort((first, second) => fromStart[second] - fromStart[first]);
+  const treasureIndex = treasurePool[randomInt(Math.min(2, treasurePool.length)) - 1];
+
+  const order = [startIndex, ...shuffle(placed.map((room, index) => index).filter((index) => index !== startIndex))];
+  const newIndex = new Map(order.map((oldIndex, index) => [oldIndex, index]));
+  const roomTypes = ["quiet", "trap", "combat", "quiet", "treasure", "combat"];
+  const rooms = order.map((oldIndex) => {
+    const room = placed[oldIndex];
+    const isStart = oldIndex === startIndex;
+    const isBoss = oldIndex === bossIndex;
+    const isTreasure = oldIndex === treasureIndex;
+    const type = isStart && depth === 1 ? "entrance" : isBoss ? "boss" : isTreasure ? "treasure"
+      : room.shape === "pillared" ? (randomInt(2) === 1 ? "combat" : "quiet")
+      : room.shape === "cell" ? (randomInt(3) === 1 ? "trap" : "quiet")
+      : roomTypes[randomInt(roomTypes.length) - 1];
+    const template = chooseRoom(type, randomInt(99));
+    return {
+      ...template,
+      text: isStart && depth === 1
+        ? "The old imperial seal lies broken at this threshold. The surface entrance is the one safe route back to Chiltomatlan."
+        : isTreasure
+          ? "A carved vault lies at the end of a quiet passage. Search it, then choose how much farther to descend."
+          : isBoss && depth === DUNGEON_FLOOR_COUNT
+            ? "A starless presence waits in the deepest chamber. Tzitzimitl guards the final vault."
+            : template.text,
+      x: Math.max(0, Math.min(ROOM_GRID_SIZE - 1, Math.floor(room.anchorX / 9))),
+      y: Math.max(0, Math.min(ROOM_GRID_SIZE - 1, Math.floor(room.anchorY / 9))),
+      mapX: room.mapX, mapY: room.mapY, mapW: room.mapW, mapH: room.mapH,
+      anchorX: room.anchorX, anchorY: room.anchorY,
+      shape: room.shape,
+      mapLayout: GTFL_MAP_ID,
+      mainTreasure: isTreasure,
+      optionalQuest: isBoss && depth === DUNGEON_FLOOR_COUNT,
+      cleared: isStart,
+      visited: isStart,
+      enemy: null,
+      links: adjacency[oldIndex].map((other) => newIndex.get(other))
+    };
+  });
+
+  // Stairs: in chambers far from the start and from each other.
+  const usedRooms = new Set([0, newIndex.get(treasureIndex), newIndex.get(bossIndex)]);
+  const pickSpread = (taken) => {
+    const candidates = rooms.map((room, index) => index).filter((index) => !usedRooms.has(index));
+    if (!candidates.length) return null;
+    const score = (index) => {
+      const room = rooms[index];
+      const nearest = Math.min(...[...taken, rooms[0]].map((other) => centerDistance(room, other)));
+      return nearest + Math.random() * 4;
+    };
+    const best = candidates.sort((first, second) => score(second) - score(first))[0];
+    usedRooms.add(best);
+    return rooms[best];
+  };
+  const floorStairs = [];
+  const stairRooms = [];
+  if (depth === 1) {
+    floorStairs.push({ id: "surface-entrance", x: rooms[0].anchorX, y: rooms[0].anchorY, type: "stairs-up", role: "entrance", name: "Surface entrance" });
+  } else {
+    for (let index = 1; index <= 2; index += 1) {
+      const room = pickSpread(stairRooms);
+      if (!room) throw new Error("Could not place two return stairs on this dungeon floor.");
+      stairRooms.push(room);
+      floorStairs.push({ id: `connection-${depth - 1}-${index}`, x: room.anchorX, y: room.anchorY, type: "stairs-up", targetFloor: depth - 1, name: "Stairs up" });
+    }
+  }
+  if (depth < DUNGEON_FLOOR_COUNT) {
+    for (let index = 1; index <= 2; index += 1) {
+      const room = pickSpread(stairRooms);
+      if (!room) throw new Error("Could not place two descending stairs on this dungeon floor.");
+      stairRooms.push(room);
+      floorStairs.push({ id: `connection-${depth}-${index}`, x: room.anchorX, y: room.anchorY, type: "stairs-down", targetFloor: depth + 1, name: "Stairs down" });
+    }
+  } else {
+    const boss = rooms.find((room) => room.optionalQuest);
+    const spot = [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0]]
+      .map(([dx, dy]) => ({ x: boss.anchorX + dx, y: boss.anchorY + dy }))
+      .find(({ x, y }) => terrain[tileIndex(x, y)] === "floor");
+    floorStairs.push({ id: "surface-exit", x: spot.x, y: spot.y, type: "exit", role: "exit", name: "Tomb exit" });
+  }
+  if (rooms.some((room) => terrain[tileIndex(room.anchorX, room.anchorY)] !== "floor")) {
+    throw new Error("A tomb chamber is not centered on a walkable tile.");
+  }
+  return { rooms, terrain, mapId: GTFL_MAP_ID, floorStairs, layoutVersion: 3 };
+}
+
 function generateDungeon() {
-  if (state.pack.id === starterPack.id && getRoomsOfType("treasure").length) return generateGtflDungeon();
+  if (state.pack.id === starterPack.id && getRoomsOfType("treasure").length) {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      try {
+        return generateGtflDungeonV3();
+      } catch (error) {
+        if (attempt === 5) console.warn(`Falling back to the classic tomb layout: ${error.message}`);
+      }
+    }
+    return generateGtflDungeon();
+  }
   const candidates = state.pack.rooms.filter((room) => ["quiet", "trap", "treasure", "combat"].includes(room.type));
   if (!candidates.length) throw new Error("The pack needs at least one quiet, trap, treasure, or combat room.");
   const middleCount = Math.min(candidates.length, randomInt(3) + 2);
@@ -267,7 +614,7 @@ function tileIndex(x, y) {
 
 function roomIndexAt(x, y) {
   return state.run.rooms.findIndex((room) =>
-    room.mapLayout === GTFL_MAP_ID && state.run.dungeonLayoutVersion === 2
+    room.mapLayout === GTFL_MAP_ID && state.run.dungeonLayoutVersion >= 2
       ? x >= room.mapX + 1 && x < room.mapX + room.mapW - 1 &&
         y >= room.mapY + 1 && y < room.mapY + room.mapH - 1
       : room.mapLayout === GTFL_MAP_ID
@@ -406,13 +753,13 @@ function rollGreatTempleEncounter(usedIds = new Set()) {
   const floor = state.run.dungeonFloor || 1;
   const earlyEncounters = [
     "maztican-cave-locust", "axolocatl", "cenote-stalker",
-    "tomb-bat", "duende", "yohualtepoztli"
+    "tomb-bat", "duende", "yohualtepoztli", "xolo-hound", "colotl"
   ];
   const middleEncounters = [
-    ...earlyEncounters, "mictlaneca", "jungle-jaguar", "quinametli", "cihuateotl"
+    ...earlyEncounters, "mictlaneca", "jungle-jaguar", "quinametli", "cihuateotl", "tlacatecolotl", "huay-chivo"
   ];
   const deepEncounters = [
-    ...middleEncounters, "caxtiltecatl", "feathered-serpent", "camazotz"
+    ...middleEncounters, "caxtiltecatl", "feathered-serpent", "camazotz", "itzpapalotl", "cipactli"
   ];
   const encounterIds = floor >= 9 ? deepEncounters : floor >= 5 ? middleEncounters : earlyEncounters;
   const available = encounterIds
@@ -491,18 +838,32 @@ function createEnemy(template, position, roomIndex, index) {
   };
 }
 
+// What a cache in the tomb holds: keepsakes, treasure, clothes and ornaments, or old armor.
+function rollTombFind(floor) {
+  const wardrobe = window.CryptsWardrobe;
+  const pickFrom = (pool) => {
+    const available = pool.filter((entry) => entry.minFloor <= floor);
+    return available.length ? available[randomInt(available.length) - 1].id : null;
+  };
+  const roll = randomInt(100);
+  if (roll <= 18) return DUNGEON_KEEPSAKE_LOOT[randomInt(DUNGEON_KEEPSAKE_LOOT.length) - 1];
+  if (roll <= 42) return pickFrom(wardrobe.tombWear) || "jade-bead";
+  if (roll <= 50 && floor >= 3) return pickFrom(wardrobe.tombArmor) || "jade-bead";
+  if (roll <= 57 && floor >= 3) return pickFrom(wardrobe.tombWeapons || []) || "jade-bead";
+  if (roll <= 80) return pickFrom(wardrobe.tombTreasure) || "jade-bead";
+  return floor >= 9 && randomInt(100) <= 35 ? "obsidian-mirror"
+    : floor >= 5 && randomInt(100) <= 35 ? "jade-pectoral"
+      : randomInt(2) === 1 ? "jade-bead" : "terracotta-figurine";
+}
+
 function createGreatTempleCaches(player, occupied) {
   for (const treasure of state.run.treasures) occupied.add(tileIndex(treasure.x, treasure.y));
   for (let index = 0; index < 8; index += 1) {
     const position = randomMapFloorSpread(occupied, state.run.treasures, 4, player, 4);
     if (!position) break;
     occupied.add(tileIndex(position.x, position.y));
-    const includesItem = randomInt(100) <= 35;
-    const itemId = !includesItem ? null : randomInt(100) <= 25
-      ? DUNGEON_KEEPSAKE_LOOT[randomInt(DUNGEON_KEEPSAKE_LOOT.length) - 1]
-      : state.run.dungeonFloor >= 9 && randomInt(100) <= 35 ? "obsidian-mirror"
-        : state.run.dungeonFloor >= 5 && randomInt(100) <= 35 ? "jade-pectoral"
-          : randomInt(2) === 1 ? "jade-bead" : "terracotta-figurine";
+    const includesItem = randomInt(100) <= 45;
+    const itemId = includesItem ? rollTombFind(state.run.dungeonFloor) : null;
     const cacheItems = itemId ? [{ id: itemId, quantity: 1 }] : [];
     if (randomInt(100) <= cacheGearChance(state.run.dungeonFloor)) {
       const gear = rollGearDrop(state.run.dungeonFloor);
@@ -772,7 +1133,7 @@ function restoreDungeonFloorState(snapshot, entryId) {
   const snapshotSigns = dungeonSignsForSnapshot(snapshot);
   const destinationStair = snapshot.floorStairs?.find((stair) => stair.id === entryId) ||
     snapshotSigns.find((stair) => stair.id === entryId) ||
-    (snapshot.dungeonLayoutVersion !== 2
+    (!(snapshot.dungeonLayoutVersion >= 2)
       ? snapshotSigns.find((stair) =>
         stair.type === "stairs-down" && stair.id === `connection-${snapshot.floor}-1`
       )
@@ -794,7 +1155,7 @@ function restoreDungeonFloorState(snapshot, entryId) {
 }
 
 function dungeonSignsForSnapshot(snapshot) {
-  if (snapshot.dungeonLayoutVersion === 2) return snapshot.floorStairs || [];
+  if (snapshot.dungeonLayoutVersion >= 2) return snapshot.floorStairs || [];
   if (snapshot.rooms.length === 3) {
     const entrance = snapshot.rooms.find((room) => room.type === "entrance");
     const downPosition = [
@@ -844,7 +1205,8 @@ function newRun(character) {
   }
   const stats = character.legacy ? { maxHp: 18 } : deriveCharacter(character);
   const inventory = buildStartingInventory(character);
-  if (getCarriedWeight(inventory, 10) > getCarryCapacity(character)) {
+  dressInStartingOutfit(character, inventory);
+  if (getCarriedWeight(inventory, 10) > getCarryCapacity(character, inventory)) {
     throw new Error("This character's starting kit exceeds their carrying capacity.");
   }
   state.gameStarted = true;
@@ -861,7 +1223,7 @@ function newRun(character) {
     progress: createProgress(),
     needs: createNeeds(),
     party: [],
-    townPosition: { x: 5, y: 4 },
+    townPosition: { ...TOWN_PLAZA },
     rooms: [],
     terrain: [],
     openDoors: [],

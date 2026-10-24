@@ -12,6 +12,8 @@
 @font-face { font-family: "Alegreya Sans"; src: url("./resources/fonts/alegreya-sans-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
 @font-face { font-family: "Alegreya Sans"; src: url("./resources/fonts/alegreya-sans-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 @font-face { font-family: "Alegreya Sans"; src: url("./resources/fonts/alegreya-sans-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "NahuatlOne"; src: url("./resources/fonts/nahuatl-one.woff2") format("woff2"); font-weight: 400; font-display: swap; unicode-range: U+ED00-F5FF; }
+@font-face { font-family: "Unifont"; src: url("./resources/fonts/unifont-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Alegreya SC"; src: url("./resources/fonts/alegreya-sc-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
 :root {
@@ -553,8 +555,8 @@ body.dark-mode .town-safe-notice { color: #9fdcc9; }
   align-self: start;
   justify-self: center;
   display: grid;
-  grid-template-columns: repeat(var(--town-columns, 11), minmax(0, 1fr));
-  width: min(100%, calc((100dvh - 300px) * 11 / 9), 760px);
+  grid-template-columns: repeat(var(--town-columns, 13), minmax(0, 1fr));
+  width: min(100%, calc((100dvh - 268px) * 13 / 11), 940px);
   border: 2px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
@@ -2062,7 +2064,7 @@ button.patolli-piece-chip:disabled { cursor: default; }
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas: "dpad actions";
   }
-  .dungeon-controls > .touch-dpad { --dpad-size: 44px; gap: 4px; }
+  .dungeon-controls > .touch-dpad { --dpad-size: 50px; gap: 5px; }
   .map-panel { padding: 10px 12px; gap: 8px 14px; }
   .battle-hud { gap: 6px; }
   .combatant-card { padding: 6px 8px; grid-template-columns: 52px minmax(0, 1fr); }
@@ -2189,8 +2191,8 @@ button.patolli-piece-chip:disabled { cursor: default; }
   .town-walk-panel > .section-heading h3 { font-size: 18px; }
   .town-walk-panel > .keyboard-hint { display: none; }
   .town-location-copy { font-size: 14px; min-height: 0; }
-  .town-map { width: min(100%, calc((100dvh - 412px) * 11 / 9)); min-width: 220px; }
-  .town-touch-dpad { --dpad-size: 48px; align-self: start; }
+  .town-map { width: min(100%, calc((100dvh - 330px) * 13 / 11)); min-width: 240px; }
+  .town-touch-dpad { --dpad-size: 52px; align-self: start; }
   .town-legend { align-self: start; font-size: 12.5px; }
   .context-action-button { min-height: 44px; padding: 6px 12px; font-size: 14px; }
   .context-action-button kbd { display: none; }
@@ -2203,7 +2205,7 @@ button.patolli-piece-chip:disabled { cursor: default; }
   .delve-objectives { font-size: 12.5px; }
   .compact-log li { padding: 5px 8px; font-size: 13px; }
   .dungeon-controls { gap: 8px; }
-  .dungeon-controls > .touch-dpad { --dpad-size: 44px; gap: 4px; }
+  .dungeon-controls > .touch-dpad { --dpad-size: 50px; gap: 5px; }
   .action-panel { gap: 6px; }
   .turn-status { font-size: 12px; padding-right: 36px; }
   .ability-guide-shortcut { top: -6px; width: 30px; height: 30px; font-size: 15px; }
@@ -2260,7 +2262,7 @@ button.patolli-piece-chip:disabled { cursor: default; }
 @media (max-width: 380px) {
   .header-resources { gap: 4px; }
   .topbar-meter-resource > img, .topbar-meter-resource .resource-glyph { display: none; }
-  .dungeon-controls > .touch-dpad { --dpad-size: 40px; }
+  .dungeon-controls > .touch-dpad { --dpad-size: 44px; gap: 4px; }
   .ability-score-fields { grid-template-columns: 1fr; }
 }
 
@@ -3505,3 +3507,321 @@ body.dark-mode .inventory-row.rarity-exotic { --rarity: #c48ae0; }
   .mirror-preview { max-width: 220px; justify-self: center; width: 100%; }
   .mirror-fields { grid-template-columns: 1fr 1fr; }
 }
+.inventory-item-actions { justify-items: stretch; }
+.inventory-drop { min-height: 30px; padding: 2px 10px; background: transparent; box-shadow: none; border-width: 1.5px; color: var(--muted); font-size: 12.5px; }
+.inventory-drop:not(:disabled):hover { background: var(--red); color: var(--on-color); }
+.action-primary { min-width: 0; }
+.action-primary .button { min-width: 0; white-space: normal; text-align: left; line-height: 1.15; }
+.dungeon-controls > * { min-width: 0; }
+@media (max-width: 380px) {
+  .action-primary .button { font-size: 14px; padding: 6px 8px; }
+}
+
+/* Nahuatl (Unifont): the same Nahuatl text set in the GNU Unifont pixel face. */
+body.font-unifont {
+  --font-display: "Unifont", "Alegreya", Georgia, serif;
+  --font-ui: "Unifont", "Alegreya Sans", system-ui, sans-serif;
+  --font-caps: "Unifont", "Alegreya SC", Georgia, serif;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  text-rendering: optimizeSpeed;
+}
+body.font-unifont *, body.font-unifont *::before, body.font-unifont *::after {
+  font-weight: 400 !important;
+  font-style: normal !important;
+  font-synthesis: none;
+  letter-spacing: 0 !important;
+}
+/* Unifont runs a little wider than Alegreya; let long Nahuatl words wrap inside small controls. */
+body.font-unifont button, body.font-unifont .button,
+body.font-unifont .resource-pill, body.font-unifont .status-chip, body.font-unifont label {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+body.font-unifont .action-group summary span:not(.action-category-mark) { font-size: 0.86em; line-height: 1.15; }
+
+/* ---------- Look editor: appearance swatches and chips ---------- */
+.look-select-hidden { position: absolute !important; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; clip-path: inset(50%); }
+.look-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.look-tabs { display: flex; gap: 4px; padding: 4px; border: 2px solid var(--line); border-radius: 999px; background: var(--card-2) var(--paper-texture); flex-wrap: wrap; }
+.look-tab { border: 0; background: transparent; color: var(--text-2); font: 700 0.95rem/1 var(--font-ui); padding: 8px 14px; border-radius: 999px; cursor: pointer; min-height: 36px; }
+.look-tab:hover { color: var(--text); }
+.look-tab[aria-selected="true"] { background: var(--inverse-bg); color: var(--inverse-text); }
+.look-actions { display: flex; gap: 8px; align-items: center; }
+.look-actions .button { width: auto; min-height: 38px; padding: 6px 14px; }
+.look-actions .quiet-button { width: 40px; height: 40px; font-size: 1.25rem; border: 2px solid var(--line); border-radius: 50%; background: var(--card); box-shadow: var(--shadow); cursor: pointer; }
+.look-panel { display: grid; gap: 14px; }
+.look-panel[hidden] { display: none; }
+.look-field { display: grid; gap: 6px; }
+.look-field[hidden] { display: none; }
+.look-field-name { display: flex; align-items: baseline; gap: 8px; font: 700 0.95rem/1.2 var(--font-ui); color: var(--text); }
+.look-value { font: italic 500 0.95rem/1.2 var(--font-display); color: var(--muted); }
+.look-value:not(:empty)::before { content: "· "; font-style: normal; }
+.look-picker { display: flex; flex-wrap: wrap; gap: 7px; }
+.look-swatch {
+  --swatch: #888;
+  width: 34px; height: 34px; border-radius: 50%; cursor: pointer; padding: 0;
+  border: 2px solid var(--line);
+  background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--swatch), #fff 28%) 0 22%, var(--swatch) 60%, color-mix(in srgb, var(--swatch), #000 22%) 100%);
+  box-shadow: 0 2px 0 var(--line);
+  transition: transform 0.1s ease;
+}
+.look-swatch:hover { transform: translateY(-1px); }
+.look-swatch.is-selected { outline: 3px solid var(--gold); outline-offset: 2px; transform: scale(1.08); }
+.look-chip {
+  min-height: 36px; padding: 6px 12px; border: 2px solid var(--line); border-radius: 999px; cursor: pointer;
+  background: var(--card) var(--paper-texture); color: var(--text); font: 700 0.9rem/1.15 var(--font-ui);
+  box-shadow: 0 2px 0 var(--line); text-align: center;
+}
+.look-chip:hover { background: var(--card-2); }
+.look-chip.is-selected { background: var(--jade); color: var(--on-color); border-color: var(--line); }
+.look-swatch:focus-visible, .look-chip:focus-visible, .look-tab:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.mirror-fields .look-field { grid-column: 1 / -1; }
+.mirror-fields { grid-template-columns: 1fr; max-height: min(62vh, 560px); overflow: auto; padding-right: 4px; }
+@media (max-width: 560px) {
+  .look-tab { padding: 8px 10px; font-size: 0.88rem; }
+  .look-swatch { width: 32px; height: 32px; }
+  .look-toolbar { justify-content: stretch; }
+  .look-tabs { flex: 1 1 100%; justify-content: space-between; }
+  .look-actions { flex: 1 1 100%; justify-content: flex-end; }
+}
+/* The look step: a large, sticky preview beside the pickers. */
+@media (min-width: 761px) {
+  .character-dialog.is-look-step { width: min(1060px, calc(100vw - 24px)); }
+  .is-look-step .character-flow { grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); column-gap: 22px; }
+  .is-look-step .character-flow > * { grid-column: 1 / -1; }
+  .is-look-step .character-flow > .character-live-preview {
+    grid-column: 1; position: sticky; top: 0; align-self: start; z-index: 1;
+    grid-template-columns: 1fr; justify-items: center; text-align: center;
+  }
+  .is-look-step .character-flow > .character-builder { grid-column: 2; }
+  .is-look-step .character-preview { width: 100%; height: auto; aspect-ratio: 1; }
+  .is-look-step .character-summary span { display: none; }
+}
+@media (max-width: 760px) {
+  .is-look-step .character-live-preview { position: sticky; top: -4px; z-index: 2; box-shadow: 0 6px 10px -8px rgba(0, 0, 0, 0.5); }
+  .is-look-step .character-preview { width: 112px; height: 112px; }
+  .is-look-step .appearance-preview { grid-template-columns: 112px minmax(0, 1fr); }
+  .is-look-step .character-summary span { display: none; }
+}
+.tile-entity-camp { z-index: 0; inset: 4% 0 0; }
+.tile-entity-camp .tile-sprite { filter: drop-shadow(0 0 6px rgba(225, 140, 40, 0.65)) drop-shadow(0 1.5px 0 rgba(20, 12, 8, 0.55)); }
+.map-tile.has-camp::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 60%, rgba(240, 150, 50, 0.32), transparent 70%); pointer-events: none; z-index: 1; }
+
+/* Nahuatl in Edward Trager's abugida: the NahuatlOne font draws only the script's Private Use
+   Area letters (see its unicode-range), so numbers and Latin names fall back to the regular face.
+   Vowel signs sit above and final consonants below, so lines need extra room. */
+body.nahuatl-abugida {
+  --font-display: "NahuatlOne", "Alegreya", Georgia, serif;
+  --font-ui: "NahuatlOne", "Alegreya Sans", system-ui, sans-serif;
+  --font-caps: "NahuatlOne", "Alegreya SC", Georgia, serif;
+}
+body.nahuatl-abugida.font-unifont {
+  --font-display: "NahuatlOne", "Unifont", "Alegreya", Georgia, serif;
+  --font-ui: "NahuatlOne", "Unifont", "Alegreya Sans", system-ui, sans-serif;
+  --font-caps: "NahuatlOne", "Unifont", "Alegreya SC", Georgia, serif;
+}
+body.nahuatl-abugida { line-height: 1.75; }
+body.nahuatl-abugida :is(p, li, span, strong, em, small, label, button, h1, h2, h3, summary) { line-height: 1.75; }
+
+/* ---------- Villagers ---------- */
+.town-villager-sprite { width: 112%; height: 112%; max-width: none; margin-top: -10%; object-fit: contain; filter: drop-shadow(0 1.5px 0 rgba(20, 12, 8, 0.45)); }
+.villager-dialog { width: min(600px, calc(100vw - 24px)); }
+.villager-portrait { display: grid; place-items: center; overflow: hidden; background: var(--paper-deep) var(--paper-texture); }
+.villager-portrait-sprite { width: 128%; height: 128%; max-width: none; margin-top: 10%; object-fit: contain; }
+.villager-hearts { align-self: center; color: var(--red); font: 700 14px/1.2 var(--font-ui); white-space: nowrap; letter-spacing: 1px; }
+.villager-speech { min-height: 3.2em; }
+.villager-actions .button.secondary { text-align: left; }
+.villager-gift-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 46vh; overflow: auto; }
+.villager-gift { display: grid; justify-items: center; gap: 4px; padding: 8px 6px; border: 2px solid var(--line); border-radius: 10px; background: var(--card) var(--paper-texture); color: var(--text); font: 700 12.5px/1.2 var(--font-ui); cursor: pointer; box-shadow: 0 2px 0 var(--line); text-align: center; }
+.villager-gift:hover { background: var(--card-2); }
+.villager-gift-icon { width: 48px; height: 48px; object-fit: contain; }
+@media (max-width: 560px) {
+  .villager-hearts { grid-column: 1 / -1; font-size: 13px; }
+}
+
+/* ---------- Equipment sheet ---------- */
+.equipment-sheet { display: grid; gap: 12px; }
+.equip-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) minmax(0, 1fr); gap: 10px; align-items: stretch; }
+.equip-column { display: grid; gap: 8px; align-content: start; }
+.equip-slot {
+  display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 8px; align-items: center; min-height: 56px; padding: 5px 8px;
+  border: 2px solid var(--line); border-radius: 10px; background: var(--card-2) var(--paper-texture); color: var(--text);
+  text-align: left; cursor: pointer; box-shadow: 0 2px 0 var(--line);
+}
+.equip-slot:hover { background: var(--card); }
+.equip-slot.is-open { outline: 3px solid var(--gold); outline-offset: 1px; }
+.equip-slot:not(.is-filled) { border-style: dashed; box-shadow: none; opacity: 0.85; }
+.equip-slot-icon { width: 46px; height: 46px; border-radius: 8px; background: var(--paper-deep) var(--paper-texture); display: grid; place-items: center; overflow: hidden; }
+.equip-slot-icon img { width: 100%; height: 100%; object-fit: contain; }
+.equip-slot-copy { display: grid; min-width: 0; }
+.equip-slot-copy small { color: var(--muted); font: 700 11px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.equip-slot-copy strong { font: 700 13.5px/1.2 var(--font-ui); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.equip-doll { display: grid; place-items: center; border: 2px solid var(--line); border-radius: 12px; background: var(--paper-deep) var(--paper-texture); overflow: hidden; min-height: 250px; }
+.equip-doll-sprite { width: 128%; max-width: none; height: auto; margin-top: 6%; }
+.equip-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.equip-stats span { display: grid; gap: 2px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card-2); text-align: center; }
+.equip-stats small { color: var(--muted); font: 700 11px/1 var(--font-ui); text-transform: uppercase; }
+.equip-stats strong { font: 800 16px/1.1 var(--font-ui); }
+.equip-picker { display: grid; gap: 8px; padding: 10px; border: 2px solid var(--line); border-radius: 10px; background: var(--card) var(--paper-texture); }
+.equip-picker-heading { display: flex; justify-content: space-between; align-items: center; }
+.equip-picker-list { display: grid; gap: 6px; max-height: 34vh; overflow: auto; }
+.equip-option { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card-2); color: var(--text); text-align: left; cursor: pointer; }
+.equip-option img { width: 40px; height: 40px; object-fit: contain; }
+.equip-option span { display: grid; min-width: 0; }
+.equip-option small { color: var(--text-2); font-size: 12.5px; line-height: 1.3; }
+.equip-option.is-current { border-color: var(--jade); }
+.equip-option:disabled { cursor: default; opacity: 0.7; }
+@media (max-width: 560px) {
+  .equip-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .equip-doll { grid-column: 1 / -1; grid-row: 1; min-height: 170px; }
+  .equip-doll-sprite { width: 62%; }
+  .equip-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* House storage chest */
+.storage-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.storage-columns section { display: grid; gap: 6px; align-content: start; }
+.storage-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 40vh; overflow: auto; }
+.storage-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 6px; align-items: center; padding: 4px 6px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card-2); font: 700 13px/1.25 var(--font-ui); }
+.storage-row img { width: 34px; height: 34px; object-fit: contain; }
+.storage-row .button { width: auto; min-height: 32px; padding: 2px 10px; font-size: 12.5px; }
+@media (max-width: 560px) { .storage-columns { grid-template-columns: 1fr; } }
+
+/* ---------- Character sheet ---------- */
+.char-sheet { display: grid; gap: 12px; }
+.sheet-section { display: grid; gap: 8px; }
+.sheet-section-title {
+  margin: 0; color: var(--red); font: 700 12px/1.2 var(--font-caps); letter-spacing: 0.08em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.sheet-section-title::after { content: ""; flex: 1; height: 1.5px; background: color-mix(in srgb, var(--red) 45%, transparent); }
+.sheet-calling { display: grid; gap: 6px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px; background: var(--card-2) var(--paper-texture); }
+.sheet-calling-title { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 10px; }
+.sheet-calling-title strong { font: 700 20px/1.15 var(--font-display); }
+.sheet-tag { padding: 2px 9px; border: 1.5px solid var(--line); border-radius: 99px; background: var(--gold); color: #2a1c15; font: 700 12px/1.3 var(--font-ui); }
+.sheet-calling-copy { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.4; }
+.sheet-xp { display: grid; gap: 3px; }
+.sheet-xp-track { height: 8px; border: 1.5px solid var(--line); border-radius: 99px; background: var(--paper-deep); overflow: hidden; }
+.sheet-xp-track span { display: block; height: 100%; background: var(--gold); }
+.sheet-xp small { color: var(--muted); font: 700 12px/1.2 var(--font-ui); }
+.sheet-vitals { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.sheet-vital { display: grid; gap: 1px; padding: 7px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card-2); text-align: center; }
+.sheet-vital small { color: var(--muted); font: 700 11px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.sheet-vital strong { font: 700 19px/1.15 var(--font-display); }
+.sheet-vital span { color: var(--muted); font: 600 11px/1.2 var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-attributes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.sheet-attribute {
+  display: grid; justify-items: center; gap: 1px; padding: 7px 4px 6px; border: 2px solid var(--line); border-radius: 12px 12px 18px 18px;
+  background: var(--card) var(--paper-texture); color: var(--text); cursor: pointer; box-shadow: 0 2px 0 var(--line); font: inherit;
+}
+.sheet-attribute:hover { background: var(--card-2); }
+.sheet-attribute.is-selected { outline: 3px solid var(--gold); outline-offset: 1px; }
+.sheet-attribute small { color: var(--muted); font: 700 10.5px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.03em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-attribute strong { font: 700 24px/1.05 var(--font-display); }
+.sheet-attribute-score { min-width: 30px; padding: 0 6px; border: 1.5px solid var(--line); border-radius: 99px; background: var(--paper-deep); font: 700 12px/1.4 var(--font-ui); }
+.sheet-save { margin-top: 3px; color: var(--muted); font: 600 11px/1.2 var(--font-ui); white-space: nowrap; }
+.sheet-save.is-proficient { color: var(--jade-deep); font-weight: 800; }
+.sheet-attribute-detail { margin: 0; padding: 7px 10px; border-left: 3px solid var(--gold); background: color-mix(in srgb, var(--gold) 12%, transparent); font-size: 13.5px; line-height: 1.4; }
+.sheet-skills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 14px; }
+.sheet-skill { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto 34px; align-items: center; gap: 6px; padding: 3px 4px; border-bottom: 1px dotted color-mix(in srgb, var(--line) 35%, transparent); }
+.sheet-skill-dot { color: var(--muted); font-size: 11px; }
+.sheet-skill.is-trained .sheet-skill-dot { color: var(--jade); }
+.sheet-skill-name { font: 600 13.5px/1.25 var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-skill.is-trained .sheet-skill-name { font-weight: 800; }
+.sheet-skill-ability { color: var(--muted); font: 700 10.5px/1 var(--font-ui); text-transform: uppercase; }
+.sheet-skill-bonus { text-align: right; font: 700 14px/1 var(--font-ui); }
+.sheet-gear { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.4; }
+.sheet-notes { border: 1.5px dashed color-mix(in srgb, var(--line) 50%, transparent); border-radius: 8px; padding: 6px 10px; }
+.sheet-notes summary { cursor: pointer; color: var(--muted); font: 700 13px/1.3 var(--font-ui); }
+.sheet-notes p { margin: 6px 0 2px; color: var(--text-2); font-size: 13px; line-height: 1.45; }
+@media (max-width: 620px) {
+  .sheet-attributes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sheet-skills { grid-template-columns: 1fr; }
+}
+
+/* ---------- Field guide ---------- */
+.ability-guide-list { display: grid; gap: 12px; }
+.guide-group { display: grid; gap: 7px; }
+.guide-group-heading { display: flex; align-items: center; gap: 10px; }
+.guide-group-heading .sheet-section-title { flex: 1; }
+.guide-slot-pips { display: inline-flex; gap: 4px; }
+.guide-slot-pips i { width: 12px; height: 12px; border: 1.5px solid var(--line); border-radius: 50%; background: transparent; }
+.guide-slot-pips i.is-full { background: var(--blue); }
+.guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.guide-card { display: grid; align-content: start; gap: 5px; padding: 8px 10px; }
+.guide-card p { margin: 0; font-size: 13px; line-height: 1.4; color: var(--text-2); }
+.guide-card-top { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 8px; align-items: center; }
+.guide-card-icon { width: 36px; height: 36px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper-deep) var(--paper-texture); display: grid; place-items: center; overflow: hidden; }
+.guide-card-icon img { width: 88%; height: 88%; object-fit: contain; }
+.guide-card-copy { display: grid; gap: 3px; justify-items: start; min-width: 0; }
+.guide-card-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.guide-card-name h4 { margin: 0; font: 700 15px/1.2 var(--font-display); }
+.guide-key { padding: 1px 6px; border: 1.5px solid var(--line); border-bottom-width: 3px; border-radius: 5px; background: var(--card); font: 700 11px/1.3 var(--font-ui); color: var(--text); }
+.guide-card .ability-guide-status { font-size: 11px; }
+.guide-state-locked { opacity: 0.72; }
+@media (max-width: 620px) { .guide-grid { grid-template-columns: 1fr; } }
+@media (hover: none) { .guide-key { display: none; } }
+
+/* ---------- Creature cards ---------- */
+#encounter { cursor: pointer; }
+#encounter:hover { filter: brightness(1.03); }
+#encounter:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button.bestiary-entry { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+button.bestiary-entry:hover { background: var(--card); }
+.creature-dialog { width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); }
+.creature-card { position: relative; display: grid; gap: 10px; max-height: calc(100dvh - 48px); overflow-y: auto; }
+.creature-card.is-elite { box-shadow: inset 0 0 0 3px var(--gold); }
+.creature-card.is-guardian { box-shadow: inset 0 0 0 3px var(--red); }
+.creature-close { position: absolute; top: 10px; right: 10px; width: 38px; height: 38px; font-size: 20px; }
+.creature-head { display: grid; gap: 4px; padding-right: 44px; }
+.creature-head .eyebrow { margin: 0; }
+.creature-head h2 { margin: 0; font: 700 26px/1.1 var(--font-display); }
+.creature-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.creature-tag { padding: 2px 9px; border: 1.5px solid var(--line); border-radius: 99px; background: var(--card-2); font: 700 11.5px/1.3 var(--font-ui); text-transform: uppercase; letter-spacing: 0.03em; }
+.creature-tag.is-hostile { background: var(--red); color: var(--on-color); }
+.creature-tag.is-edible { background: var(--food); color: #2a1c15; }
+.creature-tag.is-known { background: var(--jade); color: var(--on-color); }
+.creature-layout { display: grid; grid-template-columns: minmax(180px, 250px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.creature-art { display: grid; place-items: center; aspect-ratio: 3 / 4; border: 2px solid var(--line); border-radius: 12px; background: var(--paper-deep) var(--paper-texture); overflow: hidden; }
+.creature-sprite { width: 92%; height: 92%; object-fit: contain; }
+.creature-body { display: grid; gap: 10px; }
+.creature-health { display: grid; gap: 4px; }
+.creature-health-label { font: 700 13px/1.2 var(--font-ui); }
+.creature-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.creature-stats div { display: grid; gap: 1px; padding: 6px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card-2); text-align: center; }
+.creature-stats small { color: var(--muted); font: 700 10.5px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.creature-stats strong { font: 700 17px/1.15 var(--font-display); }
+.creature-description { margin: 0; font: 400 16px/1.5 var(--font-display); }
+.creature-note { margin: 0; padding: 6px 10px; border-left: 3px solid var(--line); background: var(--card-2); font-size: 13.5px; line-height: 1.4; }
+.creature-note.is-danger { border-left-color: var(--red); }
+.creature-ladder { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.creature-ladder li { display: grid; gap: 1px; padding: 5px 9px; border: 1.5px dashed color-mix(in srgb, var(--line) 45%, transparent); border-radius: 7px; color: var(--muted); font-size: 13px; }
+.creature-ladder li strong { font: 700 13px/1.2 var(--font-ui); }
+.creature-ladder li.is-reached { border-style: solid; border-color: var(--jade); color: var(--text); background: color-mix(in srgb, var(--jade) 10%, transparent); }
+.creature-ladder li.is-reached strong::before { content: "✓ "; color: var(--jade); }
+@media (max-width: 620px) {
+  .creature-layout { grid-template-columns: 1fr; }
+  .creature-art { aspect-ratio: auto; height: 210px; }
+  .creature-sprite { width: auto; height: 100%; }
+}
+.sheet-attribute[aria-pressed="true"], .sheet-attribute.is-selected { background: color-mix(in srgb, var(--gold) 28%, var(--card)); color: var(--text); }
+.sheet-attribute[aria-pressed="true"] small, .sheet-attribute[aria-pressed="true"] .sheet-save { color: var(--text-2); }
+.sheet-attribute[aria-pressed="true"] .sheet-attribute-score { color: var(--text); }
+
+/* Villager questions */
+.villager-questions { display: grid; gap: 6px; width: 100%; max-height: 42vh; overflow: auto; }
+.villager-question {
+  padding: 8px 12px; border: 2px solid var(--line); border-radius: 9px; background: var(--card) var(--paper-texture);
+  color: var(--text); font: 600 14px/1.3 var(--font-ui); text-align: left; cursor: pointer; box-shadow: 0 2px 0 var(--line);
+}
+.villager-question:hover { background: var(--card-2); }
+.villager-question.is-new { border-color: var(--gold-deep); }
+.villager-question.is-asked { color: var(--text-2); box-shadow: none; }
+.villager-question.is-current { outline: 3px solid var(--gold); outline-offset: 1px; }
+.villager-questions-locked { margin: 2px 2px 0; font-size: 13px; }
+
+/* Sound */
+.sound-mute-toggle { min-width: 38px; height: 38px; padding: 0 8px; font: 700 18px/1 var(--font-ui); }
+.sound-mute-toggle.is-muted { color: var(--muted); text-decoration: line-through; }
+.settings-range { width: 100%; accent-color: var(--red); }

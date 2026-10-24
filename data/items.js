@@ -12,7 +12,7 @@ window.CryptsItems = {
   nutrientNames: { protein: "Protein", carbohydrates: "Carbohydrates", greens: "Greens" },
   rareTreasureSprites: ["jade-pectoral", "incensario", "obsidian-mirror"],
   dungeonKeepsakeLoot: [
-    "travel-cloak", "travel-clothes", "common-clothes", "dark-clothes", "fine-clothes",
+    "travel-cloak", "wear:garment-cotton-wrap", "wear:dusk-wrap", "wear:cotton-finery",
     "prayer-token", "gold-ring", "family-scroll", "sealed-letter", "insignia", "trophy"
   ],
   weapons: {
@@ -70,6 +70,7 @@ window.CryptsItems = {
     "dungeon-gourmet-guide": { name: "Dungeon Gourmet Guide", weight: 1, price: 8, category: "Keepsake", description: "A grease-spotted codex of edible tomb creatures with recipes in the margins. Permanently teaches you to collect meat from creatures that are safe to eat." },
     "monster-meat": { name: "Cave creature meat", weight: 1.5, price: 0.5, category: "Food", sprite: "supply", description: "Fresh, protein-rich meat from an edible cave creature. Restores food and supports protein." },
     "healer-kit": { name: "Healer's bundle", weight: 3, price: 5, category: "Tool", description: "10 uses. Treat a downed companion to restore 1 hit point." },
+    "camp-kit": { name: "Camp kit", weight: 4, price: 1, category: "Supply", sprite: "camp-kit", description: "Reed sleeping mats, dry kindling, and a fire drill. Pitch a camp in the tomb without a Survival check; used up when you do." },
     torch: { name: "Resinwood torch", weight: 1, price: 0.1, category: "Supply", description: "Burn one to light nearby map tiles. Search separately to detect hidden hazards." },
     "hempen-rope": { name: "Maguey-fiber cord (50 ft.)", weight: 10, price: 1, category: "Supply", description: "Pull a revealed trap from up to 50 feet away without standing on it." },
     ration: { name: "Tamale", weight: 2, price: 0.5, category: "Food", description: "Masa steamed in a corn husk around beans and a little meat. Travels well and fills you up." },
@@ -84,14 +85,10 @@ window.CryptsItems = {
     incensario: { name: "Incensario", weight: 2, price: 90, category: "Treasure", sprite: "incensario", description: "A feathered incense burner, prized by shrine keepers." },
     "obsidian-mirror": { name: "Obsidian Mirror", weight: 1, price: 160, category: "Treasure", sprite: "obsidian-mirror", description: "A rare polished mirror of black glass." },
     "prayer-token": { name: "Woven prayer token", weight: 0.1, price: 1, category: "Keepsake", description: "A devotional focus for camp. +1 Cooking while carried; keep it or trade it.", skillBonuses: { cooking: 1 } },
-    "travel-clothes": { name: "Cotton travel wrap", weight: 3, price: 0.5, category: "Clothing", description: "Light cotton clothing for travel; customize your outfit's cut and colors in character creation." },
-    "fine-clothes": { name: "Dyed cotton finery", weight: 6, price: 15, category: "Clothing", description: "Fine dyed cloth for ceremonies and formal visits; customize your outfit in character creation." },
     "gold-ring": { name: "Gold Ring", weight: 0.1, price: 5, category: "Keepsake", sprite: "gold-ring", description: "A ring of gold; the market pays 10% more for your sales while you carry it." },
     "field-notes": { name: "Field notes", weight: 1, price: 1, category: "Keepsake", description: "+1 Perception while carried: recorded observations help you search the tomb.", skillBonuses: { perception: 1 } },
     "artisan-tools": { name: "Artisan's hide bag", weight: 5, price: 10, category: "Tool", description: "Craft supplies in a hide bag. +1 Cooking while carried.", skillBonuses: { cooking: 1 } },
     "gaming-set": { name: "Carved gaming set", weight: 0.5, price: 1, category: "Keepsake", description: "A little patolli mat and five marked beans for passing the camp watch. +1 Cooking while carried; keep it or trade it.", skillBonuses: { cooking: 1 } },
-    "common-clothes": { name: "Everyday cotton wrap", weight: 3, price: 0.5, category: "Clothing", description: "Everyday cotton clothing; customize your outfit's cut and colors in character creation." },
-    "dark-clothes": { name: "Dusk-colored cotton wrap", weight: 3, price: 1, category: "Clothing", description: "Quiet, dark-dyed cotton clothing. +1 Sleight of Hand while carried; customize your outfit's cut and colors in character creation.", skillBonuses: { "sleight-of-hand": 1 } },
     crowbar: { name: "Iron pry bar", weight: 5, price: 2, category: "Tool", description: "An imported iron bar; grants advantage on a Strength check to pry apart an exposed trap mechanism." },
     shovel: { name: "Wooden digging blade", weight: 5, price: 2, category: "Tool", description: "+2 Survival while carried: a digging blade helps gather safe food and herbs.", skillBonuses: { survival: 2 } },
     "iron-pot": { name: "Clay cooking pot", weight: 10, price: 2, category: "Supply", description: "+2 Cooking while carried: simmer maize, beans, and foraged food at camp.", skillBonuses: { cooking: 2 } },

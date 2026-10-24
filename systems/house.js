@@ -47,7 +47,127 @@ function houseState() {
 }
 
 function createHouseState() {
-  return { owned: false, style: "calli", styles: [] };
+  return { owned: false, style: "calli", styles: [], storage: [] };
+}
+
+// ---------- Storage chest ----------
+// A cedar chest at home holds anything you don't want to carry. Stored items weigh
+// nothing, are never lost in the tomb, and stay put between expeditions.
+
+function storageEntries() {
+  const house = houseState();
+  house.storage ||= [];
+  return house.storage;
+}
+
+function storeItem(itemId, quantity = 1) {
+  const entry = state.run.inventory.find((candidate) => candidate.id === itemId);
+  if (!entry) return;
+  const spare = isEquipped(itemId) ? entry.quantity - 1 : entry.quantity;
+  const amount = Math.min(quantity, spare);
+  if (amount < 1) {
+    state.houseMessage = "Take that off before you put it away.";
+    renderHouse();
+    return;
+  }
+  if (!removeInventoryItem(itemId, amount)) return;
+  const stored = storageEntries().find((candidate) => candidate.id === itemId);
+  if (stored) stored.quantity += amount;
+  else storageEntries().push({ id: itemId, quantity: amount });
+  state.houseMessage = `You put ${amount > 1 ? `${amount} × ` : ""}${itemDetails(itemId).name} in the chest.`;
+  render();
+  renderHouse();
+  saveRun();
+}
+
+function takeStoredItem(itemId, quantity = 1) {
+  const stored = storageEntries().find((candidate) => candidate.id === itemId);
+  if (!stored) return;
+  let taken = 0;
+  for (let count = 0; count < Math.min(quantity, stored.quantity); count += 1) {
+    if (!addInventoryItem(itemId)) break;
+    taken += 1;
+  }
+  if (!taken) {
+    state.houseMessage = "Your pack is too heavy to carry that.";
+    renderHouse();
+    return;
+  }
+  stored.quantity -= taken;
+  if (!stored.quantity) storageEntries().splice(storageEntries().indexOf(stored), 1);
+  state.houseMessage = `You take ${taken > 1 ? `${taken} × ` : ""}${itemDetails(itemId).name} from the chest.`;
+  render();
+  renderHouse();
+  saveRun();
+}
+
+function storageRow(itemId, quantity, action) {
+  const item = itemDetails(itemId);
+  const row = document.createElement("li");
+  row.className = "storage-row";
+  const icon = document.createElement("img");
+  icon.alt = "";
+  setItemArt(icon, itemId);
+  const name = document.createElement("span");
+  name.textContent = `${item.name}${quantity > 1 ? ` ×${quantity}` : ""}`;
+  row.append(icon, name);
+  const one = document.createElement("button");
+  one.type = "button";
+  one.className = "button secondary";
+  one.dataset.storageAction = action;
+  one.dataset.storageItem = itemId;
+  one.dataset.storageAmount = "1";
+  one.textContent = t(action === "store" ? "Store" : "Take");
+  row.append(one);
+  if (quantity > 1) {
+    const all = one.cloneNode(true);
+    all.dataset.storageAmount = String(quantity);
+    all.textContent = t(action === "store" ? "Store all" : "Take all");
+    row.append(all);
+  }
+  return row;
+}
+
+function renderStorage(body) {
+  const heading = document.createElement("h3");
+  heading.className = "house-section-title";
+  heading.textContent = t("Storage chest");
+  const columns = document.createElement("div");
+  columns.className = "storage-columns";
+  const packList = document.createElement("ul");
+  packList.className = "storage-list";
+  for (const entry of state.run.inventory) {
+    const spare = isEquipped(entry.id) ? entry.quantity - 1 : entry.quantity;
+    if (spare > 0) packList.append(storageRow(entry.id, spare, "store"));
+  }
+  const chestList = document.createElement("ul");
+  chestList.className = "storage-list";
+  for (const entry of storageEntries()) if (itemDetails(entry.id)) chestList.append(storageRow(entry.id, entry.quantity, "take"));
+  for (const [list, title, empty] of [[packList, "In your pack", "Nothing spare to put away."], [chestList, "In the chest", "The chest is empty."]]) {
+    const column = document.createElement("section");
+    const label = document.createElement("strong");
+    label.textContent = t(title);
+    if (!list.children.length) {
+      const none = document.createElement("li");
+      none.className = "muted";
+      none.textContent = t(empty);
+      list.append(none);
+    }
+    column.append(label, list);
+    columns.append(column);
+  }
+  body.append(heading, columns);
+}
+
+function normalizeStorage(storage) {
+  if (!Array.isArray(storage)) return [];
+  const merged = new Map();
+  for (const entry of storage) {
+    if (!entry || typeof entry.id !== "string" || !Number.isInteger(entry.quantity) || entry.quantity < 1) continue;
+    if (typeof itemDetails === "function" && !itemDetails(entry.id)) continue;
+    merged.set(entry.id, (merged.get(entry.id) || 0) + entry.quantity);
+  }
+  return [...merged].map(([id, quantity]) => ({ id, quantity }));
 }
 
 function normalizeHouse(house) {
@@ -56,7 +176,7 @@ function normalizeHouse(house) {
   const owned = house.owned === true;
   if (owned && !styles.includes("calli")) styles.unshift("calli");
   const style = owned && styles.includes(house.style) ? house.style : "calli";
-  return { owned, style, styles: owned ? styles : [] };
+  return { owned, style, styles: owned ? styles : [], storage: owned ? normalizeStorage(house.storage) : [] };
 }
 
 function houseArtUrl(style) {
@@ -139,6 +259,7 @@ function sleepAtHome() {
   const boon = HOUSE_STYLES[house.style]?.boon;
   if (boon && boon !== "steady") grantBuff(boon);
   addLog("You wake rested in your own bed.");
+  spouseMorningMeal();
   render();
   saveRun();
 }
@@ -199,7 +320,8 @@ function renderHouse() {
     const extra = style.boon !== "steady" && boon ? ` and ${t(boon.name)} (${t(boon.description).replace(/\.$/, "")})` : "";
     for (const [action, icon, title, text] of [
       ["sleep", "☾", "Sleep until rested", `Rest 8 hours. Wake with food, water, and wounds restored, Steady (+1 AC)${extra}.`],
-      ["mirror", "◐", "The mirror", "Change your name, pronouns, and look."]
+      ["mirror", "◐", "The mirror", "Change your name, pronouns, and look."],
+      ["storage", "▣", "Storage chest", "Keep things here instead of carrying them. Stored items are safe from the tomb."]
     ]) {
       const button = document.createElement("button");
       button.type = "button";
@@ -220,6 +342,7 @@ function renderHouse() {
       actions.append(button);
     }
     body.append(actions);
+    if (state.houseView === "storage") renderStorage(body);
 
     const heading = document.createElement("h3");
     heading.className = "house-section-title";
@@ -274,6 +397,7 @@ const MIRROR_FIELDS = [
   ["character-skin", "skin", "character-skin-label"], ["character-body", "body", "Build"],
   ["character-hair-style", "hairStyle", "Hair style"], ["character-crest", "crest", "character-crest-label"],
   ["character-hair", "hair", "character-hair-label"], ["character-tunic", "tunic", "Clothing color"],
+  ["character-trim", "trim", "Trim color"],
   ["character-garment", "garment", "Garment"], ["character-adornment", "adornment", "Adornment"],
   ["character-headwear", "headwear", "Headwear"], ["character-face-paint", "facePaint", "Face paint"],
   ["character-beard", "beard", "Facial hair"], ["character-jewelry", "jewelry", "Jewelry"]
@@ -304,8 +428,17 @@ function openMirror() {
   for (const [id, key, labelSource] of MIRROR_FIELDS) {
     if (key === "crest" && !CREST_STYLES[race]) continue;
     if ((key === "hairStyle" || key === "beard") && race === "dragonborn") continue;
+    // Clothes, headwear, and necklaces are items now: change them on the equipment sheet.
+    if (character.dressByItems && ["garment", "headwear", "adornment"].includes(key)) continue;
     const label = document.createElement("label");
-    label.textContent = elements[labelSource]?.textContent || t(labelSource);
+    label.className = "look-field";
+    const labelName = document.createElement("span");
+    labelName.className = "look-field-name";
+    labelName.textContent = elements[labelSource]?.textContent || t(labelSource);
+    const valueName = document.createElement("em");
+    valueName.className = "look-value";
+    labelName.append(valueName);
+    label.append(labelName);
     const select = elements[id].cloneNode(true);
     select.removeAttribute("id");
     select.value = character.appearance[key] ?? elements[id].value;
@@ -314,6 +447,7 @@ function openMirror() {
     fields.append(label);
   }
   elements["mirror-fields"].replaceChildren(fields);
+  refreshLookPickers(elements["mirror-fields"]);
   elements["mirror-message"].textContent = "";
   updateMirrorPreview();
   elements["house-dialog"].close();
@@ -336,7 +470,11 @@ function mirrorDraft() {
 
 function updateMirrorPreview() {
   const draft = mirrorDraft();
-  elements["mirror-preview"].replaceChildren(createCodexCharacterSprite(draft, "mirror-sprite", "east"));
+  // The mirror shows your own look, without armor or wardrobe pieces covering it.
+  const bare = { ...draft, equipment: { ...draft.equipment, armor: "none", shield: false, cloak: false },
+    cosmetics: { ...(draft.cosmetics || {}), helmet: null, clothes: null, back: null } };
+  elements["mirror-preview"].replaceChildren(createCodexCharacterSprite(bare, "mirror-sprite", "east"));
+  refreshLookPickers(elements["mirror-fields"]);
 }
 
 function saveMirror() {
@@ -367,6 +505,17 @@ function connectHouseEvents() {
     if (action === "buy") buyHouse();
     else if (action === "sleep") sleepAtHome();
     else if (action === "mirror") openMirror();
+    else if (action === "storage") {
+      state.houseView = state.houseView === "storage" ? null : "storage";
+      state.houseMessage = "";
+      renderHouse();
+    }
+    const storage = event.target.closest("[data-storage-action]");
+    if (storage) {
+      const amount = Number(storage.dataset.storageAmount) || 1;
+      if (storage.dataset.storageAction === "store") storeItem(storage.dataset.storageItem, amount);
+      else takeStoredItem(storage.dataset.storageItem, amount);
+    }
     const style = event.target.closest("[data-house-style]")?.dataset.houseStyle;
     if (style) chooseHouseStyle(style);
   });

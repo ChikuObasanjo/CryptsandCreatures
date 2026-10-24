@@ -1,7 +1,8 @@
 "use strict";
 
-// Mahuiz's foreign wares: Spanish steel from the sea giants' floating houses and
-// samurai arms carried across the western sea on the galleons. These are late-game
+// Mahuiz's foreign wares: Spanish steel from the sea giants' floating houses, samurai
+// arms carried across the western sea on the galleons, and Norse iron from the pale men
+// of the north who rowed to the far shore long before the Spanish came. These are late-game
 // gold sinks: strong, beautiful, expensive, and revealed as you delve deeper.
 // Each item names an `analog`: every calling trained with the analog can use it.
 
@@ -51,6 +52,12 @@
       dice: "2d6", icon: "sword", attackBonus: 1, damageBonus: 3, trait: "thundering",
       weight: 6, price: 4200, unlockFloor: 9
     },
+    "ulfberht-sword": {
+      name: "Ulfberht sword", origin: "norse", art: "norsesword", analog: "macuahuitl",
+      description: "A pattern-welded blade from the cold north, a smith's name inlaid down the fuller. Raided, traded, and carried hand to hand across two oceans.",
+      dice: "1d10", icon: "sword", attackBonus: 2, damageBonus: 1, trait: "lifedrinker",
+      weight: 3, price: 2400, unlockFloor: 3
+    },
     yumi: {
       name: "Yumi longbow", origin: "samurai", art: "yumi", analog: "longbow",
       description: "A tall, asymmetric bow of bamboo and lacquer that sends arrows remarkably far.",
@@ -72,6 +79,12 @@
       base: 18, dex: false, strength: 15, acBonus: 1, trait: "warded",
       weight: 40, price: 9000, unlockFloor: 9
     },
+    "norse-byrnie": {
+      name: "Norse mail byrnie", origin: "norse", art: "byrnie", analog: "scale",
+      description: "A knee-length shirt of riveted iron rings over a padded tunic, belted at the waist. It took a smith a winter to make.",
+      base: 16, dex: true, dexCap: 1, strength: 13, acBonus: 0, trait: "provisioned",
+      weight: 26, price: 3600, unlockFloor: 3
+    },
     "do-maru": {
       name: "Lacquered dō-maru", origin: "samurai", art: "domaru", analog: "scale",
       description: "Close-fitting lamellar armor of black-lacquered plates laced with red silk.",
@@ -89,6 +102,8 @@
   const cosmetics = {
     "morion-helmet": { name: "Spanish morion", slot: "helmet", set: "spanish", price: 1200, unlockFloor: 3,
       description: "A crested steel helmet with an upswept brim, straight off a galleon's deck." },
+    "norse-helm": { name: "Norse spectacle helm", slot: "helmet", set: "norse", price: 1300, unlockFloor: 3,
+      description: "A rounded iron cap with a ridge, a knob on top, and a guard ringing the eyes, hung with mail at the neck. No horns. There were never horns." },
     "kabuto-helmet": { name: "Kabuto with golden horns", slot: "helmet", set: "samurai", price: 1400, unlockFloor: 3,
       description: "A black-lacquered samurai helmet crowned with gilded kuwagata horns." }
   };
@@ -104,6 +119,8 @@
     items.armorPrices[id] = [weight, price];
   }
   Object.assign(items.cosmetics, cosmetics);
+  for (const id of Object.keys(weapons)) items.addGearTiers("weapon", id);
+  for (const id of Object.keys(armors)) items.addGearTiers("armor", id);
 
   // New everyday goods for Teyac's stalls.
   Object.assign(items.gear, {
@@ -135,7 +152,8 @@
       ...Object.keys(armors).map((id) => `armor:${id}`),
       ...Object.keys(cosmetics).map((id) => `cosmetic:${id}`),
       "cosmetic:jaguar-helmet", "cosmetic:jaguar-clothes", "cosmetic:eagle-helmet", "cosmetic:eagle-clothes",
-      "cosmetic:tzitzimitl-helmet", "cosmetic:tzitzimitl-clothes"
+      "cosmetic:tzitzimitl-helmet", "cosmetic:tzitzimitl-clothes",
+      "cosmetic:quetzal-headdress", "cosmetic:quetzal-fan", "cosmetic:spanish-guidon", "cosmetic:nobori"
     ],
     marketAdditions: ["amaranth-cake", "cacao-drink", "ixpatli", "copal"]
   };

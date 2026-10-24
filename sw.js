@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "crypts-and-creatures-v269";
+const CACHE_NAME = "crypts-and-creatures-v286";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then(async (cache) => {

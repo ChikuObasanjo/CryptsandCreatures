@@ -141,13 +141,14 @@ function rollGearTier(floor, boost = 0) {
 function rollGearDrop(floor, boost = 0) {
   const tier = rollGearTier(floor, boost);
   const characterClass = CLASSES[state.run.character.class];
-  const classArmor = characterClass.armor.filter((id) => id !== "none" && !ARMORS[id].exotic);
+  const classArmor = characterClass.armor.filter((id) => id !== "none" && !ARMORS[id].exotic && !ARMORS[id].tombOnly);
   const pickWeapon = !classArmor.length || randomInt(100) <= 65;
   let base;
   if (pickWeapon) {
     const pool = (randomInt(100) <= 75
       ? characterClass.weapons
-      : Object.keys(WEAPONS).filter((id) => !WEAPONS[id].baseId && WEAPON_PRICES[id])).filter((id) => !WEAPONS[id].exotic);
+      : Object.keys(WEAPONS).filter((id) => !WEAPONS[id].baseId && WEAPON_PRICES[id]))
+      .filter((id) => !WEAPONS[id].exotic && !(WEAPONS[id].tombOnly && (WEAPONS[id].minFloor || 1) > floor));
     base = pool[randomInt(pool.length) - 1];
   } else {
     const pool = randomInt(100) <= 80 ? classArmor : ["leather", "hide", "scale", "chainmail"];
@@ -273,12 +274,19 @@ function heroStatModifiers() {
   if (activeBuff("hearty")) mods.attack += 1;
   if (activeBuff("fiery")) mods.damage += 2;
   if (activeBuff("steady")) mods.ac += 1;
+  if (activeBuff("bold")) mods.attack += 1;
+  if (activeBuff("festive")) {
+    mods.attack += 1;
+    mods.ac += 1;
+  }
   if (hasCondition("weakened")) mods.attack -= 2;
   return mods;
 }
 
 function buffSkillBonus(skill) {
-  return ["perception", "survival"].includes(skill) && activeBuff("keen-eyed") ? 2 : 0;
+  let bonus = ["perception", "survival"].includes(skill) && activeBuff("keen-eyed") ? 2 : 0;
+  if (skill === "perception" && activeBuff("bold")) bonus -= 2;
+  return bonus;
 }
 
 function progressionSaveBonus() {
@@ -406,14 +414,14 @@ function availableRecipes() {
 }
 
 function cookingBlocked() {
-  return state.run.location === "dungeon" && state.run.enemies.some((enemy) =>
-    enemy.alive && distanceInSquares(enemy, state.run.player) <= 7);
+  return state.run.location === "dungeon" && (!atCamp() || state.run.enemies.some((enemy) =>
+    enemy.alive && distanceInSquares(enemy, state.run.player) <= 7));
 }
 
 function openCookMenu() {
   if (state.run.lost || state.run.won) return;
   if (cookingBlocked()) {
-    showToast("Too close to danger to cook. Find a quiet room first.");
+    showToast(atCamp() || state.run.location !== "dungeon" ? "Too close to danger to cook. Find a quiet room first." : "Cooking needs your campfire. Return to your camp or make one here.");
     return;
   }
   const options = availableRecipes();
@@ -709,11 +717,16 @@ function liftDestinations() {
 
 function chooseDungeonEntry(continueEntry) {
   const destinations = liftDestinations();
-  if (!destinations.length) return false;
+  const camp = activeCamp();
+  if (!destinations.length && !camp) return false;
   const options = [{
     label: state.run.dungeonFloor === 1 ? "Tomb entrance · floor 1" : `Continue · floor ${state.run.dungeonFloor}`,
     action: continueEntry
   }];
+  if (camp) {
+    const hours = Math.max(1, camp.floor);
+    options.push({ label: `Walk down to your camp · floor ${camp.floor} · ${hours} hour${hours === 1 ? "" : "s"}`, action: enterAtCamp });
+  }
   if (state.run.dungeonFloor !== 1) options.push({ label: "Tomb entrance · floor 1", action: () => beginNewDelve() });
   for (const floor of destinations) {
     if (floor === state.run.dungeonFloor) continue;
@@ -786,8 +799,13 @@ function renderProgressJournal() {
   elements["bestiary-count"].textContent = `${known.length} / ${state.pack.enemies.length}`;
   for (const enemy of state.pack.enemies) {
     const kills = data.bestiary[enemy.id] || 0;
-    const row = document.createElement("div");
-    row.className = `bestiary-entry${kills ? "" : " is-unknown"}`;
+    const row = document.createElement(kills ? "button" : "div");
+    row.className = `bestiary-entry${kills ? " is-known" : " is-unknown"}`;
+    if (kills) {
+      row.type = "button";
+      row.dataset.creatureId = enemy.id;
+      row.title = t("Show the full creature card");
+    }
     const art = kills ? createSprite(enemy.sprite || enemySpriteForId(enemy.id), "bestiary-sprite") : document.createElement("span");
     if (!kills) {
       art.className = "bestiary-sprite bestiary-unknown";

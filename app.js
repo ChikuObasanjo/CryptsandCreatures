@@ -30,8 +30,15 @@ const STORE_KEYS = {
   pack: "crypts-and-creatures.pack.v1",
   run: "crypts-and-creatures.run.v1",
   language: "crypts-and-creatures.language.v1",
-  darkMode: "crypts-and-creatures.dark-mode.v1"
+  darkMode: "crypts-and-creatures.dark-mode.v1",
+  font: "crypts-and-creatures.font.v1"
 };
+const FONT_CHOICES = ["unifont", "codex"];
+function applyFontChoice(font) {
+  const choice = FONT_CHOICES.includes(font) ? font : "unifont";
+  document.body.classList.toggle("font-unifont", choice === "unifont");
+  return choice;
+}
 const t = (key, values) => window.cryptsLocale.t(key, values);
 const DIRECTIONS = [
   { x: 0, y: -1, label: "↑", name: "north", key: "ArrowUp" },
@@ -39,38 +46,52 @@ const DIRECTIONS = [
   { x: 0, y: 1, label: "↓", name: "south", key: "ArrowDown" },
   { x: -1, y: 0, label: "←", name: "west", key: "ArrowLeft" }
 ];
-const TOWN_WELL = { x: 4, y: 4, name: "Ceiba Well" };
+const TOWN_WELL = { x: 6, y: 5, name: "Ceiba Well" };
+// Where you stand in town: back from the tomb, you come up the gate road; a new
+// game or a moved save starts beside the well in the plaza.
+const TOWN_SPAWN = { x: 6, y: 8 };
+const TOWN_PLAZA = { x: 6, y: 6 };
+// PC controls: the arrow keys or the numpad move; Numpad 7 9 1 3 (or Home, PgUp, End, PgDn)
+// move diagonally. Space, Enter, or E interacts. Number keys cast spells.
+const ORTHOGONAL_KEYS = { north: ["Numpad8"], east: ["Numpad6"], south: ["Numpad2"], west: ["Numpad4"] };
 const MOVEMENT_DIRECTIONS = [
-  ...DIRECTIONS.map((direction) => ({ ...direction, keys: [direction.key] })),
-  { x: -1, y: -1, label: "↖", name: "northwest", keys: ["Numpad7", "Home", "7", "q"] },
-  { x: 1, y: -1, label: "↗", name: "northeast", keys: ["Numpad9", "PageUp", "9"] },
-  { x: -1, y: 1, label: "↙", name: "southwest", keys: ["Numpad1", "End", "1", "z"] },
-  { x: 1, y: 1, label: "↘", name: "southeast", keys: ["Numpad3", "PageDown", "3", "c"] }
+  ...DIRECTIONS.map((direction) => ({ ...direction, keys: [direction.key, ...ORTHOGONAL_KEYS[direction.name]] })),
+  { x: -1, y: -1, label: "↖", name: "northwest", keys: ["Numpad7", "Home"] },
+  { x: 1, y: -1, label: "↗", name: "northeast", keys: ["Numpad9", "PageUp"] },
+  { x: -1, y: 1, label: "↙", name: "southwest", keys: ["Numpad1", "End"] },
+  { x: 1, y: 1, label: "↘", name: "southeast", keys: ["Numpad3", "PageDown"] }
 ];
+// Menus, from anywhere in the game.
+const MENU_KEYS = { i: "gear", o: "equipment", k: "abilities", p: "info" };
 const ROOM_GRID_SIZE = 5;
 const MAP_TILE_SIZE = 45;
 const DUNGEON_FLOOR_COUNT = 13;
 const LEGACY_MAP_TILE_SIZE = ROOM_GRID_SIZE * 7;
 const PROCEDURAL_MAP_OFFSET = Math.floor((MAP_TILE_SIZE - LEGACY_MAP_TILE_SIZE) / 2);
 const GTFL_MAP_ID = "gtfl-level-1";
+// Chiltomatlan: the Ceiba House (I) and the market (M) face each other across the north
+// lane; the plaza and its well (W) sit in the middle; the house for sale (H) is down the
+// southwest lane; the gate road runs south between two posts to the broken seal (D).
 const TOWN_MAP = [
-  "###########",
-  "#II...#..MM",
-  "#II...#..MM",
-  "#I...N#..N#",
-  "#...W.....#",
-  "#####.#####",
-  "#HH.N.P...#",
-  "#HH..D....#",
-  "###########"
+  "#############",
+  "#II...#...MM#",
+  "#II.......MM#",
+  "#II...#.....#",
+  "##.........##",
+  "#.....W.....#",
+  "##.........##",
+  "#HH..#.#....#",
+  "#HH........##",
+  "######.######",
+  "######D######"
 ];
 const TOWN_NPCS = [
-  { id: "gear-mender", name: "Mahuiz, trader in strange wares", x: 3, y: 1, glyph: "G", faction: null },
-  { id: "innkeeper", name: "Nali, keeper of the travelers' house", x: 5, y: 3, glyph: "N", faction: "ceiba-house" },
-  { id: "merchant", name: "Teyac, market trader", x: 9, y: 3, glyph: "T", faction: "traders-circle" },
-  { id: "temple-keeper", name: "Xochi, keeper of the sealed road", x: 4, y: 6, glyph: "X", faction: "road-wardens" },
-  { id: "patolli-player", name: "Ixchel, keeper of the Patolli board", x: 6, y: 6, glyph: "P", faction: null },
-  { id: "master-builder", name: "Tlacotl, master builder", x: 8, y: 6, glyph: "B", faction: null }
+  { id: "gear-mender", name: "Mahuiz, trader in strange wares", x: 5, y: 1, glyph: "G", faction: null },
+  { id: "innkeeper", name: "Nali, keeper of the travelers' house", x: 3, y: 2, glyph: "N", faction: "ceiba-house" },
+  { id: "merchant", name: "Teyac, market trader", x: 9, y: 2, glyph: "T", faction: "traders-circle" },
+  { id: "temple-keeper", name: "Xochi, keeper of the sealed road", x: 7, y: 8, glyph: "X", faction: "road-wardens" },
+  { id: "patolli-player", name: "Ixchel, keeper of the Patolli board", x: 2, y: 5, glyph: "P", faction: null },
+  { id: "master-builder", name: "Tlacotl, master builder", x: 4, y: 8, glyph: "B", faction: null }
 ];
 const MOBILE_MAP_VIEW_SIZE = 7;
 const DESKTOP_MAP_VIEW_SIZE = 9;
@@ -86,7 +107,8 @@ const NUTRIENT_DECAY_HOURS = 12;
 const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
-const SPRITE_RESOURCE_VERSION = 78;
+const SPRITE_RESOURCE_VERSION = 81;
+
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
   "###.....#...#.#...##......##..#.....#...#.#..",
@@ -191,6 +213,7 @@ const state = {
   patolliTossAnimation: false,
   patolliTossAnimationTimer: 0,
   lookTarget: null,
+  previewFacing: "east",
   characterCreationStep: 0
 };
 
@@ -208,7 +231,7 @@ const elements = Object.fromEntries([
   "header-water", "header-water-fill", "header-water-meter", "header-spell-slots",
   "header-spell-slot-count", "header-spell-slot-pips",
   "header-water-stock", "header-clock", "delve-objectives", "inventory-filters",
-  "start-screen", "continue-game", "continue-hint", "new-game", "open-settings", "settings-dialog", "close-settings", "language-select", "dark-mode-toggle", "game-layout", "new-game-warning", "pause-dialog",
+  "start-screen", "continue-game", "continue-hint", "new-game", "open-settings", "settings-dialog", "close-settings", "language-select", "font-select", "dark-mode-toggle", "villager-dialog", "villager-portrait", "villager-eyebrow", "villager-name", "villager-doing", "villager-hearts", "villager-speech", "villager-actions", "villager-close", "game-layout", "new-game-warning", "pause-dialog",
   "resume-game", "return-to-title",
   "character-dialog", "character-dialog-heading", "character-form", "character-submit", "character-next", "character-back",
   "character-intro", "creation-step-label", "creation-step-track", "creation-progress-bar", "creation-progress-fill", "close-character", "cancel-character",
@@ -217,7 +240,7 @@ const elements = Object.fromEntries([
   "half-elf-bonuses", "half-elf-bonus-one", "half-elf-bonus-two",
   "score-method", "score-method-note", "ability-score-fields", "roll-scores", "point-buy-remaining", "ability-bonus-note",
   "character-weapon", "character-armor", "character-shield", "character-cloak", "equipment-note", "starter-kit-summary",
-  "character-preview", "character-summary", "character-skin", "character-hair-style", "character-hair", "character-tunic", "character-garment", "character-adornment", "character-headwear", "character-face-paint", "character-error", "character-body", "character-beard", "character-jewelry", "character-crest", "character-skin-label", "character-hair-label", "character-crest-label", "character-crest-field", "character-hair-style-field", "character-beard-field",
+  "character-preview", "character-summary", "character-skin", "character-hair-style", "character-hair", "character-tunic", "character-garment", "character-adornment", "character-headwear", "character-face-paint", "character-error", "character-body", "character-beard", "character-jewelry", "character-crest", "character-trim", "look-turn", "look-randomize", "character-skin-label", "character-hair-label", "character-crest-label", "character-crest-field", "character-hair-style-field", "character-beard-field",
   "character-heading", "character-subtitle", "character-portrait", "character-equipment", "equipment-list", "inventory-list", "inventory-load", "inventory-security",
   "panel-equipment", "panel-gear", "panel-info", "panel-abilities",
   "class-guide-heading", "class-guide-copy", "class-training-copy", "character-level-progress",
@@ -228,7 +251,7 @@ const elements = Object.fromEntries([
   "town-map", "town-location-copy", "town-interact-button", "town-interact-label", "town-dialog", "town-dialog-heading", "town-dialog-copy", "town-dialog-action", "town-dialog-shop", "town-dialog-close", "town-dialog-portrait", "town-dialog-role", "town-dialog-x",
   "target-choice-dialog", "target-choice-heading", "target-choice-list", "target-choice-close",
   "cosmetic-shop-dialog", "cosmetic-shop-items", "cosmetic-shop-gold", "cosmetic-shop-message", "cosmetic-shop-close",
-  "town-dialog-learn", "patolli-dialog", "patolli-rules", "patolli-rules-toggle", "patolli-rules-page-number", "patolli-rules-previous", "patolli-rules-next", "patolli-last-result", "patolli-setup", "patolli-wager", "patolli-wager-note", "patolli-start",
+  "town-dialog-learn", "patolli-dialog", "patolli-rules", "patolli-rules-toggle", "patolli-rules-page-number", "patolli-rules-previous", "patolli-rules-next", "patolli-last-result", "patolli-setup", "patolli-difficulty", "patolli-wager", "patolli-wager-note", "patolli-start",
   "patolli-game", "patolli-board", "patolli-status", "patolli-score", "patolli-match-stats", "patolli-stakes", "patolli-beans", "patolli-piece-choices", "patolli-autoplay", "patolli-roll", "patolli-forfeit", "patolli-close", "patolli-tutorial-start", "time-transition",
   "quest-title", "town-party-panel", "party-count", "town-party-list", "dungeon-party-panel", "dungeon-party-list", "party-message",
   "faction-list", "town-dialog-join",
@@ -567,7 +590,7 @@ function enterDungeon(options = {}) {
   if (state.run.hp <= 0) {
     showToast("You are still too weak to travel. Rest at the Ceiba House before returning to the tomb.");
     if (state.run.location === "city" && TOWN_MAP[state.run.townPosition.y]?.[state.run.townPosition.x] === "D") {
-      state.run.townPosition = { x: 5, y: 6 };
+      state.run.townPosition = { ...TOWN_SPAWN };
       render();
     }
     return;
@@ -653,7 +676,7 @@ function returnToChiltomatlan() {
     state.disengageReady = false;
     state.run.dodging = false;
     state.run.location = "city";
-    state.run.townPosition = { x: 5, y: 6 };
+    state.run.townPosition = { ...TOWN_SPAWN };
     state.run.log.unshift("You return to Chiltomatlan from the tomb entrance.");
     state.run.log = state.run.log.slice(0, 30);
     secureExpeditionLoot();
@@ -676,7 +699,7 @@ function returnToChiltomatlan() {
   state.disengageReady = false;
   state.run.dodging = false;
   state.run.location = "city";
-  state.run.townPosition = { x: 5, y: 6 };
+  state.run.townPosition = { ...TOWN_SPAWN };
   state.run.log.unshift("You return to Chiltomatlan. Find food and rest before the next expedition.");
   state.run.log = state.run.log.slice(0, 30);
   secureExpeditionLoot();
@@ -710,7 +733,7 @@ function recoverInChiltomatlan() {
   state.run.lost = false;
   state.run.won = false;
   state.run.location = "city";
-  state.run.townPosition = { x: 5, y: 6 };
+  state.run.townPosition = { ...TOWN_SPAWN };
   state.run.hasEnteredDungeon = false;
   state.run.dungeonFloor = 1;
   state.run.dungeonFloors = {};
@@ -803,6 +826,10 @@ function visitStore() {
 
 function campAndRest() {
   if (restTransitionTimer) return;
+  if (state.run.location === "dungeon" && !atCamp()) {
+    showToast("Return to your camp to rest, or make a new camp here.");
+    return;
+  }
   if (state.run.location === "dungeon" && state.run.enemies.some((enemy) =>
     enemy.alive && distanceInSquares(enemy, state.run.player) <= 7
   )) {
@@ -890,6 +917,10 @@ function campAndRest() {
       else member.hp = 1;
     }
   }
+  if (inventoryQuantity("marigold-garland") && removeInventoryItem("marigold-garland")) {
+    addLog("You burn the cempasúchil garland. Its bright, bitter smell fills the camp, and everyone wakes sharp-eyed.");
+    grantBuff("keen-eyed");
+  }
   if (inventoryQuantity("copal") && removeInventoryItem("copal")) {
     addLog("You burn copal as the camp settles. The fragrant smoke steadies everyone.");
     grantBuff("steady");
@@ -901,7 +932,7 @@ function campAndRest() {
   }
   const hungry = members.length - fed;
   const thirsty = members.length - hydrated;
-  const place = state.run.location === "city" ? "Chiltomatlan" : "the tomb";
+  const place = state.run.location === "city" ? "Chiltomatlan" : "your camp";
   const unableToHeal = members.filter((member) => !canHeal(member.needs)).length;
   const message = `The party rests in ${place}. ${fed} eat; ${hydrated} drink.`
     + (hungry ? ` ${hungry} go hungry.` : "")
@@ -918,6 +949,7 @@ function campAndRest() {
 }
 
 function showRestTransition(previousHours, currentHours) {
+  sfx("rest");
   const transition = elements["time-transition"];
   if (!transition) return;
   const crossedHour = (target) => {
@@ -954,12 +986,25 @@ function forageIngredients() {
   const found = check >= 18 ? 3 : check >= 12 ? 2 : check >= 6 ? 1 : 0;
   let waterGathered = 0;
   let foodGathered = 0;
+  const specialFinds = [];
   for (let index = 0; index < found; index += 1) {
     const balance = state.run.gatheringWaterRemainder + 2;
     const waterPreferred = balance >= 3;
     const preferredItem = waterPreferred ? "clean-water" : "wild-ingredients";
     const alternateItem = waterPreferred ? "wild-ingredients" : "clean-water";
     let itemId = preferredItem;
+    // A good forager sometimes turns up something better than roots: fruit, comb, cactus, insects.
+    const finds = window.CryptsGoods?.forageFinds || [];
+    if (itemId === "wild-ingredients" && check >= 15 && finds.length && randomInt(100) <= 40) {
+      itemId = finds[randomInt(finds.length) - 1];
+      if (!addInventoryItem(itemId)) itemId = preferredItem;
+      else {
+        specialFinds.push(GEAR_ITEMS[itemId].name.toLowerCase());
+        state.run.gatheringWaterRemainder = balance;
+        foodGathered += 1;
+        continue;
+      }
+    }
     if (!addInventoryItem(itemId)) {
       itemId = alternateItem;
       if (!addInventoryItem(itemId)) break;
@@ -972,6 +1017,7 @@ function forageIngredients() {
   addLog(gathered
     ? `After an hour of foraging (Survival ${check}), you gather ${waterGathered} gourd${waterGathered === 1 ? "" : "s"} of water and ${foodGathered} food ingredient${foodGathered === 1 ? "" : "s"}.`
     : `After an hour of foraging, you find no safe supplies${found ? "; your pack is too full" : ` (Survival ${check})`}.`);
+  if (specialFinds.length) addLog(`Among the roots you also find ${specialFinds.join(" and ")}.`);
   finishPlayerTurn(60);
 }
 
@@ -1166,6 +1212,17 @@ function itemDetails(id) {
       ? { id, name: tieredGearName(armor), description: tieredGearDescription(armor) || t(armor.description), weight: market[0], price: market[1], category: t("Armor"), categoryId: "Armor", slot: "armor", equipmentId: key, strength: armor.strength, tier: armor.tier || null, trait: armor.trait || null }
       : null;
   }
+  if (id.startsWith("wear:")) {
+    const cosmeticId = id.slice("wear:".length);
+    const wear = COSMETICS[cosmeticId];
+    if (!wear) return null;
+    const category = wear.slot === "helmet" ? "Head ornament" : wear.slot === "back" ? "Back banner" : wear.slot === "neck" ? "Neck ornament" : "Clothing";
+    return {
+      id, name: t(wear.name), description: t(wear.description || ""), weight: wear.weight ?? 1, price: wear.price || 1,
+      category: t(category), categoryId: "Clothing", slot: "wear", wearSlot: wear.slot, cosmeticId,
+      tier: ["fine", "masterwork", "relic"].includes(wear.rarity) ? wear.rarity : null, exotic: wear.rarity === "exotic"
+    };
+  }
   if (!GEAR_ITEMS[id]) return null;
   const item = GEAR_ITEMS[id];
   return { id, ...item, name: t(item.name), description: t(item.description || ""), category: t(item.category), categoryId: item.category };
@@ -1204,12 +1261,17 @@ function buildStartingInventory(character) {
   add("ration");
   add("clean-water");
   add("healing-potion", 2);
+  add("camp-kit");
+  for (const id of Object.values(startingOutfit(character))) if (id) add(`wear:${id}`);
   return inventory;
 }
 
-function getCarryCapacity(character = state.run?.character) {
+function getCarryCapacity(character = state.run?.character, inventory = state.run?.inventory || []) {
   const strength = character?.scores?.str || 14;
-  return strength * 15;
+  // Porters' gear (tumplines, net bags) adds capacity; each kind counts once.
+  const bonus = [...new Set(inventory.map((entry) => entry.id))]
+    .reduce((total, id) => total + (GEAR_ITEMS[id]?.capacityBonus || 0), 0);
+  return strength * 15 + bonus;
 }
 
 // Secured gold stays in your strongbox at the Ceiba House; only gold found on the
@@ -1277,7 +1339,8 @@ function storeSellPrice(item) {
 function inventorySkillBonus(skill, inventory = state.run?.inventory || []) {
   const bonuses = new Map();
   for (const entry of inventory) {
-    const bonus = GEAR_ITEMS[entry.id]?.skillBonuses?.[skill];
+    const worn = entry.id.startsWith("wear:") && isEquipped(entry.id) ? COSMETICS[entry.id.slice(5)] : null;
+    const bonus = (GEAR_ITEMS[entry.id] || worn)?.skillBonuses?.[skill];
     if (bonus) bonuses.set(entry.id, bonus);
   }
   return Math.min(2, [...bonuses.values()].reduce((total, bonus) => total + bonus, 0));
@@ -1315,7 +1378,106 @@ function removeInventoryItem(itemId, quantity = 1) {
     entry.uses = Math.max(0, (entry.uses ?? (entry.quantity + quantity) * HEALER_KIT_USES) - quantity * HEALER_KIT_USES);
     entry.quantity = Math.min(entry.quantity, Math.ceil(entry.uses / HEALER_KIT_USES));
   }
-  if (!entry.quantity) state.run.inventory.splice(state.run.inventory.indexOf(entry), 1);
+  if (!entry.quantity) {
+    state.run.inventory.splice(state.run.inventory.indexOf(entry), 1);
+    clearMissingWornItems();
+  }
+  return true;
+}
+
+const WEAR_SLOTS = ["helmet", "neck", "clothes", "back"];
+
+// The outfit picked in character creation, as wearable items.
+function startingOutfit(character) {
+  const look = character.appearance || {};
+  const basic = window.CryptsItems.basicWearFor;
+  return {
+    clothes: basic("garment", look.garment === undefined ? "woven-tunic" : look.garment),
+    helmet: basic("headwear", look.headwear),
+    neck: basic("adornment", look.adornment)
+  };
+}
+
+// Dress a character in their starting outfit (new characters and saves from before
+// clothes were items): the pieces go into the pack and are worn.
+function dressInStartingOutfit(character, inventory) {
+  character.cosmetics ||= { owned: [], helmet: null, clothes: null, back: null };
+  const outfit = startingOutfit(character);
+  for (const [slot, id] of Object.entries(outfit)) {
+    if (!id) continue;
+    if (!inventory.some((entry) => entry.id === `wear:${id}`)) inventory.push({ id: `wear:${id}`, quantity: 1 });
+    if (!character.cosmetics[slot]) character.cosmetics[slot] = id;
+  }
+  character.cosmetics.neck ??= null;
+  character.dressByItems = true;
+}
+
+// Worn clothes must be in the pack; if the last copy is gone, take it off.
+function clearMissingWornItems(character = state.run.character, inventory = state.run.inventory) {
+  const cosmetics = character?.cosmetics;
+  if (!cosmetics) return;
+  for (const slot of WEAR_SLOTS) {
+    const id = cosmetics[slot];
+    if (id && !inventory.some((entry) => entry.id === `wear:${id}` && entry.quantity > 0)) cosmetics[slot] = null;
+  }
+}
+
+// ---------- Dropping items ----------
+
+function droppableQuantity(itemId) {
+  const entry = state.run.inventory.find((candidate) => candidate.id === itemId);
+  if (!entry) return 0;
+  return Math.max(0, entry.quantity - (isEquipped(itemId) ? 1 : 0));
+}
+
+function promptDropItem(itemId) {
+  const available = droppableQuantity(itemId);
+  const item = itemDetails(itemId);
+  if (!available || !item) {
+    showToast(isEquipped(itemId) ? "Unequip that first." : "Nothing to drop.");
+    return;
+  }
+  const inTomb = state.run.location === "dungeon";
+  const verb = inTomb ? "Drop" : "Throw away";
+  const amounts = [...new Set([1, available > 3 ? Math.ceil(available / 2) : 0, available].filter((amount) => amount > 0))];
+  const options = amounts.map((amount) => ({
+    label: amount === available && amount > 1 ? `${verb} all ${amount}` : `${verb} ${amount}`,
+    action: () => dropInventoryItem(itemId, amount)
+  }));
+  chooseFromOptions(inTomb
+    ? `Drop ${item.name} here?`
+    : `Throw away ${item.name} for good?`, options.length === 1 ? [...options, { label: "Keep it", action: () => {} }] : options);
+}
+
+function dropInventoryItem(itemId, quantity) {
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > droppableQuantity(itemId)) return false;
+  const item = itemDetails(itemId);
+  const inTomb = state.run.location === "dungeon";
+  if (!inTomb && state.run.location !== "city") return false;
+  if (!removeInventoryItem(itemId, quantity)) return false;
+  if (inTomb) {
+    const { x, y } = state.run.player;
+    let cache = state.run.treasures.find((entry) => entry.dropped && entry.x === x && entry.y === y && entry.items.length < 20);
+    if (!cache) {
+      if (state.run.treasures.length >= 160) {
+        addInventoryItem(itemId, quantity);
+        showToast("The floor here is too cluttered to leave anything else.");
+        return false;
+      }
+      state.dropCounter = (state.dropCounter || 0) + 1;
+      cache = { id: `dropped-${Date.now().toString(36)}-${state.dropCounter}`, x, y, gold: 0, items: [], dropped: true };
+      state.run.treasures.push(cache);
+    }
+    const stack = cache.items.find((entry) => entry.id === itemId);
+    if (stack) stack.quantity += quantity;
+    else cache.items.push({ id: itemId, quantity });
+    addLog(`You set down ${quantity > 1 ? `${quantity} × ` : ""}${item.name}. Step back here and collect it to pick it up.`);
+  } else {
+    addLog(`You throw away ${quantity > 1 ? `${quantity} × ` : ""}${item.name}.`);
+  }
+  showToast(`${inTomb ? "Dropped" : "Threw away"} ${item.name}${quantity > 1 ? ` ×${quantity}` : ""}.`);
+  render();
+  saveRun();
   return true;
 }
 
@@ -1338,13 +1500,17 @@ function isEquipped(itemId) {
   if (itemId.startsWith("armor:")) return character.equipment.armor === itemId.slice(6);
   if (itemId === "shield") return character.equipment.shield;
   if (itemId === "travel-cloak") return character.equipment.cloak;
+  if (itemId.startsWith("wear:")) {
+    const wear = COSMETICS[itemId.slice(5)];
+    return Boolean(wear && character.cosmetics?.[wear.slot] === itemId.slice(5));
+  }
   return false;
 }
 
 const SHOP_STOCK = [
   "ration", "clean-water", "smoked-fish", "chilis", "soup",
   "healer-kit", "travel-bundle",
-  "torch", "hempen-rope", "crowbar", "shovel", "iron-pot", "wild-ingredients",
+  "camp-kit", "torch", "hempen-rope", "crowbar", "shovel", "iron-pot", "wild-ingredients",
   "healing-potion",
   "dungeon-gourmet-guide",
   "shield", "field-notes",
@@ -1354,11 +1520,11 @@ const SHOP_STOCK = [
 ];
 
 function shopStock() {
-  const stock = [...SHOP_STOCK, ...window.CryptsExotics.marketAdditions];
+  const stock = [...SHOP_STOCK, ...window.CryptsExotics.marketAdditions, ...window.CryptsGoods.marketStock, ...window.CryptsWardrobe.marketWear];
   if (state.run && projectLevel("trade-hall") >= 2) {
     const characterClass = CLASSES[state.run.character.class];
-    for (const weapon of characterClass.weapons.filter((id) => !WEAPONS[id]?.exotic).slice(0, 4)) stock.push(`weapon:${weapon}--fine`);
-    for (const armor of characterClass.armor.filter((id) => id !== "none" && id !== "chainmail" && !ARMORS[id]?.exotic)) stock.push(`armor:${armor}--fine`);
+    for (const weapon of characterClass.weapons.filter((id) => !WEAPONS[id]?.exotic && !WEAPONS[id]?.tombOnly).slice(0, 4)) stock.push(`weapon:${weapon}--fine`);
+    for (const armor of characterClass.armor.filter((id) => id !== "none" && id !== "chainmail" && !ARMORS[id]?.exotic && !ARMORS[id]?.tombOnly)) stock.push(`armor:${armor}--fine`);
   }
   return stock.filter((id) => itemDetails(id));
 }
@@ -1420,6 +1586,10 @@ function dropEnemyTreasure(enemy) {
   const items = [];
   if (enemy.roomIndex >= 0 && state.run.rooms[enemy.roomIndex]?.type === "boss") {
     items.push({ id: "terracotta-figurine", quantity: 1 });
+    if (state.run.mapId === GTFL_MAP_ID && randomInt(2) === 1) {
+      const find = rollTombFind(Math.min(DUNGEON_FLOOR_COUNT, state.run.dungeonFloor + 2));
+      if (find) items.push({ id: find, quantity: 1 });
+    }
     if (enemy.templateId === "tzitzimitl") items.push({ id: "obsidian-mirror", quantity: 1 });
   } else if (randomInt(100) <= 35) {
     items.push({ id: "jade-bead", quantity: randomInt(3) });
@@ -1444,8 +1614,9 @@ function dropEnemyTreasure(enemy) {
   addLog(`${enemy.name} drops ${contents}. Walk over it to collect what you can carry.`);
 }
 
-function collectTreasureAt(x, y) {
-  const treasures = state.run.treasures.filter((entry) => entry.x === x && entry.y === y);
+function collectTreasureAt(x, y, auto = false) {
+  // Walking over things you dropped yourself leaves them be; pick them up on purpose.
+  const treasures = state.run.treasures.filter((entry) => entry.x === x && entry.y === y && !(auto && entry.dropped));
   if (!treasures.length) return;
   const collectedNames = [];
   const leftBehind = [];
@@ -1472,6 +1643,7 @@ function collectTreasureAt(x, y) {
     }
   }
   state.run.treasures = state.run.treasures.filter((entry) => entry.gold > 0 || entry.items.length);
+  if (collectedNames.length) sfx(collectedNames.some((name) => /gp$|gold/i.test(name)) ? "gold" : "loot");
   if (collectedNames.length) {
     const message = `Collected ${collectedNames.join(", ")}.`;
     addLog(message);
@@ -1523,20 +1695,11 @@ function dungeonSignAt(x, y) {
   return dungeonSigns().find((sign) => sign.x === x && sign.y === y);
 }
 
-function closedDoorOnDiagonal(from, to) {
-  if (from.x === to.x || from.y === to.y) return false;
-  return [
-    { x: to.x, y: from.y },
-    { x: from.x, y: to.y }
-  ].some((position) => {
-    if (position.x < 0 || position.x >= MAP_TILE_SIZE || position.y < 0 || position.y >= MAP_TILE_SIZE) {
-      return false;
-    }
-    const index = tileIndex(position.x, position.y);
-    return state.run.terrain[index] === "door" && !state.run.openDoors.includes(index);
-  });
+// Diagonal steps follow the same rules as straight ones, so a closed door beside the
+// path never blocks a diagonal step; only the destination tile matters.
+function closedDoorOnDiagonal() {
+  return false;
 }
-
 function canStepBetween(from, to) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
@@ -1672,7 +1835,15 @@ function movePlayer(dx, dy) {
     if (!canStepBetween({ x, y }, { x: nx, y: ny })) {
       if (state.run.terrain[tileIndex(nx, ny)] === "door" || closedDoorOnDiagonal({ x, y }, { x: nx, y: ny })) {
         stoppedAtClosedDoor = true;
-        showToast("A closed doorway blocks that diagonal path.");
+        showToast("A closed doorway blocks the way.");
+      }
+      break;
+    }
+    const knownTrap = state.run.hazards.find((hazard) => !hazard.triggered && hazard.revealed && hazard.x === nx && hazard.y === ny);
+    if (knownTrap && state.trapStepConfirm !== destinationIndex) {
+      if (!moved) {
+        state.trapStepConfirm = destinationIndex;
+        showToast(t("{0} is there. Disarm it (Space or Shift+F), or move that way again to step onto it.", { 0: knownTrap.name }));
       }
       break;
     }
@@ -1716,11 +1887,12 @@ function movePlayer(dx, dy) {
     }
     triggerHazard(nx, ny);
     if (state.run.lost) break;
-    collectTreasureAt(nx, ny);
+    collectTreasureAt(nx, ny, true);
     if (state.run.lost || state.run.won) break;
   }
   if (moved) {
     state.lookTarget = null;
+    state.trapStepConfirm = null;
     finishPlayerTurn();
   }
   else {
@@ -1811,6 +1983,7 @@ function triggerHazard(x, y) {
   if (!hazard) return;
   hazard.triggered = true;
   hazard.revealed = true;
+  sfx("trap");
   const ability = hazard.ability === "Constitution" ? "con" : "dex";
   const modifier = savingThrowBonus(ability) + (equippedArmorTrait() === "sure-footed" ? 3 : 0);
   const check = randomInt(20) + modifier;
@@ -1923,6 +2096,7 @@ function castSpell(spellId, chosenTarget = null) {
     showToast("You have no spell power left. Rest at camp to recover it.");
     return;
   }
+  sfx("spell");
   if (spell.healing) {
     if (!canHeal()) {
       showToast("Eat until your food meter reaches 75% before healing.");
@@ -2097,6 +2271,7 @@ function searchArea() {
       found += 1;
     }
   }
+  sfx("search");
   addLog(found ? `You search carefully and reveal ${found} hidden hazard${found === 1 ? "" : "s"}.` : "You search the nearby stonework but find no hidden hazards.");
   finishPlayerTurn();
 }
@@ -2117,6 +2292,7 @@ function disarmNearbyHazard(selectedHazard = null) {
   if (roll >= hazard.dc) {
     hazard.triggered = true;
     addLog(`You disarm ${hazard.name} (Sleight of Hand ${roll} vs. DC ${hazard.dc}).`);
+    sfx("disarm");
   } else {
     addLog(`You fail to disarm ${hazard.name} (Sleight of Hand ${roll} vs. DC ${hazard.dc}).`);
     triggerHazard(hazard.x, hazard.y);
@@ -2168,6 +2344,7 @@ function enemiesTakeTurn() {
 }
 
 function showCombatFeedback(kind, message, target = {}) {
+  sfxForCombatFeedback(kind, target);
   const feedback = elements["combat-feedback"];
   feedback.className = `combat-feedback ${kind}`;
   feedback.textContent = message;
@@ -2251,6 +2428,65 @@ function usePotion() {
   finishPlayerTurn();
 }
 
+// Why a carried item can't be used right now (a short reason), or null if it can.
+// Mirrors the checks in useInventoryItem so the pack button and the action agree.
+function itemUseBlocked(entry) {
+  const id = entry.id;
+  const inDungeon = state.run.location === "dungeon";
+  if (state.run.lost || state.run.won) return "The expedition is over.";
+  const trapWithin = (reach, needSight) => state.run.hazards.some((hazard) => !hazard.triggered && hazard.revealed &&
+    distanceInSquares(hazard, state.run.player) <= reach && (!needSight || hasLineOfSight(state.run.player, hazard)));
+  if (id === "healing-potion") return state.run.hp >= state.run.maxHp && !progress().conditions.length ? "You're unhurt and have no ailments." : null;
+  if (id === "torch" || id === "ocote") return inDungeon ? null : "Light it inside the tomb.";
+  if (id === "chili-smoke") return inDungeon && enemiesAdjacent().length ? null : "Crack it when a creature is right beside you.";
+  if (FOOD_ITEMS[id]) {
+    return state.run.needs.food >= 100 && Object.keys(NUTRIENT_NAMES).every((nutrient) =>
+      state.run.needs.nutrition[nutrient] + FOOD_ITEMS[id].nutrients[nutrient] >= 100) ? "You're already full." : null;
+  }
+  if (id === "clean-water" || id === "cacao-drink") return state.run.needs.water >= 100 ? "You're not thirsty." : null;
+  if (id === "ixpatli") return progress().conditions.length ? null : "No poison, bleeding, or weakness to treat.";
+  if (id === "maguey-salve") {
+    return state.run.hp >= state.run.maxHp && !progress().conditions.some((condition) => condition.id === "bleed") ? "No wounds that need the salve." : null;
+  }
+  if (id === "picietl") return null;
+  if (id === "healer-kit") {
+    if ((entry.uses ?? entry.quantity * HEALER_KIT_USES) < 1) return "The kit is used up.";
+    return state.run.party.some((companion) => companion.hp <= 0) ? null : "No companion needs field treatment.";
+  }
+  if (id === "crowbar") return inDungeon && trapWithin(1, false) ? null : "Stand next to a revealed trap.";
+  if (id === "hempen-rope") return inDungeon && trapWithin(10, true) ? null : "No revealed trap in the rope's reach and sight.";
+  return null;
+}
+
+// The carried food that does you the most good right now: it fills the most of what your
+// food meter and nutrients are missing; on a tie, the one you have the most of. Null if
+// nothing carried would help (you're already full).
+function bestMealToEat() {
+  const needs = state.run.needs;
+  let best = null;
+  let bestScore = 0;
+  for (const id of Object.keys(FOOD_ITEMS)) {
+    const quantity = inventoryQuantity(id);
+    if (!quantity || itemUseBlocked({ id, quantity })) continue;
+    const food = FOOD_ITEMS[id];
+    const score = Math.min(food.food || 0, 100 - needs.food) +
+      Object.keys(NUTRIENT_NAMES).reduce((sum, nutrient) =>
+        sum + Math.min(food.nutrients?.[nutrient] || 0, Math.max(0, 100 - (needs.nutrition?.[nutrient] ?? 0))), 0) +
+      quantity / 1000;
+    if (score > bestScore) { best = id; bestScore = score; }
+  }
+  return best;
+}
+
+function eatBestMeal() {
+  const meal = bestMealToEat();
+  if (!meal) {
+    showToast(Object.keys(FOOD_ITEMS).some((id) => inventoryQuantity(id)) ? "You're already full." : "You have no food in your pack.");
+    return;
+  }
+  useInventoryItem(meal);
+}
+
 function useInventoryItem(itemId) {
   if (state.run.lost || state.run.won || !inventoryQuantity(itemId)) return;
   if (itemId === "healing-potion") {
@@ -2259,19 +2495,31 @@ function useInventoryItem(itemId) {
   }
   if (FOOD_ITEMS[itemId]) {
     if (!removeInventoryItem(itemId)) return;
+    sfx(GEAR_ITEMS[itemId]?.category === "Drink" ? "drink" : "eat");
     applyMeal(state.run.needs, itemId);
     if (FOOD_ITEMS[itemId].buff) grantBuff(FOOD_ITEMS[itemId].buff);
+    if (FOOD_ITEMS[itemId].water) {
+      state.run.needs.water = Math.min(100, state.run.needs.water + FOOD_ITEMS[itemId].water);
+      state.run.needs.waterZeroHours = 0;
+    }
+    if (FOOD_ITEMS[itemId].heal && state.run.hp < state.run.maxHp) {
+      const restored = Math.min(FOOD_ITEMS[itemId].heal, state.run.maxHp - state.run.hp);
+      state.run.hp += restored;
+      showCombatFeedback("heal", `+${restored} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
+    }
     addLog(`You eat ${FOOD_ITEMS[itemId].name}. Food rises by ${FOOD_ITEMS[itemId].food}; its nutrition supports ${Object.entries(FOOD_ITEMS[itemId].nutrients)
       .filter(([, amount]) => amount >= 30).map(([nutrient]) => NUTRIENT_NAMES[nutrient].toLowerCase()).join(" and ") || "your diet"}.`);
   } else if (itemId === "clean-water") {
     if (!removeInventoryItem(itemId)) return;
     drinkWater(state.run.needs);
+    sfx("drink");
     addLog("You drink clean water. Hydration rises by 70.");
   } else if (itemId === "cacao-drink") {
     if (!removeInventoryItem(itemId)) return;
     state.run.needs.water = Math.min(100, state.run.needs.water + 40);
     state.run.needs.waterZeroHours = 0;
     state.run.needs.food = Math.min(100, state.run.needs.food + 15);
+    sfx("drink");
     addLog("You drink frothed cacao. Water rises by 40 and food by 15.");
   } else if (itemId === "ixpatli") {
     if (!progress().conditions.length) {
@@ -2280,22 +2528,53 @@ function useInventoryItem(itemId) {
     }
     if (!removeInventoryItem(itemId)) return;
     clearConditions("You press an ixpatli poultice to the wound. Your ailments ease.");
-  } else if (itemId === "torch") {
+  } else if (itemId === "torch" || itemId === "ocote") {
     if (state.run.location !== "dungeon") {
       showToast("Light a torch after entering the tomb.");
       return;
     }
-    removeInventoryItem("torch");
+    removeInventoryItem(itemId);
+    sfx("miss");
+    const radius = itemId === "ocote" ? 12 : 8;
     const { x, y } = state.run.player;
-    for (let ty = Math.max(0, y - 8); ty <= Math.min(MAP_TILE_SIZE - 1, y + 8); ty += 1) {
-      for (let tx = Math.max(0, x - 8); tx <= Math.min(MAP_TILE_SIZE - 1, x + 8); tx += 1) {
+    for (let ty = Math.max(0, y - radius); ty <= Math.min(MAP_TILE_SIZE - 1, y + radius); ty += 1) {
+      for (let tx = Math.max(0, x - radius); tx <= Math.min(MAP_TILE_SIZE - 1, x + radius); tx += 1) {
         const target = { x: tx, y: ty };
-        if (distanceInSquares(target, state.run.player) <= 8 && hasLineOfSight(state.run.player, target)) {
+        if (distanceInSquares(target, state.run.player) <= radius && hasLineOfSight(state.run.player, target)) {
           state.run.seen[tileIndex(tx, ty)] = true;
         }
       }
     }
-    addLog("You light a torch, illuminating the surrounding tomb. Search explicitly to detect hidden hazards.");
+    addLog(itemId === "ocote"
+      ? "The ocote splints flare up, throwing resin-bright light far down the passages."
+      : "You light a torch, illuminating the surrounding tomb. Search explicitly to detect hidden hazards.");
+  } else if (itemId === "maguey-salve") {
+    const bleeding = progress().conditions.some((entry) => entry.id === "bleed");
+    if (state.run.hp >= state.run.maxHp && !bleeding) {
+      showToast("You have no wounds that need the salve.");
+      return;
+    }
+    if (!removeInventoryItem(itemId)) return;
+    const restored = Math.min(rollDice("1d4+1").total, state.run.maxHp - state.run.hp);
+    state.run.hp += restored;
+    progress().conditions = progress().conditions.filter((entry) => entry.id !== "bleed");
+    showCombatFeedback("heal", `+${restored} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
+    addLog(`You smear maguey salve on the wound and recover ${restored} hit point${restored === 1 ? "" : "s"}${bleeding ? "; the bleeding stops" : ""}.`);
+  } else if (itemId === "picietl") {
+    if (!removeInventoryItem(itemId)) return;
+    for (const member of partyMembers()) member.needs.hoursAwake = 0;
+    addLog("You chew a pinch of picietl. The sharp, bitter tobacco chases the sleep from everyone's eyes.");
+  } else if (itemId === "chili-smoke") {
+    const adjacent = state.run.location === "dungeon"
+      ? state.run.enemies.filter((enemy) => enemy.alive && distanceInSquares(enemy, state.run.player) <= 1) : [];
+    if (!adjacent.length) {
+      showToast("Crack the chili smoke when a creature is right beside you.");
+      return;
+    }
+    if (!removeInventoryItem(itemId)) return;
+    for (const enemy of adjacent) enemy.staggered = true;
+    sfx("miss");
+    addLog(`You crack the gourd and burning chili smoke rolls out. ${adjacent.map((enemy) => enemy.name).join(", ")} ${adjacent.length === 1 ? "chokes and loses" : "choke and lose"} the next turn.`);
   } else if (itemId === "healer-kit") {
     const patient = state.run.party.find((companion) => companion.hp <= 0);
     if (!patient) {
@@ -2305,9 +2584,9 @@ function useInventoryItem(itemId) {
     if (!spendHealerKitUse()) return;
     if (canHeal(patient.needs)) {
       patient.hp = 1;
-      addLog(`You use the healer's kit to treat ${patient.name}, restoring 1 hit point.`);
+      addLog(`You use the healer's bundle to treat ${patient.name}, restoring 1 hit point.`);
     } else {
-      addLog(`${patient.name} is treated with the healer's kit but remains unconscious; they need food at 75% to recover hit points.`);
+      addLog(`${patient.name} is treated with the healer's bundle but remains unconscious; they need food at 75% to recover hit points.`);
     }
   } else if (itemId === "crowbar") {
     const hazard = state.run.hazards.find((item) => !item.triggered && item.revealed &&
@@ -2320,9 +2599,9 @@ function useInventoryItem(itemId) {
     const check = Math.max(...rolls) + currentCharacterStats().modifiers.str;
     if (check >= hazard.dc) {
       hazard.triggered = true;
-      addLog(`You pry apart ${hazard.name} with the crowbar (Strength ${rolls.join("/")}, ${check} vs. DC ${hazard.dc}).`);
+      addLog(`You pry apart ${hazard.name} with the pry bar (Strength ${rolls.join("/")}, ${check} vs. DC ${hazard.dc}).`);
     } else {
-      addLog(`The crowbar slips while you work on ${hazard.name} (Strength ${rolls.join("/")}, ${check} vs. DC ${hazard.dc}).`);
+      addLog(`The pry bar slips while you work on ${hazard.name} (Strength ${rolls.join("/")}, ${check} vs. DC ${hazard.dc}).`);
       triggerHazard(hazard.x, hazard.y);
     }
   } else if (itemId === "hempen-rope") {
@@ -2333,7 +2612,7 @@ function useInventoryItem(itemId) {
       return;
     }
     hazard.triggered = true;
-    addLog(`From a safe distance, you pull ${hazard.name}'s trigger with the hemp rope.`);
+    addLog(`From a safe distance, you pull ${hazard.name}'s trigger with the maguey cord.`);
   } else {
     return;
   }
@@ -2363,6 +2642,7 @@ function checkLevelUp() {
     const previousMaxSpellSlots = maxSpellSlots(state.run.character.class, state.run.level);
     const previousCompanionMaxHp = new Map(state.run.party.map((companion) => [companion.id, companion.maxHp]));
     state.run.level += 1;
+    sfx("levelUp");
     const nextMaxSpellSlots = maxSpellSlots(state.run.character.class, state.run.level);
     state.run.spellSlots = Math.min(nextMaxSpellSlots, state.run.spellSlots + nextMaxSpellSlots - previousMaxSpellSlots);
     state.run.maxHp = state.run.character?.legacy
@@ -2523,6 +2803,7 @@ function drawWaterAtTownWell() {
     showToast("The party's water needs are already full.");
     return;
   }
+  sfx("water");
   for (const member of thirstyMembers) {
     member.needs.water = 100;
     member.needs.waterZeroHours = 0;
@@ -2546,29 +2827,42 @@ function drawWaterAtDungeonWell(well) {
     member.needs.water = 100;
     member.needs.waterZeroHours = 0;
   }
+  sfx("water");
   addLog(`At the tomb well, you draw clean water and restore hydration for ${thirstyMembers.length} traveler${thirstyMembers.length === 1 ? "" : "s"}.`);
   finishPlayerTurn();
   showToast("Clean water drawn. Hydration replenished.");
 }
 
-function moveTowardTownNpc(npc) {
-  const currentDistance = townDistance(state.run.townPosition, npc);
-  const steps = MOVEMENT_DIRECTIONS
-    .filter((direction) => {
-      const x = state.run.townPosition.x + direction.x;
-      const y = state.run.townPosition.y + direction.y;
-      return townCanOccupy(x, y) && townDistance({ x, y }, npc) < currentDistance &&
-        (!direction.x || !direction.y ||
-          townCanOccupy(state.run.townPosition.x + direction.x, state.run.townPosition.y) ||
-          townCanOccupy(state.run.townPosition.x, state.run.townPosition.y + direction.y));
-    })
-    .sort((first, second) => {
-      const firstDistance = townDistance({ x: state.run.townPosition.x + first.x, y: state.run.townPosition.y + first.y }, npc);
-      const secondDistance = townDistance({ x: state.run.townPosition.x + second.x, y: state.run.townPosition.y + second.y }, npc);
-      return firstDistance - secondDistance;
-    });
-  if (steps.length) moveTownPlayer(steps[0].x, steps[0].y);
-  else showToast("The buildings block the way. Move through the open streets to reach them.");
+// One step along the shortest street path toward a target: beside it (reach 1, for people
+// and the house) or onto it (reach 0, for the well or a street tile). Steps follow the same
+// rules as the movement keys, diagonals included.
+function townStepToward(target, reach = 1) {
+  const start = state.run.townPosition;
+  if (townDistance(start, target) <= reach) return null;
+  const key = (x, y) => `${x},${y}`;
+  const seen = new Set([key(start.x, start.y)]);
+  const queue = [{ x: start.x, y: start.y, first: null }];
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const current = queue[cursor];
+    for (const direction of MOVEMENT_DIRECTIONS) {
+      const x = current.x + direction.x;
+      const y = current.y + direction.y;
+      if (seen.has(key(x, y)) || !townCanOccupy(x, y)) continue;
+      // Don't route over the tomb gate unless that's where you're going.
+      if (TOWN_MAP[y]?.[x] === "D" && !(target.x === x && target.y === y)) continue;
+      seen.add(key(x, y));
+      const first = current.first || direction;
+      if (townDistance({ x, y }, target) <= reach) return first;
+      queue.push({ x, y, first });
+    }
+  }
+  return null;
+}
+
+function moveTowardTownNpc(npc, reach = 1) {
+  const step = townStepToward(npc, reach);
+  if (step) moveTownPlayer(step.x, step.y);
+  else if (townDistance(state.run.townPosition, npc) > reach) showToast("The buildings block the way. Move through the open streets to reach them.");
 }
 
 function moveTownPlayer(dx, dy) {
@@ -2589,10 +2883,7 @@ function moveTownPlayer(dx, dy) {
     showToast("The buildings and town wall block that way.");
     return;
   }
-  if (dx && dy && !townCanOccupy(position.x + dx, position.y) && !townCanOccupy(position.x, position.y + dy)) {
-    showToast("The buildings block that diagonal passage.");
-    return;
-  }
+  // Diagonal steps follow the same rules as straight ones: only the destination matters.
   state.run.townPosition = { x, y };
   if (TOWN_MAP[y][x] === "D") {
     enterDungeon();
@@ -2603,9 +2894,15 @@ function moveTownPlayer(dx, dy) {
 
 function talkToTownNpc(id) {
   if (state.run.location !== "city") return;
+  syncVillagerPositions();
   const npc = TOWN_NPCS.find((person) => person.id === id);
   if (!npc || townDistance(state.run.townPosition, npc) > 1) {
     showToast("Walk beside someone before starting a conversation.");
+    return;
+  }
+  sfx("talk");
+  if (npc.villager) {
+    openVillager(id);
     return;
   }
   const conversations = {
@@ -2940,6 +3237,7 @@ function interactWithDoor(door) {
     }
     state.run.openDoors = state.run.openDoors.filter((index) => index !== door.index);
     addLog("You close the doorway.");
+    sfx("doorClose");
     finishPlayerTurn();
     return;
   }
@@ -2962,6 +3260,7 @@ function openDungeonDoor(door) {
     addLog("You open the doorway.");
   }
   state.run.openDoors.push(door.index);
+  sfx("door");
   return true;
 }
 
@@ -2972,6 +3271,7 @@ function contextualInteraction() {
     if (isTownWellAt(position.x, position.y)) {
       return { label: "Draw water · Ceiba Well", action: drawWaterAtTownWell };
     }
+    syncVillagerPositions();
     const npcs = TOWN_NPCS.filter((person) => townDistance(position, person) <= 1);
     if (npcs.length) {
       const label = npcs.length > 1
@@ -2991,7 +3291,7 @@ function contextualInteraction() {
     if (besideHouse(position)) {
       return { label: houseState().owned ? "Go home" : "House for sale", action: openHouse };
     }
-    return null;
+    return { label: "Townsfolk · who's where", action: openVillagers };
   }
   if (state.run.location !== "dungeon") return null;
   const enemies = attackTargets();
@@ -3097,6 +3397,7 @@ function townBuildingBounds(code) {
 }
 
 function renderTownMap() {
+  syncVillagerPositions();
   const fragment = document.createDocumentFragment();
   elements["town-map"].style.setProperty("--town-columns", TOWN_MAP[0].length);
   const player = state.run.townPosition;
@@ -3116,7 +3417,7 @@ function renderTownMap() {
         ? "The Ceiba Well is nearby. Step onto its tile to draw clean water."
     : onTrail
       ? "The broken imperial seal opens onto the tomb's outer halls. Step through to begin your expedition."
-      : "You stand in Chiltomatlan's shaded plaza. The travelers' house is west, the market is east, and the forbidden tomb road lies south.";
+      : "You stand in Chiltomatlan's shaded plaza. The travelers' house is northwest, the market northeast, the empty house down the southwest lane, and the forbidden tomb road runs south through the gate.";
   for (let y = 0; y < TOWN_MAP.length; y += 1) {
     for (let x = 0; x < TOWN_MAP[y].length; x += 1) {
       const code = TOWN_MAP[y][x];
@@ -3157,7 +3458,10 @@ function renderTownMap() {
         tile.append(createCodexCharacterSprite(state.run.character, "town-player-sprite"));
       } else if (npc) {
         tile.classList.add("town-person");
-        if (npc.id === "patolli-player") {
+        if (npc.villager) {
+          tile.classList.add("town-villager");
+          tile.append(villagerSprite(npc.id, "town-person-marker town-villager-sprite"));
+        } else if (npc.id === "patolli-player") {
           tile.append(createResourceSprite("tokens", "patolli-board.png", "town-person-marker"));
         } else {
           tile.append(createResourceSprite("tokens", `${npc.id}.png`, "town-person-marker"));
@@ -3261,6 +3565,10 @@ function renderMap() {
           if (effect?.companionId === companion.id) sprite.classList.add(effect.kind === "heal" ? "heal-flash" : "hurt-flash");
           addLayer(`${companion.name}, your companion${companion.hp <= 0 ? " (unconscious)" : ""}`, sprite, "companion", companion.id);
         }
+        if (campAt(x, y)) {
+          tile.classList.add("has-camp");
+          addLayer("Your camp", createResourceSprite("tokens", "campfire.png", "tile-sprite"), "camp");
+        }
         if (wellsAt.has(index)) {
           tileLabel += " · Dungeon well";
           tile.classList.add("has-well");
@@ -3272,12 +3580,7 @@ function renderMap() {
           const itemNames = treasure.items.map((item) => `${itemDetails(item.id).name} ×${item.quantity}`).join(", ");
           const lootSprites = [];
           if (treasure.gold) lootSprites.push(createResourceSprite("items", "coin-pile.png", "tile-sprite"));
-          for (const loot of treasure.items) {
-            const item = itemDetails(loot.id);
-            const sprite = item.sprite || inventoryIconFile(item);
-            const folder = RARE_TREASURE_SPRITES.includes(sprite) ? "enemies" : "items";
-            lootSprites.push(createResourceSprite(folder, `${sprite}.png`, "tile-sprite"));
-          }
+          for (const loot of treasure.items) lootSprites.push(itemArtImage(loot.id, "tile-sprite"));
           if (!lootSprites.length) lootSprites.push(createResourceSprite("items", "treasure.png", "tile-sprite"));
           let lootSprite = lootSprites[0];
           if (lootSprites.length > 1) {
@@ -3453,6 +3756,9 @@ function inspectMapTile(tile) {
     } else if (companion) {
       title = companion.name;
       description = `${companion.description || "A member of your traveling party."} They travel with you and can help in combat.`;
+    } else if (campAt(x, y)) {
+      title = "Your camp";
+      description = campInspectText(campAt(x, y));
     } else if (x === state.run.player.x && y === state.run.player.y && !tile.classList.contains("door")) {
       title = state.run.character.name;
       description = "Your current position. Use the nearby action to interact with a creature, cache, door, or the tomb entrance.";
@@ -3530,6 +3836,7 @@ function renderActions() {
     "disarm-button": "tool",
     "drink-potion-button": "potion",
     "drink-water-button": "water",
+    "eat-meal-button": "ration",
     "camp-button": "kit",
     "forage-button": "chilis",
     "cook-button": "soup",
@@ -3543,7 +3850,8 @@ function renderActions() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `button${secondary ? " secondary" : ""}`;
-    const shortcutLabel = shortcut === " " ? "Space" : shortcut.toUpperCase().replace(/\s+/g, "/");
+    const shortcutLabel = shortcut.split(/\s+/).map((key) => ({ " ": "Space", space: "Space", enter: "Enter", ".": "." })[key] || key.toUpperCase())
+      .filter((key) => key !== "Enter").join("/");
     const tooltip = `${label} · ${shortcutLabel}`;
     button.setAttribute("aria-label", tooltip);
     button.title = tooltip;
@@ -3569,7 +3877,8 @@ function renderActions() {
     button.append(glyph, actionLabel, keyHint);
     button.disabled = disabled;
     if (id) button.id = id;
-    button.addEventListener("click", action);
+    // Never hand the click event to the action: some take an optional target.
+    button.addEventListener("click", () => action());
     target.append(button);
   };
   const primaryActions = elements["action-primary"];
@@ -3598,9 +3907,9 @@ function renderActions() {
     : state.disengageReady ? "Disengage armed" : "";
   const interactionLabel = dungeonInteractionLabel();
   const atEntrance = isAtDungeonEntrance();
-  addButton(interactionLabel, interact, atEntrance && !interactionLabel.startsWith("Attack") ? "e t" : "e", false,
+  addButton(interactionLabel, interact, "space enter e", false,
     ended || interactionLabel === "Nothing nearby", primaryActions, "interact-button");
-  addButton("Wait", waitTurn, ".", true, ended, elements["action-explore"], "wait-button");
+  addButton("Wait", waitTurn, "x .", true, ended, elements["action-explore"], "wait-button");
   if (validAttackTargets.length) {
     const attackLabel = validAttackTargets.length > 1
       ? `Attack · choose target (${validAttackTargets.length})`
@@ -3620,33 +3929,43 @@ function renderActions() {
         ? `${spellName} · ${state.run.spellSlots}`
         : `${spellName}${spellTargetsInSight.length > 1 ? ` · choose (${spellTargetsInSight.length})`
           : target ? ` · ${t(target.name)}` : ""}${spell.free ? "" : ` · ${state.run.spellSlots}`}`;
-      addButton(label, () => castSpell(spellId), ["j", "k", "l"][index], true, disabled,
+      addButton(label, () => castSpell(spellId), ["1", "2", "3"][index], true, disabled,
         elements["action-combat"], `spell-${spellId}-button`);
     });
   }
-  addButton(state.run.dodging ? "Dodge · active" : "Dodge", dodge, "d", true,
+  addButton(state.run.dodging ? "Dodge · active" : "Dodge", dodge, "v", true,
     ended || state.run.dodging, elements["action-combat"], "dodge-button");
-  addButton(state.dashReady ? "Cancel Dash" : "Dash · next move", dash, "x", true,
+  addButton(state.dashReady ? "Cancel Dash" : "Dash · next move", dash, "t", true,
     ended, elements["action-combat"], "dash-button");
-  addButton(state.disengageReady ? "Cancel Disengage" : "Disengage · next move", disengage, "g", true,
+  addButton(state.disengageReady ? "Cancel Disengage" : "Disengage · next move", disengage, "y", true,
     ended, elements["action-combat"], "disengage-button");
-  addButton("Search", searchArea, "s", true, ended, elements["action-explore"], "search-button");
-  addButton(nearbyHazard ? "Disarm trap" : "Disarm · search first", disarmNearbyHazard, "f", true,
+  addButton("Search", searchArea, "f", true, ended, elements["action-explore"], "search-button");
+  addButton(nearbyHazard ? "Disarm trap" : "Disarm · search first", disarmNearbyHazard, "shift+f", true,
     ended || !nearbyHazard, elements["action-explore"], "disarm-button");
   addButton(`Medicine · ${inventoryQuantity("healing-potion")}`, usePotion, "h", true,
     ended || inventoryQuantity("healing-potion") < 1 || (state.run.hp >= state.run.maxHp && !progress().conditions.length),
     elements["action-supplies"], "drink-potion-button");
-  addButton(`Drink water · ${inventoryQuantity("clean-water")}`, () => useInventoryItem("clean-water"), "w", true,
+  addButton(`Drink water · ${inventoryQuantity("clean-water")}`, () => useInventoryItem("clean-water"), "u", true,
     ended || inventoryQuantity("clean-water") < 1 || state.run.needs.water >= 100,
     elements["action-supplies"], "drink-water-button");
+  const meal = bestMealToEat();
+  const mealCount = Object.keys(FOOD_ITEMS).reduce((sum, id) => sum + inventoryQuantity(id), 0);
+  addButton(meal ? `Eat · ${itemDetails(meal)?.name || "meal"}` : `Eat meal · ${mealCount}`, eatBestMeal, "m", true,
+    ended || !meal, elements["action-supplies"], "eat-meal-button");
   const nearbyThreat = state.run.enemies.some((enemy) => enemy.alive &&
     distanceInSquares(enemy, state.run.player) <= 7);
-  addButton("Camp · cook, eat & sleep", campAndRest, "b", true, ended || nearbyThreat,
-    elements["action-supplies"], "camp-button");
+  const byCamp = atCamp();
+  if (byCamp) {
+    addButton("Rest at camp · 8 hours", restAtCamp, "b", true, ended || nearbyThreat,
+      elements["action-supplies"], "camp-button");
+  } else {
+    addButton(activeCamp() ? "Make a new camp here" : "Make camp here", openMakeCamp, "b", true, ended || nearbyThreat,
+      elements["action-supplies"], "camp-button");
+  }
   const dishes = availableRecipes().length;
-  addButton(`Cook a dish${dishes ? ` · ${dishes}` : ""}`, openCookMenu, "n", true,
-    ended || nearbyThreat, elements["action-supplies"], "cook-button");
-  addButton("Forage · 1 hour", forageIngredients, "v", true,
+  addButton(`Cook at camp${dishes ? ` · ${dishes}` : ""}`, openCookMenu, "n", true,
+    ended || nearbyThreat || !byCamp, elements["action-supplies"], "cook-button");
+  addButton("Forage · 1 hour", forageIngredients, "g", true,
     ended || getCarriedWeight() + GEAR_ITEMS["wild-ingredients"].weight > getCarryCapacity(state.run.character),
     elements["action-explore"], "forage-button");
   elements["return-after-delving"].classList.add("hidden");
@@ -3654,8 +3973,8 @@ function renderActions() {
   if (state.run.won && !atEntrance) {
     elements["return-after-delving"].classList.remove("hidden");
     elements["return-after-delving"].disabled = false;
-    elements["return-after-delving"].dataset.shortcut = "t";
-    elements["return-after-delving"].textContent = "Return to Chiltomatlan · T";
+    elements["return-after-delving"].dataset.shortcut = "enter";
+    elements["return-after-delving"].textContent = "Return to Chiltomatlan · Enter";
   }
   if (!elements["return-after-delving"].classList.contains("hidden")) {
     primaryActions.append(elements["return-after-delving"]);
@@ -3773,7 +4092,7 @@ function renderCharacter() {
   const heritageName = RACES[character.race]?.heritages?.[character.heritage]?.name;
   const genderLabel = { man: "he/him", woman: "she/her", other: "they/them" }[character.gender] || "they/them";
   elements["character-subtitle"].textContent =
-    `${heritageName || RACES[character.race]?.name || "Traveler"} ${CLASSES[character.class]?.name || "Adventurer"} · ${genderLabel}`;
+    `${t(heritageName || RACES[character.race]?.name || "Traveler")} ${t(CLASSES[character.class]?.name || "Adventurer")} · ${t(genderLabel)}`;
   elements["character-portrait"].replaceChildren(createCodexCharacterSprite(character, "sidebar-sprite", facing));
   elements["header-character-portrait"].replaceChildren(createCodexCharacterSprite(character, "header-sprite", facing));
   elements["player-ac"].textContent = stats.ac;
@@ -3878,9 +4197,11 @@ function renderCharacterGuide(character, stats) {
   const armor = ARMORS[equipment.armor] || ARMORS.none;
   const weapon = WEAPONS[equipment.weapon] || WEAPONS.macuahuitl;
   const dexArmorBonus = armor.dex ? Math.min(stats.modifiers.dex, armor.dexCap ?? stats.modifiers.dex) : 0;
-  elements["character-equipment-bonus"].textContent =
+  const gearText =
     `${weapon.name} deals ${stats.damageDice}${stats.damageBonus >= 0 ? "+" : ""}${stats.damageBonus} on a hit; attack bonus ${stats.attackBonus >= 0 ? "+" : ""}${stats.attackBonus}. ${armor.name} contributes to AC ${armor.base}${dexArmorBonus ? ` + ${dexArmorBonus} Dexterity` : ""}${equipment.shield ? " + 2 from your shield" : ""}, for AC ${stats.ac}.`
     + (equipment.cloak ? ` ${GEAR_ITEMS["travel-cloak"].name} is equipped; it has no separate bonus in this ruleset.` : "");
+  elements["character-equipment-bonus"].textContent = gearText;
+  renderCharacterSheet(character, stats, training.join(" "), gearText);
 
   renderCharacterInfoPage();
   renderAbilityGuide(character, stats, spellAbility, spellReady);
@@ -3917,7 +4238,8 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
   const nearbyThreat = inDungeon && state.run.enemies.some((enemy) =>
     enemy.alive && distanceInSquares(enemy, state.run.player) <= 7);
   const noHpNeeded = state.run.hp >= state.run.maxHp;
-  const canUsePotion = inventoryQuantity("healing-potion") > 0 && !noHpNeeded;
+  const ailing = progress().conditions.length > 0;
+  const canUsePotion = inventoryQuantity("healing-potion") > 0 && (!noHpNeeded || ailing);
   const abilities = [
     {
       name: "Attack",
@@ -3973,15 +4295,15 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
     },
     {
       name: "Camp",
-      status: nearbyThreat ? "Too close to danger" : inDungeon ? "Available in a quiet area" : "Rest at the inn",
+      status: nearbyThreat ? "Too close to danger" : !inDungeon ? "Rest at the inn" : atCamp() ? "At your camp" : activeCamp() ? `Camp on floor ${activeCamp().floor}` : "No camp yet",
       state: nearbyThreat ? "locked" : "context",
       description: inDungeon
-        ? "Rest for 8 hours only when no enemy is within 7 squares. The party uses carried meals and water, may cook ingredients, recovers spell slots, and heals when food needs are high enough."
+        ? `Pitch a camp on a quiet chamber floor with a camp kit, or by spending an hour on a Survival check (DC ${CAMP_SURVIVAL_DC}). The camp stays until you pitch a new one. At your camp you can rest for 8 hours when no enemy is within 7 squares: the party eats carried meals and water, may cook ingredients, recovers spell slots, and heals when food needs are high enough. Cooking also needs your campfire. From Chiltomatlan you can walk straight back to your camp.`
         : "At the Ceiba House, an 8-hour safe rest restores everyone's food and water, resets exhaustion, restores spell slots, and tends wounds without consuming carried meals or water."
     },
     {
       name: "Healing potion",
-      status: !inventoryQuantity("healing-potion") ? "None carried" : noHpNeeded ? "Already at full HP" : "Ready",
+      status: !inventoryQuantity("healing-potion") ? "None carried" : noHpNeeded && !ailing ? "Already at full HP" : noHpNeeded ? "Ready · cures ailments" : "Ready",
       state: canUsePotion ? "available" : "context",
       description: `Use one carried dose of medicine to restore 2d4 + 2 hit points (up to your maximum), even when hungry. Uses your turn. ${inventoryQuantity("healing-potion")} carried.`
     }
@@ -4005,6 +4327,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
     });
   }
 
+  const spellStart = abilities.length;
   if (spellReady) {
     const abilityName = ABILITIES.find(([key]) => key === spellAbility)?.[1] || "Spellcasting ability";
     const slotStatus = state.run.spellSlots > 0 ? `${state.run.spellSlots} spell slot${state.run.spellSlots === 1 ? "" : "s"} left` : "No spell slots";
@@ -4040,11 +4363,12 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
     });
   }
 
+  const spellEnd = abilities.length;
   const toolGuides = [
     ["torch", "Light a torch", "Spend one torch to reveal walkable areas within 8 squares and line of sight. It consumes a dungeon turn; searching for hazards remains a separate action."],
-    ["crowbar", "Use a crowbar", "When adjacent to a revealed trap, roll Strength with advantage against its difficulty. Failure triggers it. Uses a dungeon turn."],
-    ["hempen-rope", "Use hemp rope", "From up to 10 squares away with line of sight, pull the trigger of a revealed trap without approaching it. Uses a dungeon turn."],
-    ["healer-kit", "Use a healer's kit", `Spend one kit use to treat a downed companion. They recover 1 HP only if their food is at least 75%; otherwise they remain unconscious. ${inventoryQuantity("healer-kit")} kit${inventoryQuantity("healer-kit") === 1 ? "" : "s"} carried.`]
+    ["crowbar", "Use the pry bar", "When adjacent to a revealed trap, roll Strength with advantage against its difficulty. Failure triggers it. Uses a dungeon turn."],
+    ["hempen-rope", "Use the maguey cord", "From up to 10 squares away with line of sight, pull the trigger of a revealed trap without approaching it. Uses a dungeon turn."],
+    ["healer-kit", "Use a healer's bundle", `Spend one bundle use to treat a downed companion. They recover 1 HP only if their food is at least 75%; otherwise they remain unconscious. ${inventoryQuantity("healer-kit")} kit${inventoryQuantity("healer-kit") === 1 ? "" : "s"} carried.`]
   ];
   for (const [itemId, name, description] of toolGuides) {
     if (inventoryQuantity(itemId)) {
@@ -4060,34 +4384,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
   elements["ability-guide-note"].textContent = spellReady
     ? `${CLASSES[character.class].name} · ${state.run.spellSlots} / ${maxSpellSlots(character.class, state.run.level)} spell slots. Conditions and target availability update as you play.`
     : `${CLASSES[character.class].name} · no spell slots available at this level. Ordinary actions and carried tools are listed here.`;
-  const cards = abilities.map((ability) => {
-    const card = document.createElement("article");
-    card.className = "ability-guide-card";
-    const heading = document.createElement("div");
-    heading.className = "ability-guide-card-heading";
-    const name = document.createElement("h4");
-    name.textContent = ability.name;
-    const status = document.createElement("span");
-    status.className = `ability-guide-status ability-state-${ability.state}`;
-    status.textContent = ability.status;
-    const description = document.createElement("p");
-    description.textContent = ability.description;
-    heading.append(name, status);
-    card.append(heading, description);
-    return card;
-  });
-  const pageSize = listPageSize("abilities");
-  const pageCount = Math.max(1, Math.ceil(cards.length / pageSize));
-  state.listPages.abilities = Math.max(0, Math.min(state.listPages.abilities || 0, pageCount - 1));
-  elements["ability-guide-list"].replaceChildren(...cards.slice(
-    state.listPages.abilities * pageSize,
-    (state.listPages.abilities + 1) * pageSize
-  ));
-  const pager = document.querySelector('[data-list-pager="abilities"]');
-  pager.hidden = pageCount <= 1;
-  pager.querySelector("[data-page-indicator]").textContent = `${state.listPages.abilities + 1} / ${pageCount}`;
-  pager.querySelector('[data-page-direction="-1"]').disabled = state.listPages.abilities === 0;
-  pager.querySelector('[data-page-direction="1"]').disabled = state.listPages.abilities === pageCount - 1;
+  renderGroupedAbilities(abilities, [spellStart, spellEnd]);
 }
 
 function renderPartyStatus() {
@@ -4158,6 +4455,7 @@ function canEquipItem(item) {
       (!item.strength || state.run.character.scores.str >= item.strength);
   }
   if (item.slot === "shield") return characterClass.shield;
+  if (item.slot === "wear") return true;
   return item.slot === "cloak";
 }
 
@@ -4168,6 +4466,14 @@ function equipInventoryItem(itemId) {
   else if (item.slot === "armor") state.run.character.equipment.armor = item.equipmentId;
   else if (item.slot === "shield") state.run.character.equipment.shield = true;
   else if (item.slot === "cloak") state.run.character.equipment.cloak = true;
+  else if (item.slot === "wear") {
+    state.run.character.cosmetics ||= { owned: [], helmet: null, clothes: null, back: null };
+    state.run.character.cosmetics[item.wearSlot] = item.cosmeticId;
+    addLog(`You put on ${item.name}.`);
+    render();
+    saveRun();
+    return;
+  }
   addLog(`You equip ${item.name}.`);
   render();
 }
@@ -4178,6 +4484,7 @@ function unequipInventoryItem(itemId) {
   if (item.slot === "armor") state.run.character.equipment.armor = "none";
   else if (item.slot === "shield") state.run.character.equipment.shield = false;
   else if (item.slot === "cloak") state.run.character.equipment.cloak = false;
+  else if (item.slot === "wear") state.run.character.cosmetics[item.wearSlot] = null;
   addLog(`You put away ${item.name}.`);
   render();
 }
@@ -4215,18 +4522,8 @@ function renderInventoryList(listElement, inventory) {
     const gearKind = entry.id.startsWith("weapon:") ? "weapon" : entry.id.startsWith("armor:") ? "armor" : null;
     const gearKey = gearKind ? entry.id.slice(gearKind.length + 1) : null;
     row.classList.add(`rarity-${item.exotic || (gearKey && (WEAPONS[gearKey]?.exotic || ARMORS[gearKey]?.exotic)) ? "exotic" : item.tier || "common"}`);
-    if (gearKind && gearKey !== "none" && typeof codexGearIconUrl === "function") {
-      icon.src = codexGearIconUrl(gearKind, gearKey);
-      icon.classList.add("is-codex-gear");
-    } else if (item.sprite && RARE_TREASURE_SPRITES.includes(item.sprite)) {
-      icon.src = `./resources/enemies/${item.sprite}.png?v=${SPRITE_RESOURCE_VERSION}`;
-    } else {
-      icon.src = `./resources/items/${inventoryIconFile(item)}.png?v=${SPRITE_RESOURCE_VERSION}`;
-    }
-    icon.onerror = () => {
-      icon.onerror = null;
-      icon.src = `./resources/items/supply.png?v=${SPRITE_RESOURCE_VERSION}`;
-    };
+    if (item.slot === "wear" || (gearKind && gearKey !== "none")) icon.classList.add("is-codex-gear");
+    setItemArt(icon, entry.id);
     const copy = document.createElement("span");
     copy.className = "inventory-item-copy";
     const label = document.createElement("strong");
@@ -4256,35 +4553,25 @@ function renderInventoryList(listElement, inventory) {
     copy.append(label, itemMeta, description);
     const actions = document.createElement("span");
     actions.className = "inventory-item-actions";
-    if (["healing-potion", "torch", "healer-kit", "crowbar", "hempen-rope", "cacao-drink", "ixpatli"].includes(entry.id) ||
+    if (["healing-potion", "torch", "ocote", "maguey-salve", "picietl", "chili-smoke", "healer-kit", "crowbar", "hempen-rope", "cacao-drink", "ixpatli"].includes(entry.id) ||
       FOOD_ITEMS[entry.id] || entry.id === "clean-water") {
       const use = document.createElement("button");
       use.type = "button";
       use.className = "inventory-equip";
       use.dataset.useItem = entry.id;
-      use.textContent = FOOD_ITEMS[entry.id] ? "Eat"
+      use.textContent = FOOD_ITEMS[entry.id] ? (GEAR_ITEMS[entry.id]?.category === "Drink" ? "Drink" : "Eat")
+        : entry.id === "maguey-salve" ? "Apply"
+        : entry.id === "picietl" ? "Chew"
+        : entry.id === "chili-smoke" ? "Crack open"
+        : entry.id === "ocote" ? "Light"
         : entry.id === "clean-water" || entry.id === "cacao-drink" ? "Drink"
         : entry.id === "ixpatli" ? "Apply"
         : entry.id === "healing-potion" ? "Use medicine"
         : entry.id === "crowbar" ? "Pry open"
           : entry.id === "hempen-rope" ? "Set rope" : item.slot ? "Use" : "Use item";
-      use.disabled = entry.id === "healing-potion"
-        ? (state.run.hp >= state.run.maxHp && !progress().conditions.length) || state.run.lost || state.run.won
-        : entry.id === "torch"
-          ? state.run.location !== "dungeon" || state.run.lost || state.run.won
-          : FOOD_ITEMS[entry.id]
-            ? state.run.needs.food >= 100 && Object.keys(NUTRIENT_NAMES).every((nutrient) =>
-              state.run.needs.nutrition[nutrient] + FOOD_ITEMS[entry.id].nutrients[nutrient] >= 100)
-            : entry.id === "clean-water" || entry.id === "cacao-drink"
-              ? state.run.needs.water >= 100
-            : entry.id === "ixpatli"
-              ? !progress().conditions.length
-            : entry.id === "healer-kit"
-              ? (entry.uses ?? entry.quantity * HEALER_KIT_USES) < 1 || !state.run.party.some((companion) => companion.hp <= 0)
-              : state.run.location !== "dungeon" || state.run.lost || state.run.won ||
-                !state.run.hazards.some((hazard) => !hazard.triggered && hazard.revealed &&
-                  distanceInSquares(hazard, state.run.player) <= (entry.id === "crowbar" ? 1 : 10) &&
-                  (entry.id === "crowbar" || hasLineOfSight(state.run.player, hazard)));
+      const blocked = itemUseBlocked(entry);
+      use.disabled = Boolean(blocked);
+      if (blocked) use.title = blocked;
       actions.append(use);
     }
     if (item.slot) {
@@ -4293,14 +4580,23 @@ function renderInventoryList(listElement, inventory) {
       equip.className = "inventory-equip";
       if (isEquipped(item.id) && item.slot !== "weapon") {
         equip.dataset.unequipItem = item.id;
-        equip.textContent = "Unequip";
+        equip.textContent = item.slot === "wear" ? "Take off" : "Unequip";
       } else {
         equip.dataset.equipItem = item.id;
-        equip.textContent = isEquipped(item.id) ? "In use" : "Equip";
+        equip.textContent = isEquipped(item.id) ? "In use" : item.slot === "wear" ? "Wear" : "Equip";
         equip.disabled = isEquipped(item.id) || !canEquipItem(item);
       }
       actions.append(equip);
     }
+    const drop = document.createElement("button");
+    drop.type = "button";
+    drop.className = "inventory-equip inventory-drop";
+    drop.dataset.dropItem = entry.id;
+    drop.textContent = "Drop";
+    const equippedCopy = isEquipped(entry.id) && entry.quantity <= 1;
+    drop.disabled = equippedCopy || state.run.lost || state.run.won || !["dungeon", "city"].includes(state.run.location);
+    drop.title = equippedCopy ? "Unequip it first" : state.run.location === "dungeon" ? "Leave it on the floor here" : "Throw it away";
+    actions.append(drop);
     row.append(icon, copy);
     if (actions.childElementCount) row.append(actions);
     listElement.append(row);
@@ -4373,11 +4669,12 @@ function renderInventory() {
   elements["inventory-security"].textContent = securityCopy;
   elements["inventory-security"].setAttribute("aria-label", securityCopy);
   renderInventoryList(elements["equipment-list"], inventory.filter((entry) => itemDetails(entry.id).slot));
-  const pack = inventory.filter((entry) => !itemDetails(entry.id).slot);
+  // The pack lists everything you carry that isn't being worn or wielded right now.
+  const pack = inventory.filter((entry) => !isEquipped(entry.id) || entry.quantity > 1);
   const filtered = pack.filter((entry) => {
     const item = itemDetails(entry.id);
     if (state.inventoryFilter === "supplies") return ["Food", "Drink", "Potion", "Supply"].includes(item.categoryId);
-    if (state.inventoryFilter === "gear") return ["Kit", "Tool", "Clothing"].includes(item.categoryId);
+    if (state.inventoryFilter === "gear") return ["Kit", "Tool", "Clothing", "Weapon", "Armor"].includes(item.categoryId);
     if (state.inventoryFilter === "valuables") return ["Treasure", "Keepsake"].includes(item.categoryId);
     return true;
   });
@@ -4385,6 +4682,7 @@ function renderInventory() {
     button.setAttribute("aria-pressed", String(button.dataset.inventoryFilter === state.inventoryFilter));
   }
   renderInventoryList(elements["inventory-list"], filtered);
+  renderEquipmentSheet();
 }
 
 function inventoryIconFile(item) {
@@ -4711,7 +5009,7 @@ function validateSavedCharacter(character) {
   const look = character.appearance;
   if (!raceSkinTones(character.race).some((tone) => tone.value === look.skin) ||
     !raceHairColors(character.race).some((color) => color.value === look.hair) || !TUNIC_COLORS.includes(look.tunic) ||
-    !HAIR_STYLES.includes(look.hairStyle) ||
+    !HAIR_STYLES.includes(look.hairStyle) || !TRIM_COLORS.some((color) => color.value === look.trim) ||
     !BODY_TYPES.includes(look.body) || !BEARD_STYLES.includes(look.beard) || !JEWELRY_STYLES.includes(look.jewelry) ||
     !(CREST_STYLES[character.race] || ["none"]).includes(look.crest) ||
     !GARMENT_STYLES.includes(character.appearance.garment) ||
@@ -4737,12 +5035,8 @@ function validateSavedCharacter(character) {
   if (!cosmetics || !Array.isArray(cosmetics.owned) ||
     new Set(cosmetics.owned).size !== cosmetics.owned.length ||
     cosmetics.owned.some((id) => !COSMETICS[id]) ||
-    ![null, ...Object.keys(COSMETICS).filter((id) => COSMETICS[id].slot === "helmet")]
-      .includes(cosmetics.helmet) ||
-    ![null, ...Object.keys(COSMETICS).filter((id) => COSMETICS[id].slot === "clothes")]
-      .includes(cosmetics.clothes) ||
-    (cosmetics.helmet !== null && !cosmetics.owned.includes(cosmetics.helmet)) ||
-    (cosmetics.clothes !== null && !cosmetics.owned.includes(cosmetics.clothes))) return false;
+    WEAR_SLOTS.some((slot) => (cosmetics[slot] ?? null) !== null &&
+      (!COSMETICS[cosmetics[slot]] || COSMETICS[cosmetics[slot]].slot !== slot))) return false;
   if (!character.legacy) {
     const selectedClass = CLASSES[character.class];
     const backgroundSkills = new Set(BACKGROUNDS[character.background].skillIds);
@@ -4792,7 +5086,8 @@ function validPatolliGame(game) {
     !Number.isInteger(game.playerPotContribution) || game.playerPotContribution < 0 ||
     game.playerPotContribution > game.pot ||
     !Number.isInteger(game.payout) || game.payout < 0 || game.payout > game.stakePerPiece * 12 ||
-    typeof game.message !== "string" || game.message.length > 500) return false;
+    typeof game.message !== "string" || game.message.length > 500 ||
+    (game.difficulty !== undefined && !["sharp", "gentle"].includes(game.difficulty))) return false;
   const stakesTotal = game.stakes.reduce((sum, stake) => sum + stake.playerStake + stake.opponentStake, 0);
   if (stakesTotal + game.pot !== game.stakePerPiece * 12) return false;
   if (game.lastToss !== null && (!game.lastToss || !["player", "opponent"].includes(game.lastToss.side) ||
@@ -4821,7 +5116,12 @@ const RENAMED_ITEM_IDS = {
   "herbal-broth": "soup",
   "jade-sun-disc": "jade-pectoral",
   "feathered-censer": "incensario",
-  Incensor: "incensario"
+  Incensor: "incensario",
+  // Clothing from before outfits were worn items: now real wearables.
+  "common-clothes": "wear:garment-cotton-wrap",
+  "travel-clothes": "wear:garment-cotton-wrap",
+  "fine-clothes": "wear:cotton-finery",
+  "dark-clothes": "wear:dusk-wrap"
 };
 const RENAMED_ENEMY_IDS = {
   "maztican-orc": "caxtiltecatl",
@@ -4873,6 +5173,7 @@ function migrateSavedItemIds(entries) {
 
 function migrateSavedCatalogIds(saved, pack) {
   migrateSavedItemIds(saved.inventory);
+  migrateSavedItemIds(saved.house?.storage);
   migrateSavedItemIds(saved.unsecuredLoot?.items);
   if (Array.isArray(saved.treasures)) {
     for (const treasure of saved.treasures) migrateSavedItemIds(treasure?.items);
@@ -4943,15 +5244,16 @@ function parseSavedRun(saved, pack) {
   if (migrateDoorState) saved.openDoors = [];
   if (!Array.isArray(saved.openDoors) || saved.openDoors.length > MAP_TILE_SIZE * MAP_TILE_SIZE ||
     saved.openDoors.some((index) => !Number.isInteger(index))) return null;
-  if (saved.townPosition === undefined) saved.townPosition = { x: 5, y: 4 };
+  if (saved.townPosition === undefined) saved.townPosition = { ...TOWN_PLAZA };
   if (Number.isInteger(saved.townPosition?.x) && Number.isInteger(saved.townPosition?.y) &&
-    townNpcAt(saved.townPosition.x, saved.townPosition.y)) saved.townPosition = { x: 5, y: 4 };
+    townNpcAt(saved.townPosition.x, saved.townPosition.y)) saved.townPosition = { ...TOWN_PLAZA };
   saved.progress = normalizeProgress(saved.progress, pack);
   saved.house = normalizeHouse(saved.house);
   if (Number.isInteger(saved.townPosition?.x) && Number.isInteger(saved.townPosition?.y) &&
-    TOWN_MAP[saved.townPosition.y]?.[saved.townPosition.x] === "H") saved.townPosition = { x: 5, y: 4 };
+    TOWN_MAP[saved.townPosition.y]?.[saved.townPosition.x] === "H") saved.townPosition = { ...TOWN_PLAZA };
+  // The town map changes between versions; anyone standing somewhere that's now a wall moves to the plaza.
   if (!Number.isInteger(saved.townPosition?.x) || !Number.isInteger(saved.townPosition?.y) ||
-    !townCanOccupy(saved.townPosition.x, saved.townPosition.y)) return null;
+    !townCanOccupy(saved.townPosition.x, saved.townPosition.y)) saved.townPosition = { ...TOWN_PLAZA };
   if (saved.hasEnteredDungeon === undefined) saved.hasEnteredDungeon = true;
   if (typeof saved.hasEnteredDungeon !== "boolean") return null;
   if (saved.unsecuredLoot === undefined) saved.unsecuredLoot = { gold: 0, items: [] };
@@ -4977,9 +5279,18 @@ function parseSavedRun(saved, pack) {
     saved.dungeonFloor > DUNGEON_FLOOR_COUNT ||
     (saved.dungeonFloor > 1 && saved.mapId !== GTFL_MAP_ID)) return null;
   if (saved.dungeonLayoutVersion === undefined) saved.dungeonLayoutVersion = 1;
-  if (![1, 2].includes(saved.dungeonLayoutVersion) ||
-    (saved.dungeonLayoutVersion === 2 && saved.mapId !== GTFL_MAP_ID)) return null;
+  if (![1, 2, 3].includes(saved.dungeonLayoutVersion) ||
+    (saved.dungeonLayoutVersion >= 2 && saved.mapId !== GTFL_MAP_ID)) return null;
   if (saved.dungeonFloors === undefined) saved.dungeonFloors = {};
+  normalizeVillageSave(saved);
+  // A camp is optional; anything malformed is simply dropped.
+  if (saved.camp !== undefined && saved.camp !== null) {
+    const camp = saved.camp;
+    if (typeof camp !== "object" || !Number.isInteger(camp.floor) || camp.floor < 1 || camp.floor > DUNGEON_FLOOR_COUNT ||
+      !Number.isInteger(camp.x) || !Number.isInteger(camp.y) || camp.x < 0 || camp.y < 0 ||
+      camp.x >= MAP_TILE_SIZE || camp.y >= MAP_TILE_SIZE || typeof camp.signature !== "string") saved.camp = null;
+    else saved.camp = { floor: camp.floor, x: camp.x, y: camp.y, kit: Boolean(camp.kit), signature: camp.signature, made: Number(camp.made) || 0 };
+  } else saved.camp = null;
   if (!saved.dungeonFloors || typeof saved.dungeonFloors !== "object" ||
     Array.isArray(saved.dungeonFloors) || Object.keys(saved.dungeonFloors).length > DUNGEON_FLOOR_COUNT - 1) return null;
   if (saved.floorStairs === undefined) saved.floorStairs = [];
@@ -5071,7 +5382,9 @@ function parseSavedRun(saved, pack) {
   }
   if (!saved || !Array.isArray(saved.rooms) ||
     (fixedMap
-      ? (saved.dungeonLayoutVersion === 2
+      ? (saved.dungeonLayoutVersion === 3
+        ? saved.rooms.length < 11 || saved.rooms.length > 24
+        : saved.dungeonLayoutVersion === 2
         ? saved.rooms.length < 17 || saved.rooms.length > 22
         : ![3, 6].includes(saved.rooms.length))
       : saved.rooms.length < 5 || saved.rooms.length > 8)) return null;
@@ -5079,9 +5392,19 @@ function parseSavedRun(saved, pack) {
   const rooms = saved.rooms;
   if (rooms.some((room) => {
     if (!room || !roomIds.has(room.id) || !Number.isInteger(room.x) || !Number.isInteger(room.y) ||
-      room.x < 0 || room.x >= ROOM_GRID_SIZE || room.y < 0 || room.y >= ROOM_GRID_SIZE ||
-      ![3, 5, 7, 9].includes(room.mapW) || ![3, 5, 7, 9].includes(room.mapH) || !Array.isArray(room.links)) return true;
-      if (fixedMap && saved.dungeonLayoutVersion === 2) {
+      room.x < 0 || room.x >= ROOM_GRID_SIZE || room.y < 0 || room.y >= ROOM_GRID_SIZE || !Array.isArray(room.links)) return true;
+      if (fixedMap && saved.dungeonLayoutVersion === 3) {
+        if (room.mapLayout !== GTFL_MAP_ID || !Number.isInteger(room.anchorX) || !Number.isInteger(room.anchorY) ||
+          !Number.isInteger(room.mapX) || !Number.isInteger(room.mapY) ||
+          ![5, 7, 9, 11, 13].includes(room.mapW) || ![5, 7, 9, 11, 13].includes(room.mapH) ||
+          room.mapX < 1 || room.mapY < 1 || room.mapX + room.mapW > MAP_TILE_SIZE - 1 || room.mapY + room.mapH > MAP_TILE_SIZE - 1 ||
+          room.anchorX <= room.mapX || room.anchorX >= room.mapX + room.mapW - 1 ||
+          room.anchorY <= room.mapY || room.anchorY >= room.mapY + room.mapH - 1 ||
+          !["hall", "pillared", "cross", "round", "ell", "cell"].includes(room.shape) ||
+          room.links.some((link) => !Number.isInteger(link) || link < 0 || link >= rooms.length)) return true;
+      } else if (![3, 5, 7, 9].includes(room.mapW) || ![3, 5, 7, 9].includes(room.mapH)) {
+        return true;
+      } else if (fixedMap && saved.dungeonLayoutVersion === 2) {
         if (room.mapLayout !== GTFL_MAP_ID || !Number.isInteger(room.anchorX) || !Number.isInteger(room.anchorY) ||
           ![5, 7].includes(room.mapW) || ![5, 7].includes(room.mapH) ||
           room.anchorX !== 4 + room.x * 9 || room.anchorY !== 4 + room.y * 9 ||
@@ -5102,13 +5425,13 @@ function parseSavedRun(saved, pack) {
     return false;
   })) return null;
   const entranceY = rooms?.length === 3 ? 0 : 5;
-  if (fixedMap && saved.dungeonLayoutVersion === 2 &&
+  if (fixedMap && saved.dungeonLayoutVersion >= 2 &&
     (rooms.filter((room) => room.type === "treasure" && room.mainTreasure).length !== 1 ||
       rooms.filter((room) => room.optionalQuest).length !==
         (saved.dungeonFloor === DUNGEON_FLOOR_COUNT ? 1 : 0) ||
       rooms.filter((room) => room.type === "entrance").length !== (saved.dungeonFloor === 1 ? 1 : 0) ||
       rooms.some((room) => room.type === "exit"))) return null;
-  if (fixedMap && saved.dungeonLayoutVersion !== 2 &&
+  if (fixedMap && saved.dungeonLayoutVersion < 2 &&
     (!rooms.some((room) => room.type === "treasure" && room.mainTreasure) ||
       rooms.filter((room) => room.optionalQuest).length !== 1 ||
       !rooms.some((room) => room.type === "entrance" && room.anchorX === 5 && room.anchorY === entranceY) ||
@@ -5144,6 +5467,17 @@ function parseSavedRun(saved, pack) {
   if (!Array.isArray(saved.character.cosmetics.owned)) saved.character.cosmetics.owned = [];
   if (saved.character.cosmetics.helmet === undefined) saved.character.cosmetics.helmet = null;
   if (saved.character.cosmetics.clothes === undefined) saved.character.cosmetics.clothes = null;
+  if (saved.character.cosmetics.back === undefined) saved.character.cosmetics.back = null;
+  if (saved.character.cosmetics.neck === undefined) saved.character.cosmetics.neck = null;
+  if (Array.isArray(saved.inventory)) {
+    // Regalia bought before the wardrobe existed move into the pack as wearable items.
+    for (const id of saved.character.cosmetics.owned) {
+      if (COSMETICS[id] && !saved.inventory.some((entry) => entry?.id === `wear:${id}`)) saved.inventory.push({ id: `wear:${id}`, quantity: 1 });
+    }
+    clearMissingWornItems(saved.character, saved.inventory);
+    // Before clothes were items, the outfit was part of the character: hand it over as gear.
+    if (!saved.character.dressByItems && saved.character.appearance) dressInStartingOutfit(saved.character, saved.inventory);
+  }
   if (saved.character.gender === undefined) saved.character.gender = "other";
   if (saved.character.appearance) {
     if (saved.character.appearance.garment === undefined) saved.character.appearance.garment = "woven-tunic";
@@ -5268,6 +5602,7 @@ function parseSavedRun(saved, pack) {
       treasure.x < 0 || treasure.x >= MAP_TILE_SIZE || treasure.y < 0 || treasure.y >= MAP_TILE_SIZE ||
       !Number.isFinite(treasure.gold) || treasure.gold < 0 || treasure.gold > MAX_GOLD ||
       (treasure.mainGoal !== undefined && typeof treasure.mainGoal !== "boolean") ||
+      (treasure.dropped !== undefined && typeof treasure.dropped !== "boolean") ||
       !Array.isArray(treasure.items) || treasure.items.length > 20 ||
       treasure.items.some((item) => !item || typeof item.id !== "string" || !itemDetails(item.id) ||
         !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 1000)) return null;
@@ -5305,7 +5640,7 @@ function parseSavedRun(saved, pack) {
       enemy.description = currentEnemy.description;
     }
   }
-  if (fixedMap && saved.dungeonLayoutVersion !== 2) {
+  if (fixedMap && saved.dungeonLayoutVersion < 2) {
     const signs = rooms.length === 3 ? GTFL_LEGACY_MAP_SIGNS : GTFL_MAP_SIGNS;
     for (const sign of signs) {
       if (["door", "locked", "trapped", "portcullis"].includes(sign.type) &&
@@ -5314,7 +5649,7 @@ function parseSavedRun(saved, pack) {
       }
     }
   }
-  if (fixedMap && saved.dungeonLayoutVersion === 2) {
+  if (fixedMap && saved.dungeonLayoutVersion >= 2) {
     const stairIds = new Set();
     const stairTiles = new Set();
     for (const stair of saved.floorStairs) {
@@ -5521,12 +5856,14 @@ function connectEvents() {
   });
   elements["new-game"].addEventListener("click", () => openCharacterBuilder());
   elements["open-settings"].addEventListener("click", () => elements["settings-dialog"].showModal());
+  document.getElementById("pause-settings")?.addEventListener("click", () => elements["settings-dialog"].showModal());
+  connectSoundSettings();
   elements["close-settings"].addEventListener("click", () => elements["settings-dialog"].close());
   elements["settings-dialog"].addEventListener("click", (event) => {
     if (event.target === elements["settings-dialog"]) elements["settings-dialog"].close();
   });
   elements["language-select"].addEventListener("change", () => {
-    const language = ["es", "nah"].includes(elements["language-select"].value) ? elements["language-select"].value : "en";
+    const language = ["es", "nah", "nah-abugida"].includes(elements["language-select"].value) ? elements["language-select"].value : "en";
     try {
       localStorage.setItem(STORE_KEYS.language, language);
     } catch (error) {
@@ -5538,6 +5875,14 @@ function connectEvents() {
     if (elements["character-dialog"].open) refreshCharacterLocalization();
     if (state.gameStarted) render();
     else renderStartScreen();
+  });
+  elements["font-select"].addEventListener("change", () => {
+    const font = applyFontChoice(elements["font-select"].value);
+    try {
+      localStorage.setItem(STORE_KEYS.font, font);
+    } catch (error) {
+      showToast(`Could not save typeface preference: ${escapeMessage(error)}`);
+    }
   });
   elements["dark-mode-toggle"].addEventListener("change", () => {
     const enabled = elements["dark-mode-toggle"].checked;
@@ -5602,6 +5947,11 @@ function connectEvents() {
   });
   elements["character-form"].addEventListener("input", updateCharacterPreview);
   elements["character-form"].addEventListener("change", updateCharacterPreview);
+  connectLookEditor();
+  connectVillagerEvents();
+  connectEquipmentSheet();
+  connectCharacterSheet();
+  connectCreatureCards();
   elements["ability-score-fields"].addEventListener("change", swapDuplicateAbilityAssignment);
   elements["return-to-city"].addEventListener("click", leaveStore);
   document.querySelectorAll("[data-store-tab]").forEach((button) => {
@@ -5641,7 +5991,7 @@ function connectEvents() {
     const npc = townNpcAt(x, y);
     if (isTownWellAt(x, y)) {
       if (townDistance(state.run.townPosition, TOWN_WELL) === 0) drawWaterAtTownWell();
-      else moveTowardTownNpc(TOWN_WELL);
+      else moveTowardTownNpc(TOWN_WELL, 0);
       return;
     }
     if (npc) {
@@ -5656,8 +6006,12 @@ function connectEvents() {
     }
     const dx = x - state.run.townPosition.x;
     const dy = y - state.run.townPosition.y;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) === 1) moveTownPlayer(dx, dy);
-    else showToast("Tap a clear neighboring street tile to walk one step.");
+    const distance = Math.max(Math.abs(dx), Math.abs(dy));
+    // Your own tile does whatever Space would; a far street tile walks you one step toward it.
+    if (distance === 0) interact();
+    else if (distance === 1) moveTownPlayer(dx, dy);
+    else if (townCanOccupy(x, y)) moveTowardTownNpc({ x, y }, 0);
+    else showToast("Tap a street tile, a person, or a building door to walk there.");
   });
   elements["city-screen"].addEventListener("click", (event) => {
     const button = event.target.closest("[data-town-move]");
@@ -5704,6 +6058,8 @@ function connectEvents() {
       if (button) equipInventoryItem(button.dataset.equipItem);
       const unequip = event.target.closest("[data-unequip-item]");
       if (unequip) unequipInventoryItem(unequip.dataset.unequipItem);
+      const drop = event.target.closest("[data-drop-item]");
+      if (drop) promptDropItem(drop.dataset.dropItem);
     });
   }
   elements["inventory-filters"].addEventListener("click", (event) => {
@@ -5754,7 +6110,7 @@ function connectEvents() {
     if (!tile || state.run?.location !== "dungeon") return;
     const distance = distanceInSquares({ x: Number(tile.dataset.x), y: Number(tile.dataset.y) }, state.run.player);
     elements["turn-status"].textContent = distance === 1
-      ? "Tap to move · E interacts with nearby targets"
+      ? "Tap to move · Space or E interacts with nearby targets"
       : "Tap a neighboring tile to move";
   });
   elements["dungeon-map"].addEventListener("pointerleave", (event) => {
@@ -5823,6 +6179,12 @@ function connectEvents() {
       interact();
       return;
     }
+    const revealedTrap = distance === 1 && state.run.hazards.find((hazard) =>
+      !hazard.triggered && hazard.revealed && hazard.x === x && hazard.y === y);
+    if (revealedTrap) {
+      disarmNearbyHazard(revealedTrap);
+      return;
+    }
     if (distance === 1 && state.run.treasures.some((treasure) => treasure.x === x && treasure.y === y)) {
       collectTreasureAt(x, y);
       finishPlayerTurn();
@@ -5884,13 +6246,36 @@ function connectEvents() {
       pauseGame();
       return;
     }
-    if (!state.run || state.utilityDrawer || document.querySelector("dialog[open]") ||
+    // Menu keys work while the adventurer card is open, to flip between its tabs.
+    const menuKey = MENU_KEYS[event.key.toLowerCase()];
+    if (menuKey && state.gameStarted && state.run && !event.ctrlKey && !event.metaKey && !event.altKey &&
+      !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement)) {
+      const openDialog = document.querySelector("dialog[open]");
+      if (!openDialog || openDialog === elements["character-card-dialog"]) {
+        event.preventDefault();
+        if (openDialog && state.characterTab === menuKey) closeCharacterCard();
+        else {
+          openCharacterCard();
+          selectCharacterTab(menuKey);
+          render();
+        }
+        return;
+      }
+    }
+    if (!state.run || document.querySelector("dialog[open]") ||
       !["dungeon", "city"].includes(state.run.location) || event.altKey || event.ctrlKey || event.metaKey ||
       event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement ||
       event.target instanceof HTMLSelectElement) return;
-    if (event.code === "Space" && event.target instanceof HTMLButtonElement) return;
+    if (event.key.toLowerCase() === "j") {
+      event.preventDefault();
+      toggleUtilityDrawer("journal");
+      return;
+    }
+    if (state.utilityDrawer) return;
+    if ((event.code === "Space" || event.key === "Enter") && event.target instanceof HTMLButtonElement) return;
+    const interactKey = event.code === "Space" || event.key === "Enter" || (event.key.toLowerCase() === "e" && !event.shiftKey);
     if (state.run.location === "city") {
-      if (event.key.toLowerCase() === "e") {
+      if (interactKey) {
         event.preventDefault();
         interact();
         return;
@@ -5904,28 +6289,32 @@ function connectEvents() {
       }
       return;
     }
-    if (event.key.toLowerCase() === "e") {
+    if (event.key.toLowerCase() === "l") {
       event.preventDefault();
-      interact();
+      toggleLookMode();
+      return;
+    }
+    if (interactKey) {
+      event.preventDefault();
+      const returnButton = elements["return-after-delving"];
+      if (returnButton.dataset.shortcut && !returnButton.disabled && !returnButton.classList.contains("hidden")) returnButton.click();
+      else interact();
       return;
     }
     if (event.code === "Numpad5" || event.key === "Clear") {
       event.preventDefault();
-      document.querySelector('#action-buttons [data-shortcut="."]')?.click();
+      waitTurn();
       return;
     }
-    const direction = MOVEMENT_DIRECTIONS.find((entry) =>
+    const direction = !event.shiftKey && MOVEMENT_DIRECTIONS.find((entry) =>
       entry.keys.includes(event.code) || entry.keys.includes(event.key) || entry.keys.includes(event.key.toLowerCase())
     );
     if (direction) {
       event.preventDefault();
       movePlayer(direction.x, direction.y);
-    } else if (event.code === "Space" && attackTargets().length) {
-      event.preventDefault();
-      attack();
     } else {
-      const shortcut = event.key === " " ? "space" : event.key.toLowerCase();
-      const actionButton = [...document.querySelectorAll("#action-buttons [data-shortcut], #return-after-delving[data-shortcut]")]
+      const shortcut = `${event.shiftKey && event.key.length === 1 && /[a-z]/i.test(event.key) ? "shift+" : ""}${event.key.toLowerCase()}`;
+      const actionButton = [...document.querySelectorAll("#action-buttons [data-shortcut]")]
         .find((button) => button.dataset.shortcut.split(" ").includes(shortcut) && !button.disabled);
       if (actionButton) {
         event.preventDefault();
@@ -5946,14 +6335,17 @@ function start() {
   storageAvailable();
   let language = "en";
   let darkMode = false;
+  let font = "unifont";
   try {
     language = localStorage.getItem(STORE_KEYS.language) || "en";
     darkMode = localStorage.getItem(STORE_KEYS.darkMode) === "true";
+    font = localStorage.getItem(STORE_KEYS.font) || "unifont";
   } catch (error) {
     console.warn(`Could not read display preferences: ${escapeMessage(error)}`);
   }
   window.cryptsLocale.apply(language);
   elements["language-select"].value = window.cryptsLocale.language;
+  elements["font-select"].value = applyFontChoice(font);
   document.body.classList.toggle("dark-mode", darkMode);
   elements["dark-mode-toggle"].checked = darkMode;
   loadState();

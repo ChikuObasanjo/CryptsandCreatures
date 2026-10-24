@@ -11,7 +11,7 @@
     <meta name="description" content="Explore a forbidden tomb, manage your supplies, and return to Chiltomatlan to prepare for another descent.">
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.png" type="image/png" sizes="512x512">
-    <link rel="stylesheet" href="./styles.css?v=310">
+    <link rel="stylesheet" href="./styles.css?v=322">
     <title>Crypts &amp; Creatures</title>
   </head>
   <body>
@@ -68,6 +68,7 @@
               <strong id="header-clock">Day 1 · 08:00</strong>
             </span>
           </div>
+          <button id="sound-mute-toggle" class="quiet-button sound-mute-toggle" type="button" aria-pressed="false" aria-label="Mute sound" title="Mute sound">♪</button>
           <button id="journal-toggle" class="quiet-button utility-toggle hidden" type="button" aria-expanded="false" aria-controls="side-drawer">
             <span class="utility-icon" aria-hidden="true">▤</span> Journal
           </button>
@@ -102,13 +103,31 @@
           <option value="en" data-i18n="English">English</option>
           <option value="es" data-i18n="Spanish">Spanish</option>
           <option value="nah" data-i18n="Nahuatl">Nahuatl</option>
+          <option value="nah-abugida" data-i18n="Nahuatl (abugida script)">Nahuatl (abugida script)</option>
         </select>
         <p class="muted" data-i18n="Choose the language used throughout the game.">Choose the language used throughout the game.</p>
+        <label for="font-select" data-i18n="Typeface">Typeface</label>
+        <select id="font-select" name="font">
+          <option value="unifont" data-i18n="Unifont (pixel)">Unifont (pixel)</option>
+          <option value="codex" data-i18n="Codex serif">Codex serif</option>
+        </select>
+        <p class="muted" data-i18n="The lettering used for all text in the game.">The lettering used for all text in the game.</p>
         <label for="dark-mode-toggle" class="settings-toggle">
           <span data-i18n="Dark mode">Dark mode</span>
           <input id="dark-mode-toggle" name="darkMode" type="checkbox">
         </label>
         <p class="muted" data-i18n="Use dark surfaces with brighter, easier-to-read text.">Use dark surfaces with brighter, easier-to-read text.</p>
+        <label for="sound-effects-toggle" class="settings-toggle">
+          <span data-i18n="Sound effects">Sound effects</span>
+          <input id="sound-effects-toggle" name="soundEffects" type="checkbox" checked>
+        </label>
+        <label for="music-toggle" class="settings-toggle">
+          <span data-i18n="Music">Music</span>
+          <input id="music-toggle" name="music" type="checkbox" checked>
+        </label>
+        <label for="sound-volume" data-i18n="Volume">Volume</label>
+        <input id="sound-volume" class="settings-range" name="volume" type="range" min="0" max="100" step="5" value="70">
+        <p class="muted" data-i18n="Drums, rattles, bells, clay flutes, and the conch: songs for the town and the tomb, and sounds for what happens in them.">Drums, rattles, bells, clay flutes, and the conch: songs for the town and the tomb, and sounds for what happens in them.</p>
       </dialog>
 
       <dialog id="character-dialog" class="character-dialog" aria-labelledby="character-dialog-heading">
@@ -199,41 +218,40 @@
 
               <section class="builder-section appearance-section" data-creation-step="3">
                 <div data-creation-subpage="0"><p class="eyebrow" data-i18n="ONE LAST DETAIL">ONE LAST DETAIL</p><h3 data-i18n="Make them yours">Make them yours</h3><p class="builder-note" data-i18n="A look for the road ahead. None of these choices change how your adventurer plays.">A look for the road ahead. None of these choices change how your adventurer plays.</p></div>
-                <div class="builder-two" data-creation-subpage="0">
-                  <label><span id="character-skin-label">Skin tone</span><select id="character-skin" name="skin"></select></label>
-                  <label>Build<select id="character-body" name="body"></select></label>
-                  <label id="character-hair-style-field">Hair style<select id="character-hair-style" name="hairStyle"></select></label>
-                  <label id="character-crest-field" hidden><span id="character-crest-label">Crest</span><select id="character-crest" name="crest"></select></label>
+                <div class="look-toolbar" data-creation-subpage="0">
+                  <div class="look-tabs" role="tablist" aria-label="Appearance categories" data-i18n-attr="aria-label:Appearance categories">
+                    <button type="button" role="tab" class="look-tab" data-look-tab="body" aria-selected="true"><span data-i18n="Skin &amp; build">Skin &amp; build</span></button>
+                    <button type="button" role="tab" class="look-tab" data-look-tab="hair" aria-selected="false"><span data-i18n="Hair">Hair</span></button>
+                    <button type="button" role="tab" class="look-tab" data-look-tab="clothes" aria-selected="false"><span data-i18n="Clothes">Clothes</span></button>
+                    <button type="button" role="tab" class="look-tab" data-look-tab="details" aria-selected="false"><span data-i18n="Details">Details</span></button>
+                  </div>
+                  <div class="look-actions">
+                    <button type="button" id="look-turn" class="quiet-button look-action" title="Turn around" aria-label="Turn around" data-i18n-attr="title:Turn around;aria-label:Turn around">⟲</button>
+                    <button type="button" id="look-randomize" class="button secondary look-action" data-i18n="Surprise me">Surprise me</button>
+                  </div>
                 </div>
-                <div class="builder-two" data-creation-subpage="1">
-                  <label><span id="character-hair-label">Hair color</span><select id="character-hair" name="hair"></select></label>
-                  <label>Clothing color<select id="character-tunic" name="tunic">
-                    <option value="#334d78" data-i18n="Indigo">Indigo</option><option value="#28685e" data-i18n="Jade">Jade</option><option value="#9c4935" data-i18n="Terracotta">Terracotta</option><option value="#8a7137" data-i18n="Ochre">Ochre</option><option value="#5d5b59" data-i18n="Ash gray">Ash gray</option>
-                  </select></label>
-                  <label>Garment<select id="character-garment" name="garment">
-                    <option value="woven-tunic" data-i18n="Woven tunic">Woven tunic</option><option value="cotton-wrap" data-i18n="Cotton wrap">Cotton wrap</option>
-                    <option value="feather-mantle" data-i18n="Feather mantle">Feather mantle</option><option value="hide-vest" data-i18n="Hide vest">Hide vest</option>
-                    <option value="huipil" data-i18n="Huipil and wrap skirt">Huipil and wrap skirt</option>
-                  </select></label>
-                  <label>Adornment<select id="character-adornment" name="adornment">
-                    <option value="none" data-i18n="None">None</option><option value="jade-beads" data-i18n="Jade beads">Jade beads</option>
-                    <option value="shell-beads" data-i18n="Shell beads">Shell beads</option><option value="feather-trim" data-i18n="Feather trim">Feather trim</option>
-                  </select></label>
+                <div class="look-panel" data-look-panel="body">
+                  <label class="look-field look-field-wide"><span class="look-field-name"><span id="character-skin-label">Skin tone</span><em class="look-value"></em></span><select id="character-skin" name="skin" data-look="swatch"></select></label>
+                  <label class="look-field"><span class="look-field-name"><span data-i18n="Build">Build</span><em class="look-value"></em></span><select id="character-body" name="body" data-look="chips"></select></label>
+                  <label class="look-field" id="character-crest-field" hidden><span class="look-field-name"><span id="character-crest-label">Crest</span><em class="look-value"></em></span><select id="character-crest" name="crest" data-look="chips"></select></label>
                 </div>
-                <div class="builder-two" data-creation-subpage="2">
-                  <label>Headwear<select id="character-headwear" name="headwear">
-                    <option value="feather-band" data-i18n="Feather band">Feather band</option><option value="none" data-i18n="None">None</option>
-                    <option value="cotton-wrap" data-i18n="Cotton headwrap">Cotton headwrap</option><option value="jade-circlet" data-i18n="Jade circlet">Jade circlet</option>
-                  </select></label>
-                  <label>Face paint<select id="character-face-paint" name="facePaint">
-                    <option value="none" data-i18n="None">None</option><option value="jade-lines" data-i18n="Jade lines">Jade lines</option>
-                    <option value="terracotta-marks" data-i18n="Terracotta marks">Terracotta marks</option>
-                    <option value="black-band" data-i18n="Black eye band">Black eye band</option><option value="gold-dots" data-i18n="Gold dots">Gold dots</option>
-                  </select></label>
-                  <label id="character-beard-field">Facial hair<select id="character-beard" name="beard"></select></label>
-                  <label>Jewelry<select id="character-jewelry" name="jewelry"></select></label>
+                <div class="look-panel" data-look-panel="hair" hidden>
+                  <label class="look-field" id="character-hair-style-field"><span class="look-field-name"><span data-i18n="Hair style">Hair style</span><em class="look-value"></em></span><select id="character-hair-style" name="hairStyle" data-look="chips"></select></label>
+                  <label class="look-field look-field-wide"><span class="look-field-name"><span id="character-hair-label">Hair color</span><em class="look-value"></em></span><select id="character-hair" name="hair" data-look="swatch"></select></label>
+                  <label class="look-field" id="character-beard-field"><span class="look-field-name"><span data-i18n="Facial hair">Facial hair</span><em class="look-value"></em></span><select id="character-beard" name="beard" data-look="chips"></select></label>
                 </div>
-                <p class="builder-note" data-creation-subpage="2" data-i18n="Appearance is cosmetic; it does not change your abilities.">Appearance is cosmetic; it does not change your abilities.</p>
+                <div class="look-panel" data-look-panel="clothes" hidden>
+                  <label class="look-field"><span class="look-field-name"><span data-i18n="Garment">Garment</span><em class="look-value"></em></span><select id="character-garment" name="garment" data-look="chips"></select></label>
+                  <label class="look-field look-field-wide"><span class="look-field-name"><span data-i18n="Clothing color">Clothing color</span><em class="look-value"></em></span><select id="character-tunic" name="tunic" data-look="swatch"></select></label>
+                  <label class="look-field look-field-wide"><span class="look-field-name"><span data-i18n="Trim color">Trim color</span><em class="look-value"></em></span><select id="character-trim" name="trim" data-look="swatch"></select></label>
+                  <label class="look-field"><span class="look-field-name"><span data-i18n="Adornment">Adornment</span><em class="look-value"></em></span><select id="character-adornment" name="adornment" data-look="chips"></select></label>
+                </div>
+                <div class="look-panel" data-look-panel="details" hidden>
+                  <label class="look-field"><span class="look-field-name"><span data-i18n="Headwear">Headwear</span><em class="look-value"></em></span><select id="character-headwear" name="headwear" data-look="chips"></select></label>
+                  <label class="look-field"><span class="look-field-name"><span data-i18n="Face paint">Face paint</span><em class="look-value"></em></span><select id="character-face-paint" name="facePaint" data-look="chips"></select></label>
+                  <label class="look-field"><span class="look-field-name"><span data-i18n="Jewelry">Jewelry</span><em class="look-value"></em></span><select id="character-jewelry" name="jewelry" data-look="chips"></select></label>
+                </div>
+                <p class="builder-note" data-creation-subpage="0" data-i18n="Appearance is cosmetic; it does not change your abilities. You can change it later at the mirror in your house.">Appearance is cosmetic; it does not change your abilities. You can change it later at the mirror in your house.</p>
               </section>
             </div>
             <p id="character-error" class="character-error" role="alert" aria-live="assertive"></p>
@@ -272,8 +290,9 @@
             <button id="tab-abilities" class="character-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-abilities" tabindex="-1" data-character-tab="abilities" data-i18n="Abilities">Abilities</button>
           </div>
           <section id="panel-equipment" class="character-tab-panel" role="tabpanel" aria-labelledby="tab-equipment" tabindex="0">
-            <p id="character-equipment" class="character-equipment"></p>
-            <section class="inventory-block" aria-labelledby="equipment-heading">
+            <p id="character-equipment" class="character-equipment" hidden></p>
+            <div id="equipment-sheet" class="equipment-sheet" aria-label="Equipment sheet" data-i18n-attr="aria-label:Equipment sheet"></div>
+            <section class="inventory-block" aria-labelledby="equipment-heading" hidden>
               <div class="inventory-heading"><strong id="equipment-heading" data-i18n="Worn & ready">Worn &amp; ready</strong><span data-i18n="Tap to change">Tap to change</span></div>
               <ul id="equipment-list" class="inventory-list"></ul>
               <nav class="menu-list-pager" data-list-pager="equipment" aria-label="Equipment pages" hidden>
@@ -302,6 +321,8 @@
             </section>
           </section>
           <section id="panel-info" class="character-tab-panel" role="tabpanel" aria-labelledby="tab-info" tabindex="0" hidden>
+            <div id="character-sheet" class="char-sheet"></div>
+            <div class="legacy-character-info" hidden>
             <section class="character-class-guide" aria-labelledby="class-guide-heading">
               <p class="eyebrow" data-i18n="YOUR CALLING">YOUR CALLING</p>
               <h3 id="class-guide-heading"></h3>
@@ -325,6 +346,7 @@
               <span data-page-indicator></span>
               <button class="quiet-button" type="button" data-page-list="characterInfo" data-page-direction="1" aria-label="Next character details page">→</button>
             </nav>
+            </div>
           </section>
           <section id="panel-abilities" class="character-tab-panel" role="tabpanel" aria-labelledby="tab-abilities" tabindex="0" hidden>
             <div>
@@ -360,7 +382,7 @@
                 </button>
               </div>
               <p id="town-location-copy" class="town-location-copy" aria-live="polite">You arrive in the shaded plaza. The keeper waves you over from the travelers' house.</p>
-              <p class="town-controls-hint">Move with arrows, Q / Z / C, or numpad · <kbd>E</kbd> interact</p>
+              <p class="town-controls-hint" data-i18n="Arrows or numpad move · Numpad 7 9 1 3 or Home PgUp End PgDn diagonals · Space or E talks · I pack · O equipment · J journal">Arrows or numpad move · Numpad 7 9 1 3 or Home PgUp End PgDn diagonals · Space or E talks · I pack · O equipment · J journal</p>
               <div id="town-map" class="town-map" role="group" aria-label="Walkable streets of Chiltomatlan"></div>
               <nav class="town-touch-dpad touch-dpad" aria-label="Town movement controls">
                 <button type="button" data-town-move="-1,-1" aria-label="Move northwest" data-i18n-attr="aria-label:Move northwest">↖</button>
@@ -373,7 +395,7 @@
                 <button type="button" data-town-move="0,1" aria-label="Move south" data-i18n-attr="aria-label:Move south">↓</button>
                 <button type="button" data-town-move="1,1" aria-label="Move southeast" data-i18n-attr="aria-label:Move southeast">↘</button>
               </nav>
-              <p class="keyboard-hint" data-i18n="Walk one tile at a time. Tap a nearby neighbor or press E to talk; step onto the southern road to enter the forbidden tomb.">Walk one tile at a time. Tap a nearby neighbor or press E to talk; step onto the southern road to enter the forbidden tomb.</p>
+              <p class="keyboard-hint" data-i18n="Walk one tile at a time. Tap a nearby neighbor or press Space or E to talk; step onto the southern road to enter the forbidden tomb.">Walk one tile at a time. Tap a nearby neighbor or press Space or E to talk; step onto the southern road to enter the forbidden tomb.</p>
               <div class="town-legend" aria-label="Town map key" data-i18n-attr="aria-label:Town map key">
                 <span><i>⌂</i> Ceiba House</span><span><i>▤</i> Market</span>
                 <span><i>N/T/X/P/B</i> Townsfolk</span><span><i>W</i> Ceiba Well</span><span><i>↟</i> Tomb road</span>
@@ -452,14 +474,14 @@
                   </details>
                 </div>
               </div>
-              <p class="keyboard-hint">Move: arrows · Q/Z/C + numpad diagonals · E interacts · Numpad 5 waits · Esc pauses</p>
+              <p class="keyboard-hint" data-i18n="Arrows or numpad move · Numpad 7 9 1 3 or Home PgUp End PgDn diagonals · Space or E interacts · X waits · U drinks · M eats · I pack · O equipment · K abilities · J journal · L look · Esc pauses">Arrows or numpad move · Numpad 7 9 1 3 or Home PgUp End PgDn diagonals · Space or E interacts · X waits · I pack · O equipment · K abilities · J journal · L look · Esc pauses</p>
             </section>
             <nav class="touch-dpad" aria-label="Touch movement controls" data-i18n-attr="aria-label:Touch movement controls">
               <button type="button" data-move="-1,-1" aria-label="Move northwest" title="Move northwest" data-i18n-attr="aria-label:Move northwest;title:Move northwest">↖</button>
               <button type="button" data-move="0,-1" aria-label="Move north" title="Move north" data-i18n-attr="aria-label:Move north;title:Move north">↑</button>
               <button type="button" data-move="1,-1" aria-label="Move northeast" title="Move northeast" data-i18n-attr="aria-label:Move northeast;title:Move northeast">↗</button>
               <button type="button" data-move="-1,0" aria-label="Move west" title="Move west" data-i18n-attr="aria-label:Move west;title:Move west">←</button>
-              <button type="button" id="wait-dpad-button" class="dpad-wait" aria-label="Wait one turn" title="Wait one turn" data-i18n-attr="aria-label:Wait one turn;title:Wait one turn">WAIT</button>
+              <button type="button" id="wait-dpad-button" class="dpad-wait" aria-label="Wait one turn" title="Wait one turn" data-i18n-attr="aria-label:Wait one turn;title:Wait one turn"><span data-i18n="WAIT">WAIT</span></button>
               <button type="button" data-move="1,0" aria-label="Move east" title="Move east" data-i18n-attr="aria-label:Move east;title:Move east">→</button>
               <button type="button" data-move="-1,1" aria-label="Move southwest" title="Move southwest" data-i18n-attr="aria-label:Move southwest;title:Move southwest">↙</button>
               <button type="button" data-move="0,1" aria-label="Move south" title="Move south" data-i18n-attr="aria-label:Move south;title:Move south">↓</button>
@@ -474,7 +496,7 @@
                   <div class="combatant-title"><strong id="combat-character-name">Iztli</strong><span>LV <span id="combat-level">1</span></span></div>
                   <div class="health-label"><span data-i18n="Hit points">Hit points</span><strong id="combat-player-hp">18 / 18</strong></div>
                   <div class="health-track player-track"><span id="combat-player-health-fill"></span></div>
-                  <span class="combatant-detail">AC <span id="combat-player-ac">15</span> <i></i>ATK <span id="combat-player-attack">+4</span> <i></i><span id="combat-potions">2</span> medicine</span>
+                  <span class="combatant-detail">AC <span id="combat-player-ac">15</span> <i></i>ATK <span id="combat-player-attack">+4</span> <i></i><span id="combat-potions">2</span> <span data-i18n="medicine">medicine</span></span>
                   <div id="player-conditions" class="status-chips" aria-label="Conditions and boons" hidden></div>
                 </div>
               </section>
@@ -491,7 +513,7 @@
             </div>
             <div class="section-heading">
               <div>
-                <p class="eyebrow">UNDER THE JUNGLE</p>
+                <p class="eyebrow" data-i18n="UNDER THE JUNGLE">UNDER THE JUNGLE</p>
                 <h2 id="map-heading" data-i18n="Dungeon entrance">Dungeon entrance</h2>
               </div>
               <span class="map-hint" data-i18n="Tap a tile to move · tap yourself to interact">Tap a tile to move · tap yourself to interact</span>
@@ -617,6 +639,7 @@
         <h2 id="pause-heading" data-i18n="Paused">Paused</h2>
         <p class="venue-tagline">Time only advances when you act. Your run is saved on this device.</p>
         <button class="button" id="resume-game" type="button" data-i18n="Resume">Resume</button>
+        <button class="button secondary" id="pause-settings" type="button" data-i18n="Settings">Settings</button>
         <button class="button secondary" id="return-to-title" type="button" data-i18n="Title screen">Title screen</button>
       </section>
     </dialog>
@@ -708,6 +731,22 @@
         <button class="button secondary" id="projects-close" type="button">Back to the plaza</button>
       </section>
     </dialog>
+    <dialog id="villager-dialog" class="story-dialog venue-dialog villager-dialog" aria-labelledby="villager-name">
+      <section class="story-panel venue-panel villager-panel">
+        <header class="venue-header">
+          <div id="villager-portrait" class="venue-portrait villager-portrait" aria-hidden="true"></div>
+          <div class="venue-heading">
+            <p class="eyebrow" id="villager-eyebrow"></p>
+            <h2 id="villager-name"></h2>
+            <p class="venue-tagline" id="villager-doing"></p>
+          </div>
+          <span id="villager-hearts" class="villager-hearts"></span>
+          <button class="quiet-button venue-close" id="villager-close" type="button" aria-label="Back to the plaza" data-i18n-attr="aria-label:Back to the plaza">×</button>
+        </header>
+        <p id="villager-speech" class="venue-speech villager-speech"></p>
+        <div id="villager-actions" class="venue-actions villager-actions"></div>
+      </section>
+    </dialog>
     <dialog id="house-dialog" class="story-dialog venue-dialog house-dialog" data-style="calli" aria-labelledby="house-title">
       <section class="story-panel venue-panel house-panel">
         <header class="venue-header">
@@ -771,6 +810,10 @@
         <form id="patolli-setup" class="patolli-setup">
           <div class="patolli-setup-art" aria-hidden="true"><img src="./resources/tokens/patolli-board.png" alt=""></div>
           <div class="patolli-setup-copy">
+          <label for="patolli-difficulty">How Ixchel plays<select id="patolli-difficulty">
+            <option value="sharp">Seriously · she thinks ahead</option>
+            <option value="gentle">Gently · for a friendly game</option>
+          </select></label>
           <label for="patolli-wager" data-i18n="Gold per matched piece wager">Gold per matched piece wager</label>
           <div class="venue-stepper">
             <button type="button" class="quiet-button" data-patolli-wager-step="-1" aria-label="Lower the wager">−</button>
@@ -852,23 +895,34 @@
         <button id="message-box-advance" class="button secondary" type="button" data-i18n="Continue">Continue</button>
       </div>
     </section>
-    <script src="./data/locales.js?v=8" defer></script>
-    <script src="./data/items.js?v=5" defer></script>
-    <script src="./data/progression.js?v=1" defer></script>
-    <script src="./data/enemies.js?v=5" defer></script>
+    <script src="./data/locales.js?v=10" defer></script>
+    <script src="./data/items.js?v=7" defer></script>
+    <script src="./data/progression.js?v=3" defer></script>
+    <script src="./data/enemies.js?v=6" defer></script>
     <script src="./data/content.js?v=3" defer></script>
     <script src="./data/spells.js?v=1" defer></script>
-    <script src="./data/character-options.js?v=5" defer></script>
-    <script src="./data/exotics.js?v=1" defer></script>
-    <script src="./systems/patolli.js?v=5" defer></script>
-    <script src="./systems/progression.js?v=2" defer></script>
-    <script src="./systems/codex-figure.js?v=4" defer></script>
-    <script src="./systems/shop.js?v=3" defer></script>
-    <script src="./systems/house.js?v=3" defer></script>
-    <script src="./systems/characters.js?v=20" defer></script>
-    <script src="./systems/dungeons.js?v=9" defer></script>
+    <script src="./data/character-options.js?v=8" defer></script>
+    <script src="./data/exotics.js?v=4" defer></script>
+    <script src="./data/wardrobe.js?v=4" defer></script>
+    <script src="./data/goods.js?v=1" defer></script>
+    <script src="./data/tomb-gear.js?v=1" defer></script>
+    <script src="./systems/patolli.js?v=6" defer></script>
+    <script src="./systems/progression.js?v=7" defer></script>
+    <script src="./systems/codex-figure.js?v=12" defer></script>
+    <script src="./systems/shop.js?v=5" defer></script>
+    <script src="./systems/house.js?v=7" defer></script>
+    <script src="./systems/camp.js?v=1" defer></script>
+    <script src="./systems/item-art.js?v=1" defer></script>
+    <script src="./systems/sound.js?v=2" defer></script>
+    <script src="./systems/equipment-sheet.js?v=3" defer></script>
+    <script src="./systems/sheets.js?v=4" defer></script>
+    <script src="./data/villagers.js?v=5" defer></script>
+    <script src="./systems/villagers.js?v=4" defer></script>
+    <script src="./systems/characters.js?v=23" defer></script>
+    <script src="./systems/look-editor.js?v=1" defer></script>
+    <script src="./systems/dungeons.js?v=103" defer></script>
     <script src="./admob.config.js?v=1" defer></script>
     <script type="module" src="./systems/rewarded-ads.js?v=1"></script>
-    <script src="./app.js?v=177" defer></script>
+    <script src="./app.js?v=193" defer></script>
   </body>
 </html>

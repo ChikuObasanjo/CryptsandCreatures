@@ -260,7 +260,7 @@ function makeLegacyCharacter() {
     legacy: true, name: "Wayfarer", gender: "other", race: "human", heritage: "", class: "fighter", background: "folk-hero",
     scoreMethod: "standard", baseScores: { str: 14, dex: 12, con: 14, int: 10, wis: 12, cha: 10 },
     scores: { str: 14, dex: 12, con: 14, int: 10, wis: 12, cha: 10 },
-    appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band", facePaint: "none", body: "standard", beard: "none", jewelry: "ear-spools", crest: "none" },
+    appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band", facePaint: "none", body: "standard", beard: "none", jewelry: "ear-spools", crest: "none", trim: TRIM_DEFAULT },
     cosmetics: { owned: [], helmet: null, clothes: null },
     equipment: { weapon: "macuahuitl", armor: "scale", shield: false, cloak: false }
   };
@@ -340,6 +340,7 @@ function currentDraftCharacter() {
       hair: elements["character-hair"].value,
       hairStyle: elements["character-hair-style"].value,
       tunic: elements["character-tunic"].value,
+      trim: elements["character-trim"].value || TRIM_DEFAULT,
       garment: elements["character-garment"].value,
       adornment: elements["character-adornment"].value,
       headwear: elements["character-headwear"].value,
@@ -388,6 +389,12 @@ function initializeCharacterBuilder() {
   fillSelect(elements["character-beard"], BEARD_STYLES.map((id) => [id, APPEARANCE_LABELS[id]]), "none");
   fillSelect(elements["character-jewelry"], JEWELRY_STYLES.map((id) => [id, APPEARANCE_LABELS[id]]), "ear-spools");
   fillSelect(elements["character-hair-style"], HAIR_STYLES.map((id) => [id, APPEARANCE_LABELS[id]]), "short");
+  fillSelect(elements["character-tunic"], CLOTHING_COLORS.map((color) => [color.value, color.name]), "#334d78");
+  fillSelect(elements["character-trim"], TRIM_COLORS.map((color) => [color.value, color.name]), TRIM_DEFAULT);
+  fillSelect(elements["character-garment"], GARMENT_STYLES.map((id) => [id, GARMENT_LABELS[id]]), "woven-tunic");
+  fillSelect(elements["character-adornment"], CLOTHING_ADORNMENTS.map((id) => [id, ADORNMENT_LABELS[id]]), "none");
+  fillSelect(elements["character-headwear"], HEADWEAR_STYLES.map((id) => [id, HEADWEAR_LABELS[id]]), "feather-band");
+  fillSelect(elements["character-face-paint"], FACE_PAINT_STYLES.map((id) => [id, FACE_PAINT_LABELS[id]]), "none");
   syncAppearanceOptions("human", defaultAppearanceFor("human"));
   fillSelect(elements["half-elf-bonus-one"], ABILITIES.filter(([key]) => key !== "cha").map(([key, name]) => [key, name]), "str");
   fillSelect(elements["half-elf-bonus-two"], ABILITIES.filter(([key]) => !["cha", "str"].includes(key)).map(([key, name]) => [key, name]), "dex");
@@ -490,7 +497,7 @@ function syncEquipmentOptions(resetToDefaults = false) {
   const weaponOptions = selectedClass.weapons.filter((id) => !WEAPONS[id].exotic).map((id) => [id, WEAPONS[id].name]);
   fillSelect(elements["character-weapon"], weaponOptions,
     !resetToDefaults && weaponOptions.some(([id]) => id === currentWeapon) ? currentWeapon : selectedClass.weapon);
-  const armorOptions = selectedClass.armor.filter((id) => !ARMORS[id].exotic).map((id) => [id, ARMORS[id].name]);
+  const armorOptions = selectedClass.armor.filter((id) => !ARMORS[id].exotic && !ARMORS[id].tombOnly).map((id) => [id, ARMORS[id].name]);
   fillSelect(elements["character-armor"], armorOptions,
     !resetToDefaults && armorOptions.some(([id]) => id === currentArmor) ? currentArmor : DEFAULT_CLASS_ARMOR[elements["character-class"].value]);
   const shieldOption = elements["character-shield"].querySelector('option[value="yes"]');
@@ -577,6 +584,7 @@ function updateCharacterPreview() {
         hair: elements["character-hair"].value || "#211a17",
         hairStyle: elements["character-hair-style"].value || "short",
         tunic: elements["character-tunic"].value || "#334d78",
+        trim: elements["character-trim"].value || TRIM_DEFAULT,
         garment: elements["character-garment"].value || "woven-tunic",
         adornment: elements["character-adornment"].value || "none",
         headwear: elements["character-headwear"].value || "none",
@@ -608,7 +616,11 @@ function updateCharacterPreview() {
     display.classList.toggle("score-high", score > 15);
     display.setAttribute("aria-label", `${ABILITIES.find(([key]) => key === ability)[1]} score ${score}`);
   }
-  elements["character-preview"].replaceChildren(createCodexCharacterSprite(draft, "preview-sprite"));
+  // On the Clothes tab, show the garment itself rather than the armor over it.
+  const showClothes = state.characterCreationStep === 3 && state.lookTab === "clothes";
+  const previewDraft = showClothes ? { ...draft, equipment: { ...draft.equipment, armor: "none", shield: false, cloak: false } } : draft;
+  elements["character-preview"].replaceChildren(createCodexCharacterSprite(previewDraft, "preview-sprite", state.previewFacing || "east"));
+  if (typeof refreshLookPickers === "function") refreshLookPickers(elements["character-form"]);
   const className = window.cryptsLocale.t(CLASSES[draft.class]?.name || "Adventurer");
   const raceName = window.cryptsLocale.t(RACES[race]?.name || "Traveler");
   const heritageName = RACES[race]?.heritages?.[draft.heritage]?.name;
@@ -639,8 +651,9 @@ function updateCharacterPreview() {
   const kit = GEAR_ITEMS[kitId];
   elements["starter-kit-summary"].textContent =
     `${className} starter set: ${WEAPONS[draft.equipment.weapon]?.name || "Weapon"} · ${ARMORS[draft.equipment.armor]?.name || "No armor"} · ${kit.name}${draft.equipment.shield ? ` · ${GEAR_ITEMS.shield.name}` : ""}${draft.equipment.cloak ? ` · ${GEAR_ITEMS["travel-cloak"].name}` : ""}`;
-  const starterWeight = getCarriedWeight(buildStartingInventory(draft), 10);
-  const capacity = getCarryCapacity(draft);
+  const starterInventory = buildStartingInventory(draft);
+  const starterWeight = getCarriedWeight(starterInventory, 10);
+  const capacity = getCarryCapacity(draft, starterInventory);
   elements["equipment-note"].textContent =
     `${selectedClass?.name || "Your class"} Travel Bundle (${kit.weight} lb) and background skill bonuses are included. Starting load ${formatWeight(starterWeight)} / ${capacity} lb; Strength × 15 lb capacity.`;
   const method = elements["score-method"].value;
@@ -689,7 +702,7 @@ function readCharacterFromForm() {
   character.legacy = false;
   const startingInventory = buildStartingInventory(character);
   const startingLoad = getCarriedWeight(startingInventory, 10);
-  const capacity = getCarryCapacity(character);
+  const capacity = getCarryCapacity(character, startingInventory);
   if (startingLoad > capacity) {
     throw new Error(`This starting kit weighs ${formatWeight(startingLoad)} lb, above your ${capacity} lb carrying capacity. Raise Strength or choose lighter armor or a different kit.`);
   }
@@ -700,7 +713,7 @@ function openCharacterBuilder() {
   const profile = {
     name: "Iztli", gender: "other", race: "human", heritage: "", class: "fighter", background: "folk-hero",
     scoreMethod: "rolled", baseScores: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
-    appearance: { skin: SKIN_TONES[0].value, hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band", facePaint: "none", body: "standard", beard: "none", jewelry: "ear-spools", crest: "none" },
+    appearance: { skin: SKIN_TONES[0].value, hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band", facePaint: "none", body: "standard", beard: "none", jewelry: "ear-spools", crest: "none", trim: TRIM_DEFAULT },
     equipment: { weapon: "macuahuitl", armor: "scale", shield: false, cloak: false },
     equipmentEnhancements: { weaponIds: [], armorIds: [] }
   };
@@ -733,7 +746,8 @@ function openCharacterBuilder() {
   elements["character-skin"].value = profile.appearance?.skin || SKIN_TONES[0].value;
   elements["character-hair"].value = profile.appearance?.hair || "#211a17";
   elements["character-hair-style"].value = profile.appearance?.hairStyle || "short";
-  elements["character-tunic"].value = profile.appearance?.tunic || "#334d78";
+  elements["character-tunic"].value = TUNIC_COLORS.includes(profile.appearance?.tunic) ? profile.appearance.tunic : "#334d78";
+  elements["character-trim"].value = TRIM_COLORS.some((color) => color.value === profile.appearance?.trim) ? profile.appearance.trim : TRIM_DEFAULT;
   elements["character-garment"].value = GARMENT_STYLES.includes(profile.appearance?.garment) ? profile.appearance.garment : "woven-tunic";
   elements["character-adornment"].value = CLOTHING_ADORNMENTS.includes(profile.appearance?.adornment) ? profile.appearance.adornment : "none";
   elements["character-headwear"].value = HEADWEAR_STYLES.includes(profile.appearance?.headwear) ? profile.appearance.headwear : "none";
@@ -765,6 +779,7 @@ function setCharacterCreationStep() {
     });
   });
   const labels = ["Your arrival", "Your strengths", "Your kit", "Your look"];
+  elements["character-dialog"].classList.toggle("is-look-step", step === steps.length - 1);
   elements["creation-step-label"].textContent = window.cryptsLocale.t(labels[step]);
   elements["creation-step-track"].textContent = `${step + 1} / ${steps.length}`;
   elements["creation-progress-bar"].setAttribute("aria-valuenow", String(step + 1));
@@ -808,6 +823,7 @@ function advanceCharacterCreation(direction) {
   }
   state.characterCreationStep += direction;
   setCharacterCreationStep();
+  updateCharacterPreview();
   const currentSection = elements["character-form"].querySelector(`[data-creation-step="${state.characterCreationStep}"]`);
   currentSection?.scrollIntoView({ block: "start", behavior: "smooth" });
   const firstField = currentSection?.querySelector("input, select, button");

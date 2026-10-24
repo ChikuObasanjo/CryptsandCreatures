@@ -232,22 +232,152 @@ function applyPatolliMove(game, side, move) {
   return message;
 }
 
-function choosePatolliAiMove(game, moves) {
-  return [...moves].sort((first, second) => {
-    const scoreMove = (move) => {
-      let score = move.finish ? 10000 : move.progress * 4;
-      if (move.captureId !== null) score += 5000;
-      if (move.trackIndex >= 0 && PATOLLI_PENALTY_SQUARES.includes(move.trackIndex)) score -= 80;
-      if (move.trackIndex >= 0) {
-        for (const enemy of game.pieces.player.filter((piece) => piece.status === "active")) {
-          const distance = (move.trackIndex - patolliPieceAt("player", enemy) + PATOLLI_TRACK.length) % PATOLLI_TRACK.length;
-          if (PATOLLI_CAPTURE_SQUARES.includes(move.trackIndex) && distance >= 1 && distance <= 5) score -= 60;
-        }
+// ---------- Ixchel's play ----------
+// "Gently" is the old greedy player. "Seriously" looks two moves ahead: for each of her
+// moves it weighs every bean toss you could make in reply (and her own extra turns),
+// using the real bean odds, and scores the results with a positional evaluation that
+// understands racing, exposure on the crossroads, threats, penalties, and the wager count.
+const PATOLLI_TOSS_ODDS = [1, 5, 10, 10, 5, 1].map((ways) => ways / 32);
+
+function patolliOtherSide(side) {
+  return side === "player" ? "opponent" : "player";
+}
+
+function patolliSimulate(game, side, move) {
+  const animation = state.patolliAnimation;
+  const copy = JSON.parse(JSON.stringify(game));
+  applyPatolliMove(copy, side, move);
+  state.patolliAnimation = animation;
+  return copy;
+}
+
+function patolliExtraTurn(move) {
+  return !move.finish && PATOLLI_EXTRA_TURN_SQUARES.includes(move.trackIndex);
+}
+
+// The chance that `attacker` can land exactly on `trackIndex` with its next toss.
+function patolliHitChance(game, attacker, trackIndex) {
+  const tosses = new Set();
+  for (const piece of game.pieces[attacker]) {
+    if (piece.status !== "active") continue;
+    const distance = (trackIndex - patolliPieceAt(attacker, piece) + PATOLLI_TRACK.length) % PATOLLI_TRACK.length;
+    if (!distance || piece.progress + distance > PATOLLI_TRACK.length) continue;
+    for (let count = 1; count <= 5; count += 1) {
+      if (patolliMoveDistance(count) === distance) tosses.add(count);
+    }
+  }
+  let chance = 0;
+  for (const count of tosses) chance += PATOLLI_TOSS_ODDS[count];
+  return chance;
+}
+
+function patolliEvaluate(game, side) {
+  const other = patolliOtherSide(side);
+  if (game.score[side] >= 4) return 1e6;
+  if (game.score[other] >= 4) return -1e6;
+  const halfStake = Math.max(1, game.stakePerPiece);
+  const sideValue = (me, them) => {
+    let value = game.score[me] * 1000;
+    for (const piece of game.pieces[me]) {
+      const stake = game.stakes[piece.id];
+      if (stake.status !== "active") continue;
+      const myStake = me === "player" ? stake.playerStake : stake.opponentStake;
+      // A spent wager is one penalty away from being lost outright.
+      value += myStake >= halfStake ? 0 : -260;
+      if (piece.status === "ready") {
+        value += 20;
+        continue;
       }
-      return score;
-    };
-    return scoreMove(second) - scoreMove(first);
-  })[0];
+      if (piece.status !== "active") continue;
+      const at = patolliPieceAt(me, piece);
+      value += 60 + piece.progress * 9;
+      if (piece.progress >= PATOLLI_TRACK.length - 10) value += 60 + (piece.progress - (PATOLLI_TRACK.length - 10)) * 12;
+      if (PATOLLI_CAPTURE_SQUARES.includes(at)) {
+        value -= patolliHitChance(game, them, at) * (1000 + piece.progress * 9);
+      }
+      // Standing just before a penalty triangle is mildly risky.
+      for (let step = 1; step <= 4; step += 1) {
+        if (PATOLLI_PENALTY_SQUARES.includes((at + step) % PATOLLI_TRACK.length)) value -= 8;
+      }
+    }
+    return value;
+  };
+  let value = sideValue(side, other) - sideValue(other, side);
+  // Threats: opposing pieces sitting on crossroads within our reach.
+  for (const piece of game.pieces[other]) {
+    if (piece.status !== "active") continue;
+    const at = patolliPieceAt(other, piece);
+    if (PATOLLI_CAPTURE_SQUARES.includes(at)) value += patolliHitChance(game, side, at) * 450;
+  }
+    return value;
+}
+
+function patolliGreedyScore(game, side, move) {
+  const other = patolliOtherSide(side);
+  let score = move.finish ? 10000 : move.progress * 4;
+  if (move.captureId !== null) score += 5000;
+  if (move.trackIndex >= 0 && PATOLLI_PENALTY_SQUARES.includes(move.trackIndex)) score -= 80;
+  if (move.trackIndex >= 0 && PATOLLI_CAPTURE_SQUARES.includes(move.trackIndex)) {
+    for (const enemy of game.pieces[other].filter((piece) => piece.status === "active")) {
+      const distance = (move.trackIndex - patolliPieceAt(other, enemy) + PATOLLI_TRACK.length) % PATOLLI_TRACK.length;
+      if (distance >= 1 && distance <= 5) score -= 60;
+    }
+  }
+  return score;
+}
+
+// Best one-move result for `side` after a given toss, judged by its own evaluation.
+function patolliBestAfterToss(game, side, count) {
+  const moves = count ? getPatolliLegalMoves(game, side, count) : [];
+  if (!moves.length) return game;
+  let best = null;
+  let bestValue = -Infinity;
+  for (const move of moves) {
+    const result = patolliSimulate(game, side, move);
+    const value = patolliEvaluate(result, side);
+    if (value > bestValue) {
+      bestValue = value;
+      best = result;
+    }
+  }
+  return best;
+}
+
+function patolliExpectedValue(afterMove, side, extraTurn) {
+  if (afterMove.score[side] >= 4 || afterMove.score[patolliOtherSide(side)] >= 4) return patolliEvaluate(afterMove, side);
+  const mover = extraTurn ? side : patolliOtherSide(side);
+  let expected = 0;
+  for (let count = 0; count <= 5; count += 1) {
+    const reply = patolliBestAfterToss(afterMove, mover, count);
+    expected += PATOLLI_TOSS_ODDS[count] * patolliEvaluate(reply, side);
+  }
+  return expected;
+}
+
+function choosePatolliMove(game, side, moves, level = "sharp") {
+  if (!moves.length) return null;
+  if (level === "gentle") {
+    const ranked = [...moves].sort((first, second) => patolliGreedyScore(game, side, second) - patolliGreedyScore(game, side, first));
+    // A gentle Ixchel sometimes plays her second-best move.
+    return ranked.length > 1 && randomInt(4) === 1 ? ranked[1] : ranked[0];
+  }
+  let best = moves[0];
+  let bestValue = -Infinity;
+  for (const move of moves) {
+    const result = patolliSimulate(game, side, move);
+    const value = patolliExpectedValue(result, side, patolliExtraTurn(move)) + (move.finish ? 1 : 0);
+    if (value > bestValue) {
+      bestValue = value;
+      best = move;
+    }
+  }
+  return best;
+}
+
+// Kept for callers that pass only the moves: the side to move is whoever's turn it is.
+function choosePatolliAiMove(game, moves) {
+  const side = game.turn === "opponent" ? "opponent" : "player";
+  return choosePatolliMove(game, side, moves, side === "opponent" ? (game.difficulty || "sharp") : "sharp");
 }
 
 function runPatolliAiTurn(game) {
@@ -266,7 +396,7 @@ function runPatolliAiTurn(game) {
       game.phase = "roll";
       return;
     }
-    const move = choosePatolliAiMove(game, moves);
+    const move = choosePatolliMove(game, "opponent", moves, game.difficulty || "sharp");
     applyPatolliMove(game, "opponent", move);
     if (checkPatolliEnd(game)) return;
     if (!PATOLLI_EXTRA_TURN_SQUARES.includes(move.trackIndex)) {
@@ -337,7 +467,7 @@ function schedulePatolliAutoplay(delay = 300) {
       schedulePatolliAutoplay(game.phase === "move" ? 450 : 300);
       return;
     }
-    const move = choosePatolliAiMove(game, game.legalMoves);
+    const move = choosePatolliMove(game, "player", game.legalMoves, "sharp");
     if (!move) {
       game.message = "No legal move is available. The turn passes to Ixchel.";
       game.turn = "opponent";
@@ -575,6 +705,9 @@ function renderPatolli() {
 
 function openPatolli(tutorialOnly = false) {
   if (state.run.location !== "city") return;
+  if (["sharp", "gentle"].includes(state.run.patolliGame?.difficulty)) {
+    elements["patolli-difficulty"].value = state.run.patolliGame.difficulty;
+  }
   state.patolliTutorialOnly = tutorialOnly;
   state.patolliRulesOpen = tutorialOnly;
   state.patolliRulesPage = 0;
@@ -600,6 +733,7 @@ function startPatolli(stakePerPiece) {
   const pieces = () => Array.from({ length: 6 }, (_, id) => ({ id, progress: -1, status: "ready" }));
   state.run.patolliGame = {
     trackVersion: PATOLLI_TRACK_VERSION,
+    difficulty: elements["patolli-difficulty"].value === "gentle" ? "gentle" : "sharp",
     stakePerPiece,
     pieces: { player: pieces(), opponent: pieces() },
     stakes: Array.from({ length: 6 }, () => ({

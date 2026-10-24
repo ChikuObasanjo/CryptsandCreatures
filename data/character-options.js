@@ -1,10 +1,10 @@
 "use strict";
 
 const GENDERS = ["man", "woman", "other"];
-const GARMENT_STYLES = ["woven-tunic", "cotton-wrap", "feather-mantle", "hide-vest", "huipil"];
+const GARMENT_STYLES = ["woven-tunic", "cotton-wrap", "feather-mantle", "hide-vest", "huipil", "quechquemitl", "tilmatli", "xicolli", "none"];
 const CLOTHING_ADORNMENTS = ["none", "jade-beads", "shell-beads", "feather-trim"];
 const HEADWEAR_STYLES = ["none", "feather-band", "cotton-wrap", "jade-circlet"];
-const FACE_PAINT_STYLES = ["none", "jade-lines", "terracotta-marks", "black-band", "gold-dots"];
+const FACE_PAINT_STYLES = ["none", "jade-lines", "terracotta-marks", "black-band", "gold-dots", "maya-blue", "white-stripes", "red-jaw"];
 const FULL_CASTER_CLASSES = new Set(["bard", "cleric", "druid", "sorcerer", "warlock", "wizard"]);
 const HALF_CASTER_CLASSES = new Set(["paladin", "ranger"]);
 const DEFAULT_CLASS_ARMOR = {
@@ -12,7 +12,26 @@ const DEFAULT_CLASS_ARMOR = {
   monk: "none", paladin: "scale", ranger: "scale", rogue: "leather", sorcerer: "none",
   warlock: "leather", wizard: "none"
 };
-const TUNIC_COLORS = ["#28685e", "#9c4935", "#334d78", "#8a7137", "#5d5b59"];
+// Clothing dyes. The first five are the original colors, so older saves keep theirs.
+const CLOTHING_COLORS = [
+  { name: "Indigo", value: "#334d78" }, { name: "Jade", value: "#28685e" }, { name: "Terracotta", value: "#9c4935" },
+  { name: "Ochre", value: "#8a7137" }, { name: "Ash gray", value: "#5d5b59" },
+  { name: "Cochineal red", value: "#a8322b" }, { name: "Cochineal rose", value: "#c0627a" },
+  { name: "Snail purple", value: "#6a3f78" }, { name: "Maya blue", value: "#4f97b8" },
+  { name: "Turquoise", value: "#2f9a95" }, { name: "Quetzal green", value: "#2f7d46" },
+  { name: "Moss", value: "#66733f" }, { name: "Achiote orange", value: "#c9662c" },
+  { name: "Marigold", value: "#d89a2b" }, { name: "Maize yellow", value: "#d8bd5a" },
+  { name: "Natural cotton", value: "#e6dbc0" }, { name: "Coyuchi brown", value: "#8a6a4a" },
+  { name: "Charcoal", value: "#35302f" }, { name: "Night black", value: "#1f1d24" }
+];
+const TUNIC_COLORS = CLOTHING_COLORS.map((color) => color.value);
+// Trim: borders, embroidery, and sashes. Red is the original trim.
+const TRIM_COLORS = [
+  { name: "Red", value: "#b5402c" }, { name: "Gold", value: "#e1ad3b" }, { name: "White", value: "#f6eedb" },
+  { name: "Black", value: "#262022" }, { name: "Jade", value: "#3e8b6a" }, { name: "Maya blue", value: "#4f97b8" },
+  { name: "Turquoise", value: "#2f9a95" }, { name: "Rose", value: "#c0627a" }, { name: "Purple", value: "#7a4f96" },
+  { name: "Achiote orange", value: "#d0702f" }
+];
 
 const ABILITIES = [
   ["str", "Strength"], ["dex", "Dexterity"], ["con", "Constitution"],
@@ -91,10 +110,17 @@ const BACKGROUNDS = {
   soldier: { name: "Soldier", description: "Drilled in the warriors' house and tested on the field of flowery war.", skills: "Athletics, Intimidation", skillIds: ["athletics", "intimidation"], skillBonus: 1, attackBonus: 1 }
 };
 
+// Skin tones, lightest to deepest after the original six (kept first so older saves keep theirs).
 const SKIN_TONES = [
   { name: "Warm umber", value: "#9a603c" }, { name: "Copper", value: "#bb8054" },
   { name: "Golden brown", value: "#d2a36d" }, { name: "Olive", value: "#b59b70" },
-  { name: "Deep brown", value: "#70442f" }, { name: "Brown", value: "#8e6247" }
+  { name: "Deep brown", value: "#70442f" }, { name: "Brown", value: "#8e6247" },
+  { name: "Porcelain", value: "#f0d6c0" }, { name: "Fair", value: "#e8c4a6" },
+  { name: "Rosy beige", value: "#dcae92" }, { name: "Light olive", value: "#cdb08a" },
+  { name: "Sand", value: "#d6a77a" }, { name: "Honey", value: "#c48d58" },
+  { name: "Cinnamon", value: "#a96c45" }, { name: "Red clay", value: "#9b5a3f" },
+  { name: "Mahogany", value: "#7c4a35" }, { name: "Cacao", value: "#5e3a2a" },
+  { name: "Espresso", value: "#4a2e22" }, { name: "Ebony", value: "#3a241c" }
 ];
 const HAIR_COLORS = ["#211a17", "#59402b", "#a87a42", "#d8c58c", "#8b8d8c"];
 
@@ -109,16 +135,24 @@ const RACE_SKIN_TONES = {
   dragonborn: [
     { name: "Jade scales", value: "#3f8a77" }, { name: "Gold scales", value: "#b48a35" },
     { name: "Crimson scales", value: "#a1432f" }, { name: "Obsidian scales", value: "#45424e" },
-    { name: "Azure scales", value: "#3d6e9c" }, { name: "Bone scales", value: "#cfc3a2" }
+    { name: "Azure scales", value: "#3d6e9c" }, { name: "Bone scales", value: "#cfc3a2" },
+    { name: "Turquoise scales", value: "#3a9c9a" }, { name: "Copper scales", value: "#b0683c" },
+    { name: "Bronze scales", value: "#8f6a35" }, { name: "Amethyst scales", value: "#71558f" },
+    { name: "Quetzal scales", value: "#2f7a4c" }, { name: "Pearl scales", value: "#e2ddd0" }
   ],
   tiefling: [
     { name: "Ember red", value: "#a2545c" }, { name: "Violet", value: "#7a4f86" },
     { name: "Ash blue", value: "#5f7488" }, { name: "Dusk rose", value: "#b06e74" },
-    { name: "Soot", value: "#4f4450" }
+    { name: "Soot", value: "#4f4450" },
+    { name: "Cochineal", value: "#b0423f" }, { name: "Plum", value: "#5d3a5c" },
+    { name: "Lavender", value: "#9a86b0" }, { name: "Storm teal", value: "#4c7774" },
+    { name: "Obsidian", value: "#36303a" }, ...SKIN_TONES
   ],
   "half-orc": [
     { name: "Moss", value: "#71865a" }, { name: "Sage green", value: "#889478" },
     { name: "Olive drab", value: "#7c7a4c" }, { name: "Slate", value: "#66726c" },
+    { name: "Jade green", value: "#5f8f6a" }, { name: "Grey-green", value: "#7d8a80" },
+    { name: "Deep moss", value: "#4f5f3c" },
     ...SKIN_TONES
   ]
 };
@@ -126,11 +160,18 @@ const RACE_SKIN_TONES = {
 const CREST_COLORS = [
   { name: "Jade", value: "#2f8f78" }, { name: "Quetzal green", value: "#1f7a4a" },
   { name: "Scarlet", value: "#b5402c" }, { name: "Gold", value: "#d9a334" },
-  { name: "Turquoise", value: "#3a9fb0" }
+  { name: "Turquoise", value: "#3a9fb0" },
+  { name: "Obsidian", value: "#2c2a33" }, { name: "Cochineal", value: "#c0627a" },
+  { name: "Maya blue", value: "#4f97b8" }, { name: "Ivory", value: "#ece3cc" }, { name: "Violet", value: "#7a4f96" }
 ];
 const HAIR_COLOR_OPTIONS = [
   { name: "Black", value: "#211a17" }, { name: "Brown", value: "#59402b" }, { name: "Copper", value: "#a87a42" },
-  { name: "Pale gold", value: "#d8c58c" }, { name: "Silver", value: "#8b8d8c" }
+  { name: "Pale gold", value: "#d8c58c" }, { name: "Silver", value: "#8b8d8c" },
+  { name: "Blue-black", value: "#1b1d2a" }, { name: "Dark brown", value: "#3b2a20" },
+  { name: "Auburn", value: "#7c3a25" }, { name: "Chestnut", value: "#76502e" },
+  { name: "Ash brown", value: "#6b5d4f" }, { name: "White", value: "#e6e1d6" },
+  { name: "Cochineal-dyed", value: "#a8322b" }, { name: "Indigo-dyed", value: "#2f4a86" },
+  { name: "Jade-dyed", value: "#2f7a5e" }, { name: "Marigold-dyed", value: "#d08a26" }
 ];
 const CREST_STYLES = {
   dragonborn: ["fin", "quetzal-plumes", "swept-horns", "frilled-crown"],
@@ -144,6 +185,18 @@ const APPEARANCE_LABELS = {
   curled: "Curled horns", straight: "Straight horns", ram: "Ram horns", nubs: "Small nubs",
   short: "Short", long: "Long", braids: "Braids", crest: "Crest", topknot: "Topknot", "shaved-sides": "Shaved sides",
   "twin-twists": "Twin twists", bun: "Low bun"
+};
+const TRIM_DEFAULT = TRIM_COLORS[0].value;
+const GARMENT_LABELS = {
+  "woven-tunic": "Woven tunic", "cotton-wrap": "Cotton wrap", "feather-mantle": "Feather mantle",
+  "hide-vest": "Deerskin vest", huipil: "Huipil and wrap skirt", quechquemitl: "Quechquemitl shoulder cape",
+  tilmatli: "Knotted tilmatli cloak", xicolli: "Fringed xicolli jacket", none: "Loincloth only"
+};
+const ADORNMENT_LABELS = { none: "None", "jade-beads": "Jade beads", "shell-beads": "Shell beads", "feather-trim": "Feather trim" };
+const HEADWEAR_LABELS = { "feather-band": "Feather band", none: "None", "cotton-wrap": "Cotton headwrap", "jade-circlet": "Jade circlet" };
+const FACE_PAINT_LABELS = {
+  none: "None", "jade-lines": "Jade lines", "terracotta-marks": "Terracotta marks", "black-band": "Black eye band",
+  "gold-dots": "Gold dots", "maya-blue": "Maya blue cheeks", "white-stripes": "White stripes", "red-jaw": "Red jaw paint"
 };
 
 function raceSkinTones(race) {
@@ -172,5 +225,6 @@ function normalizeAppearance(appearance, race) {
   if (!raceSkinTones(race).some((tone) => tone.value === appearance.skin)) appearance.skin = raceSkinTones(race)[0].value;
   if (!raceHairColors(race).some((color) => color.value === appearance.hair)) appearance.hair = raceHairColors(race)[0].value;
   if (!HAIR_STYLES.includes(appearance.hairStyle)) appearance.hairStyle = "short";
+  if (!TRIM_COLORS.some((color) => color.value === appearance.trim)) appearance.trim = TRIM_DEFAULT;
   return appearance;
 }
