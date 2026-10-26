@@ -1232,6 +1232,7 @@ function newRun(character) {
     needs: createNeeds(),
     party: [],
     townPosition: { ...TOWN_PLAZA },
+    townMapVersion: TOWN_MAP_VERSION,
     rooms: [],
     terrain: [],
     openDoors: [],

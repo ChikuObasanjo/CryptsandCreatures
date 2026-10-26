@@ -38,9 +38,9 @@
         dislikes: ["wild-ingredients", "codex-fragment", "torch"]
       },
       schedule: [
-        { from: 6, to: 12, x: 10, y: 3, doing: "selling maize at the market" },
-        { from: 12, to: 18, x: 8, y: 5, doing: "teaching the plaza kids the hip-strike" },
-        { from: 18, to: 22, x: 4, y: 3, doing: "telling ballcourt stories outside the Ceiba House" }
+        { from: 6, to: 12, x: 13, y: 3, doing: "selling maize at the market" },
+        { from: 12, to: 18, x: 7, y: 6, doing: "teaching the plaza kids the hip-strike" },
+        { from: 18, to: 22, x: 3, y: 4, doing: "telling ballcourt stories outside the Ceiba House" }
       ],
       intro: "Itzcoatl. Farmer, former ballplayer, current best maize in the valley. You can say it back to me, I like hearing it.",
       context: {
@@ -125,8 +125,8 @@
         dislikes: ["monster-meat", "chilis", "ration"]
       },
       schedule: [
-        { from: 6, to: 12, x: 4, y: 1, doing: "painting the day's page by the inn wall" },
-        { from: 12, to: 18, x: 5, y: 4, doing: "measuring the well's shadow in the plaza" },
+        { from: 6, to: 12, x: 3, y: 4, doing: "painting the day's page by the inn wall" },
+        { from: 12, to: 18, x: 7, y: 8, doing: "measuring the well's shadow in the plaza" },
         { from: 18, to: 24, x: 8, y: 1, doing: "watching the sky from the north lane" },
         { from: 0, to: 5, x: 8, y: 1, doing: "counting stars on the north lane" }
       ],
@@ -218,8 +218,8 @@
         dislikes: ["ulama-ball", "copper-axe-money", "monster-meat"]
       },
       schedule: [
-        { from: 6, to: 17, x: 10, y: 8, doing: "tending the kiln by the gate" },
-        { from: 17, to: 22, x: 11, y: 3, doing: "trading jars at the market's edge" }
+        { from: 6, to: 17, x: 11, y: 7, doing: "tending the kiln by the gate" },
+        { from: 17, to: 22, x: 13, y: 3, doing: "trading jars at the market's edge" }
       ],
       intro: "Atzin. I make the jars. You've probably drunk out of one of mine without knowing. That's sort of the point of a jar.",
       context: {
@@ -313,7 +313,7 @@
       },
       schedule: [
         { from: 5, to: 10, x: 9, y: 7, doing: "back from the dawn patrol, eating" },
-        { from: 16, to: 22, x: 5, y: 8, doing: "telling road stories by the gate road" }
+        { from: 16, to: 22, x: 6, y: 12, doing: "telling road stories by the gate road" }
       ],
       intro: "Cuauhtli, road warden. Most days I'm out on the jungle road keeping it clear for people like you. You're welcome in advance.",
       context: {

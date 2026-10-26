@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="description" content="Explore a forbidden tomb, manage your supplies, and return to Chiltomatlan to prepare for another descent.">
     <link rel="manifest" href="./manifest.json">
-    <link rel="icon" href="./icon.png" type="image/png" sizes="512x512">
-    <link rel="stylesheet" href="./styles.css?v=325">
+    <link rel="icon" href="./icon.png?v=2" type="image/png" sizes="512x512">
+    <link rel="stylesheet" href="./styles.css?v=326">
     <title>Crypts &amp; Creatures</title>
   </head>
   <body>
@@ -83,12 +83,25 @@
           <div class="title-actions">
             <button id="continue-game" class="button" type="button" disabled data-i18n="Continue">Continue</button>
             <button id="new-game" class="button secondary" type="button" data-i18n="New Game">New Game</button>
+            <button id="load-game" class="button secondary" type="button" data-i18n="Load Game">Load Game</button>
             <button id="open-settings" class="button secondary" type="button" aria-haspopup="dialog" data-i18n="Settings">Settings</button>
           </div>
           <p id="continue-hint" class="title-hint" aria-live="polite" data-i18n="No saved game on this device.">No saved game on this device.</p>
         </div>
         <img class="title-art" src="./resources/ui/title-temple.png?v=79" alt="" aria-hidden="true">
       </section>
+
+      <dialog id="save-manager-dialog" class="save-manager-dialog settings-dialog" aria-labelledby="save-manager-heading">
+        <div class="settings-heading">
+          <div>
+            <p class="eyebrow" data-i18n="YOUR ADVENTURERS">YOUR ADVENTURERS</p>
+            <h2 id="save-manager-heading" data-i18n="Load Game">Load Game</h2>
+          </div>
+          <button class="quiet-button close-settings" id="close-save-manager" type="button" aria-label="Close saved games" data-i18n-attr="aria-label:Close saved games">×</button>
+        </div>
+        <p id="save-manager-empty" class="muted" data-i18n="No saved characters yet. Start a new game to create one.">No saved characters yet. Start a new game to create one.</p>
+        <ul id="save-manager-list" class="save-manager-list" aria-label="Saved characters" data-i18n-attr="aria-label:Saved characters"></ul>
+      </dialog>
 
       <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-heading">
         <div class="settings-heading">
@@ -99,6 +112,11 @@
           <button class="quiet-button close-settings" id="close-settings" type="button" aria-label="Close settings" data-i18n-attr="aria-label:Close settings">×</button>
         </div>
         <div class="settings-body">
+        <section id="settings-pwa-install" class="settings-group hidden" aria-labelledby="settings-pwa-heading">
+          <h3 id="settings-pwa-heading" class="settings-group-heading" data-i18n="Install the app">Install the app</h3>
+          <button id="install-pwa" class="button" type="button" data-i18n="Install app">Install app</button>
+          <p class="muted" data-i18n="Add Crypts & Creatures to your device for an app-like experience.">Add Crypts & Creatures to your device for an app-like experience.</p>
+        </section>
         <section class="settings-group" aria-labelledby="settings-display-heading">
           <h3 id="settings-display-heading" class="settings-group-heading" data-i18n="Display">Display</h3>
           <label for="language-select" data-i18n="Language">Language</label>
@@ -139,7 +157,7 @@
             <input id="map-zoom" class="settings-range" name="mapZoom" type="range" min="-3" max="2" step="1" value="0">
             <button id="map-zoom-in" class="quiet-button" type="button" aria-label="Zoom in" title="Zoom in" data-i18n-attr="aria-label:Zoom in;title:Zoom in">+</button>
           </div>
-          <p class="muted" data-i18n="Zoom out to see more of the tomb, or in for bigger tiles. You can also pinch the map, or press + and −.">Zoom out to see more of the tomb, or in for bigger tiles. You can also pinch the map, or press + and −.</p>
+          <p class="muted" data-i18n="Zoom out to see more of the map, or in for bigger tiles. Press + and − to change the zoom.">Zoom out to see more of the map, or in for bigger tiles. Press + and − to change the zoom.</p>
         </section>
         <section class="settings-group" aria-labelledby="settings-sound-heading">
           <h3 id="settings-sound-heading" class="settings-group-heading" data-i18n="Sound">Sound</h3>
@@ -416,7 +434,9 @@
               </div>
               <p id="town-location-copy" class="town-location-copy" aria-live="polite">You arrive in the shaded plaza. The keeper waves you over from the travelers' house.</p>
               <p class="town-controls-hint" data-i18n="Arrows or numpad move · Numpad 7 9 1 3 or Home PgUp End PgDn diagonals · Space or E talks · I pack · O equipment · J journal">Arrows or numpad move · Numpad 7 9 1 3 or Home PgUp End PgDn diagonals · Space or E talks · I pack · O equipment · J journal</p>
-              <div id="town-map" class="town-map" role="group" aria-label="Walkable streets of Chiltomatlan"></div>
+              <div id="town-map-viewport" class="town-map-viewport">
+                <div id="town-map" class="town-map" role="group" aria-label="Walkable streets of Chiltomatlan"></div>
+              </div>
               <nav class="town-touch-dpad touch-dpad" aria-label="Town movement controls">
                 <button type="button" data-town-move="-1,-1" aria-label="Move northwest" data-i18n-attr="aria-label:Move northwest">↖</button>
                 <button type="button" data-town-move="0,-1" aria-label="Move north" data-i18n-attr="aria-label:Move north">↑</button>
@@ -431,6 +451,11 @@
               <p class="keyboard-hint" data-i18n="Walk one tile at a time. Tap a nearby neighbor or press Space or E to talk; step onto the southern road to enter the forbidden tomb.">Walk one tile at a time. Tap a nearby neighbor or press Space or E to talk; step onto the southern road to enter the forbidden tomb.</p>
               <div class="town-legend" aria-label="Town map key" data-i18n-attr="aria-label:Town map key">
                 <span><i>⌂</i> Ceiba House</span><span><i>▤</i> Market</span>
+                <span><i>▲</i> <span data-i18n="Great stepped temple">Great stepped temple</span></span>
+                <span><i>≈</i> <span data-i18n="Irrigation canal">Irrigation canal</span></span>
+                <span><i>╪</i> <span data-i18n="Footbridge">Footbridge</span></span>
+                <span><i>━</i> <span data-i18n="Processional road">Processional road</span></span>
+                <span><i>▧</i> <span data-i18n="Ceremonial plaza">Ceremonial plaza</span></span>
                 <span><i>N/T/X/P/B</i> Townsfolk</span><span><i>W</i> Ceiba Well</span><span><i>↟</i> Tomb road</span>
               </div>
             </section>
@@ -958,6 +983,6 @@
     <script src="./systems/dungeons.js?v=106" defer></script>
     <script src="./admob.config.js?v=1" defer></script>
     <script type="module" src="./systems/rewarded-ads.js?v=1"></script>
-    <script src="./app.js?v=198" defer></script>
+    <script src="./app.js?v=199" defer></script>
   </body>
 </html>

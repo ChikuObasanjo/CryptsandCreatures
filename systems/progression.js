@@ -616,6 +616,10 @@ function buildProject(id) {
   }
   state.run.gold = roundGold(state.run.gold - next.cost);
   progress().town[id] = level + 1;
+  if (state.run.location === "city" &&
+    !townCanOccupy(state.run.townPosition.x, state.run.townPosition.y, progress().town)) {
+    state.run.townPosition = { ...TOWN_PLAZA };
+  }
   addLog(`Chiltomatlan builds ${t(project.name)}${project.levels.length > 1 ? ` (stage ${level + 1})` : ""}: ${next.effect}`);
   elements["projects-message"].textContent = `${t(project.name)} complete: ${next.effect}`;
   showToast(`${t(project.name)} · ${next.effect}`);
@@ -638,7 +642,7 @@ function renderProjectsDialog() {
     const level = projectLevel(id);
     const complete = level >= project.levels.length;
     const card = document.createElement("article");
-    card.className = `project-card${complete ? " is-complete" : level ? " is-started" : ""}`;
+    card.className = `project-card${complete ? " is-complete" : level ? " is-started" : ""}${project.levels.length > 5 ? " has-many-stages" : ""}`;
     const art = document.createElement("div");
     art.className = "project-art";
     const emblem = document.createElement("span");

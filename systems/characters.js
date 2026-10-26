@@ -720,10 +720,10 @@ function openCharacterBuilder() {
   elements["character-error"].textContent = "";
   elements["character-dialog-heading"].textContent = window.cryptsLocale.t("Create your character");
   elements["character-submit"].textContent = window.cryptsLocale.t("Begin adventure");
-  elements["new-game-warning"].classList.toggle("hidden", !state.run);
-  elements["new-game-warning"].textContent = state.run
-    ? window.cryptsLocale.t("Starting a new game will replace {name}'s saved run when you begin.", { name: state.run.character.name })
-    : "";
+  elements["new-game-warning"].classList.remove("hidden");
+  elements["new-game-warning"].textContent = window.cryptsLocale.t(
+    "Starting a new game creates a separate character save. Your other saves will not be overwritten."
+  );
   elements["character-name"].value = profile.name || "Iztli";
   elements["character-gender"].value = GENDERS.includes(profile.gender) ? profile.gender : "other";
   elements["character-race"].value = profile.race || "human";
@@ -839,7 +839,15 @@ function commitCharacter(event) {
   }
   try {
     const character = readCharacterFromForm();
-    newRun(character);
+    const previousSaveId = state.activeSaveId;
+    state.activeSaveId = createSaveId();
+    try {
+      newRun(character);
+    } catch (error) {
+      state.activeSaveId = previousSaveId;
+      throw error;
+    }
+    saveRun();
     elements["character-dialog"].close();
     elements["prologue-heading"].textContent = "A Door Beneath Chiltomatlan";
     setDialogCopy("prologue-copy", `${TOMB_HISTORY} Your purpose is your own: explore, gather what you need, and return to Chiltomatlan whenever you choose.`);

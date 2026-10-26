@@ -98,8 +98,8 @@ function villagerWhereabouts(id) {
   return villager.schedule.find((slot) => hour >= slot.from && hour < slot.to) || null;
 }
 
-// Villagers walk the town map as ordinary townsfolk: they join TOWN_NPCS, and their
-// position follows the clock. Off-schedule villagers stand off the map.
+// Scheduled, talkable villagers move through TOWN_NPCS with the clock. Fixed service
+// characters and ambient non-talkers keep their authored positions.
 function syncVillagerPositions() {
   if (typeof TOWN_NPCS === "undefined" || !state.run) return;
   for (const [id, villager] of Object.entries(VILLAGE.villagers)) {
@@ -108,6 +108,7 @@ function syncVillagerPositions() {
       npc = { id, name: `${villager.name}, ${villager.role}`, x: -9, y: -9, glyph: "V", faction: null, villager: true };
       TOWN_NPCS.push(npc);
     }
+    if (!npc.villager) continue;
     const slot = villagerWhereabouts(id);
     npc.x = slot ? slot.x : -9;
     npc.y = slot ? slot.y : -9;

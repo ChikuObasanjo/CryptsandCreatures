@@ -141,40 +141,40 @@
         name: "Maize Granary", emblem: "❦",
         description: "Shared stores mean lighter packs and steadier stomachs.",
         levels: [
-          { cost: 120, effect: "Food drains 1% slower each hour in the tomb." },
-          { cost: 380, effect: "Water also drains 1% slower each hour." }
+          { cost: 1200, effect: "Food drains 1% slower each hour in the tomb. The Canal Garden opens beside the irrigation channel." },
+          { cost: 3800, effect: "Water also drains 1% slower each hour. The Community Orchard opens beside the canal." }
         ]
       },
       shrine: {
         name: "Shrine of the Ceiba", emblem: "✥",
         description: "Offerings at the great tree watch over those below.",
         levels: [
-          { cost: 150, effect: "If you fall, the crew saves half of your unsecured gold." },
-          { cost: 450, effect: "+1 to all saving throws." }
+          { cost: 1500, effect: "If you fall, the crew saves half of your unsecured gold." },
+          { cost: 4500, effect: "+1 to all saving throws. A shaded plaza pavilion is built." }
         ]
       },
       workshop: {
         name: "Obsidian Workshop", emblem: "◆",
         description: "Knappers and weavers who can improve your gear.",
         levels: [
-          { cost: 100, effect: "Reforge your equipped weapon or armor to Fine quality." },
-          { cost: 340, effect: "Reforge Fine gear to Masterwork quality." }
+          { cost: 1000, effect: "Reforge your equipped weapon or armor to Fine quality." },
+          { cost: 3400, effect: "Reforge Fine gear to Masterwork quality. The Calpulli Crafts Hall opens in the east quarter." }
         ]
       },
       lift: {
         name: "Wardens' Rope Lift", emblem: "⇣",
         description: "A guarded shaft down through the tomb's old light-wells.",
         levels: [
-          { cost: 250, effect: "Descend straight to floor 5 once you have reached it." },
-          { cost: 700, effect: "Descend straight to floor 9 once you have reached it." }
+          { cost: 2500, effect: "Descend straight to floor 5 once you have reached it." },
+          { cost: 7000, effect: "Descend straight to floor 9 once you have reached it." }
         ]
       },
       "trade-hall": {
         name: "Pochteca Trade Hall", emblem: "◈",
         description: "Long-distance traders bring better goods to the market.",
         levels: [
-          { cost: 200, effect: "Treasure sells for 10% more." },
-          { cost: 500, effect: "The market stocks Fine gear suited to your calling." }
+          { cost: 2000, effect: "Treasure sells for 10% more." },
+          { cost: 5000, effect: "The market stocks Fine gear suited to your calling." }
         ]
       }
     },

@@ -29,6 +29,8 @@ const SPELLS = window.CryptsSpells.catalog;
 const STORE_KEYS = {
   pack: "crypts-and-creatures.pack.v1",
   run: "crypts-and-creatures.run.v1",
+  saveIndex: "crypts-and-creatures.saves.v1",
+  saveSlotPrefix: "crypts-and-creatures.save.v1.",
   language: "crypts-and-creatures.language.v1",
   darkMode: "crypts-and-creatures.dark-mode.v1",
   font: "crypts-and-creatures.font.v1",
@@ -58,7 +60,7 @@ function setMapZoom(next, { announce = false } = {}) {
   if (zoomOut) zoomOut.disabled = value <= MAP_ZOOM_MIN;
   if (zoomIn) zoomIn.disabled = value >= MAP_ZOOM_MAX;
   try { localStorage.setItem(STORE_KEYS.mapZoom, String(value)); } catch { /* private mode */ }
-  if (changed && state.gameStarted && state.run?.location === "dungeon") {
+  if (changed && state.gameStarted && ["city", "dungeon"].includes(state.run?.location)) {
     renderMap();
     if (announce) showToast(t("Map zoom {0}", { 0: value > 0 ? `+${value}` : String(value) }));
   }
@@ -90,11 +92,9 @@ const DIRECTIONS = [
   { x: 0, y: 1, label: "↓", name: "south", key: "ArrowDown" },
   { x: -1, y: 0, label: "←", name: "west", key: "ArrowLeft" }
 ];
-const TOWN_WELL = { x: 6, y: 5, name: "Ceiba Well" };
-// Where you stand in town: back from the tomb, you come up the gate road; a new
-// game or a moved save starts beside the well in the plaza.
-const TOWN_SPAWN = { x: 6, y: 8 };
-const TOWN_PLAZA = { x: 6, y: 6 };
+const TOWN_WELL = { x: 8, y: 7, name: "Ceiba Well" };
+const TOWN_SPAWN = { x: 8, y: 12 };
+const TOWN_PLAZA = { x: 8, y: 8 };
 // PC controls: the arrow keys or the numpad move; Numpad 7 9 1 3 (or Home, PgUp, End, PgDn)
 // move diagonally. Space, Enter, or E interacts. Number keys cast spells.
 const ORTHOGONAL_KEYS = { north: ["Numpad8"], east: ["Numpad6"], south: ["Numpad2"], west: ["Numpad4"] };
@@ -113,29 +113,114 @@ const DUNGEON_FLOOR_COUNT = 13;
 const LEGACY_MAP_TILE_SIZE = ROOM_GRID_SIZE * 7;
 const PROCEDURAL_MAP_OFFSET = Math.floor((MAP_TILE_SIZE - LEGACY_MAP_TILE_SIZE) / 2);
 const GTFL_MAP_ID = "gtfl-level-1";
-// Chiltomatlan: the Ceiba House (I) and the market (M) face each other across the north
-// lane; the plaza and its well (W) sit in the middle; the house for sale (H) is down the
-// southwest lane; the gate road runs south between two posts to the broken seal (D).
-const TOWN_MAP = [
-  "#############",
-  "#II...#...MM#",
-  "#II.......MM#",
-  "#II...#.....#",
-  "##.........##",
-  "#.....W.....#",
-  "##.........##",
-  "#HH..#.#....#",
-  "#HH........##",
-  "######.######",
-  "######D######"
-];
+const TOWN_MAP_VERSION = 5;
+const TOWN_LAYOUT = {
+  columns: 17,
+  rows: 15,
+  districts: [
+    { id: "ceremonial", name: "Ceremonial core", bounds: { x: 5, y: 1, width: 7, height: 9 } },
+    { id: "west-quarter", name: "Western homes and gardens", bounds: { x: 1, y: 1, width: 3, height: 12 } },
+    { id: "east-quarter", name: "Market and crafts quarter", bounds: { x: 13, y: 1, width: 3, height: 12 } },
+    { id: "south-quarter", name: "Southern homes and gathering court", bounds: { x: 5, y: 10, width: 7, height: 3 } }
+  ],
+  processionalRoute: { x: 8, fromY: 5, toY: 13 },
+  marketRoute: { y: 7, fromX: 1, toX: 15 },
+  plaza: { x: 5, y: 5, width: 7, height: 5 },
+  canals: [
+    { x: 4, fromY: 4, toY: 13, bridgeRows: [4, 5, 6, 7, 11, 13] },
+    { x: 12, fromY: 4, toY: 13, bridgeRows: [4, 5, 6, 7, 11, 13] }
+  ],
+  irrigation: {
+    y: 9, fromX: 4, toX: 12, bridgeX: 8,
+    feeder: { x: 8, fromY: 8, toY: 9, bridgeY: 8 }
+  },
+  buildings: [
+    { id: "inn", district: "west-quarter", code: "I", name: "Ceiba House inn", x: 1, y: 1, width: 2, height: 2 },
+    { id: "market", district: "east-quarter", code: "M", name: "Chiltomatlan market stalls", x: 14, y: 1, width: 2, height: 2 },
+    { id: "temple", district: "ceremonial", code: "T", name: "Great stepped temple", tilePrefix: "town-temple", x: 7, y: 3, width: 3, height: 2 },
+    { id: "home", district: "west-quarter", code: "H", name: "An empty house for sale", x: 1, y: 11, width: 2, height: 2 },
+    { id: "garden", district: "west-quarter", code: "G", name: "Canal Garden", tilePrefix: "town-garden", projectId: "granary", projectLevel: 1, x: 2, y: 5, width: 2, height: 2 },
+    { id: "orchard", district: "west-quarter", code: "O", name: "Community Orchard", tilePrefix: "town-orchard", projectId: "granary", projectLevel: 2, x: 2, y: 9, width: 2, height: 2 },
+    { id: "workshop", district: "east-quarter", code: "K", name: "Calpulli Crafts Hall", tilePrefix: "town-crafts-hall", projectId: "workshop", projectLevel: 2, x: 13, y: 8, width: 2, height: 2 },
+    { id: "pavilion", district: "south-quarter", code: "A", name: "Plaza Pavilion", tilePrefix: "town-pavilion", projectId: "shrine", projectLevel: 2, x: 10, y: 11, width: 2, height: 2 }
+  ],
+  gate: { x: 8, y: 14 }
+};
+const TOWN_BUILDINGS = TOWN_LAYOUT.buildings;
+function buildTownMap(projectLevels = {}) {
+  const map = Array.from({ length: TOWN_LAYOUT.rows }, (_, y) =>
+    Array.from({ length: TOWN_LAYOUT.columns }, (_, x) =>
+      y === 0 || y === TOWN_LAYOUT.rows - 1 || x === 0 || x === TOWN_LAYOUT.columns - 1 ? "#" : "."));
+  for (let x = TOWN_LAYOUT.marketRoute.fromX; x <= TOWN_LAYOUT.marketRoute.toX; x += 1) {
+    map[TOWN_LAYOUT.marketRoute.y][x] = "r";
+  }
+  for (let y = TOWN_LAYOUT.processionalRoute.fromY; y <= TOWN_LAYOUT.processionalRoute.toY; y += 1) {
+    map[y][TOWN_LAYOUT.processionalRoute.x] = "r";
+  }
+  for (let y = TOWN_LAYOUT.plaza.y; y < TOWN_LAYOUT.plaza.y + TOWN_LAYOUT.plaza.height; y += 1) {
+    for (let x = TOWN_LAYOUT.plaza.x; x < TOWN_LAYOUT.plaza.x + TOWN_LAYOUT.plaza.width; x += 1) {
+      if (map[y][x] !== "r") map[y][x] = "p";
+    }
+  }
+  for (const canal of TOWN_LAYOUT.canals) {
+    for (let y = canal.fromY; y <= canal.toY; y += 1) {
+      map[y][canal.x] = "~";
+    }
+  }
+  for (let x = TOWN_LAYOUT.irrigation.fromX; x <= TOWN_LAYOUT.irrigation.toX; x += 1) {
+    map[TOWN_LAYOUT.irrigation.y][x] = "~";
+  }
+  for (let y = TOWN_LAYOUT.irrigation.feeder.fromY; y <= TOWN_LAYOUT.irrigation.feeder.toY; y += 1) {
+    map[y][TOWN_LAYOUT.irrigation.feeder.x] = "~";
+  }
+  for (const canal of TOWN_LAYOUT.canals) {
+    for (const y of canal.bridgeRows) map[y][canal.x] = "B";
+  }
+  map[TOWN_LAYOUT.irrigation.feeder.bridgeY][TOWN_LAYOUT.irrigation.feeder.x] = "B";
+  map[TOWN_LAYOUT.irrigation.y][TOWN_LAYOUT.irrigation.bridgeX] = "V";
+  for (const building of TOWN_BUILDINGS) {
+    if (building.projectId && (projectLevels[building.projectId] || 0) < building.projectLevel) continue;
+    const district = TOWN_LAYOUT.districts.find((entry) => entry.id === building.district);
+    if (!district || building.x < district.bounds.x || building.y < district.bounds.y ||
+      building.x + building.width > district.bounds.x + district.bounds.width ||
+      building.y + building.height > district.bounds.y + district.bounds.height) {
+      throw new Error(`Town building ${building.id} is outside its configured district.`);
+    }
+    for (let y = building.y; y < building.y + building.height; y += 1) {
+      for (let x = building.x; x < building.x + building.width; x += 1) {
+        if (!map[y] || ![".", "r", "p"].includes(map[y][x])) {
+          throw new Error(`Town building ${building.id} overlaps a route, canal, bridge, or another building.`);
+        }
+        map[y][x] = building.code;
+      }
+    }
+  }
+  map[TOWN_WELL.y][TOWN_WELL.x] = "W";
+  map[TOWN_LAYOUT.gate.y][TOWN_LAYOUT.gate.x] = "D";
+  return map;
+}
+const TOWN_MAP = buildTownMap();
+let cachedTownMapKey = "";
+let cachedTownMap = null;
+function townMapAtLevel(projectLevels = {}) {
+  const key = TOWN_BUILDINGS.filter((building) => building.projectId)
+    .map((building) => projectLevels[building.projectId] || 0).join(",");
+  if (cachedTownMap && cachedTownMapKey === key) return cachedTownMap;
+  const map = buildTownMap(projectLevels);
+  cachedTownMapKey = key;
+  cachedTownMap = map;
+  return map;
+}
+function townMapAtCurrentLevel() {
+  return townMapAtLevel(state.run?.progress?.town || {});
+}
 const TOWN_NPCS = [
-  { id: "gear-mender", name: "Mahuiz, trader in strange wares", x: 5, y: 1, glyph: "G", faction: null },
+  { id: "gear-mender", name: "Mahuiz, trader in strange wares", x: 6, y: 5, glyph: "G", faction: null },
   { id: "innkeeper", name: "Nali, keeper of the travelers' house", x: 3, y: 2, glyph: "N", faction: "ceiba-house" },
-  { id: "merchant", name: "Teyac, market trader", x: 9, y: 2, glyph: "T", faction: "traders-circle" },
-  { id: "temple-keeper", name: "Xochi, keeper of the sealed road", x: 7, y: 8, glyph: "X", faction: "road-wardens" },
-  { id: "patolli-player", name: "Ixchel, keeper of the Patolli board", x: 2, y: 5, glyph: "P", faction: null },
-  { id: "master-builder", name: "Tlacotl, master builder", x: 4, y: 8, glyph: "B", faction: null }
+  { id: "merchant", name: "Teyac, market trader", x: 13, y: 2, glyph: "T", faction: "traders-circle" },
+  { id: "temple-keeper", name: "Xochi, keeper of the sealed road", x: 10, y: 5, glyph: "X", faction: "road-wardens" },
+  { id: "patolli-player", name: "Ixchel, keeper of the Patolli board", x: 2, y: 7, glyph: "P", faction: null },
+  { id: "master-builder", name: "Tlacotl, master builder", x: 14, y: 7, glyph: "B", faction: null }
 ];
 const MOBILE_MAP_VIEW_SIZE = 7;
 const DESKTOP_MAP_VIEW_SIZE = 9;
@@ -230,6 +315,7 @@ const GTFL_LEGACY_MAP_SIGNS = [
 const state = {
   pack: starterPack,
   run: null,
+  activeSaveId: null,
   gameStarted: false,
   dashReady: false,
   disengageReady: false,
@@ -261,6 +347,36 @@ const state = {
   characterCreationStep: 0
 };
 
+let deferredInstallPrompt = null;
+let pwaInstallAccepted = false;
+
+function isInstalledPwa() {
+  return pwaInstallAccepted || window.matchMedia("(display-mode: standalone)").matches ||
+    navigator.standalone === true;
+}
+
+function isNativeApp() {
+  return Boolean(window.Capacitor?.isNativePlatform?.()) ||
+    navigator.userAgent.includes("Electron");
+}
+
+function updatePwaInstallOption() {
+  const section = document.getElementById("settings-pwa-install");
+  if (!section) return;
+  section.classList.toggle("hidden", isNativeApp() || isInstalledPwa() || location.protocol === "file:");
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  updatePwaInstallOption();
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  pwaInstallAccepted = true;
+  updatePwaInstallOption();
+});
+
 const HOLD_MOVE_INITIAL_DELAY_MS = 220;
 const HOLD_MOVE_INTERVAL_MS = 320;
 let heldMove = null;
@@ -275,7 +391,7 @@ const elements = Object.fromEntries([
   "header-water", "header-water-fill", "header-water-meter", "header-spell-slots",
   "header-spell-slot-count", "header-spell-slot-pips",
   "header-water-stock", "header-clock", "delve-objectives", "inventory-filters",
-  "start-screen", "continue-game", "continue-hint", "new-game", "open-settings", "settings-dialog", "close-settings", "language-select", "font-select", "dark-mode-toggle", "villager-dialog", "villager-portrait", "villager-eyebrow", "villager-name", "villager-doing", "villager-hearts", "villager-speech", "villager-actions", "villager-close", "game-layout", "new-game-warning", "pause-dialog",
+  "start-screen", "continue-game", "continue-hint", "new-game", "load-game", "save-manager-dialog", "save-manager-list", "save-manager-empty", "close-save-manager", "settings-pwa-install", "install-pwa", "open-settings", "settings-dialog", "close-settings", "language-select", "font-select", "dark-mode-toggle", "villager-dialog", "villager-portrait", "villager-eyebrow", "villager-name", "villager-doing", "villager-hearts", "villager-speech", "villager-actions", "villager-close", "game-layout", "new-game-warning", "pause-dialog",
   "resume-game", "return-to-title",
   "character-dialog", "character-dialog-heading", "character-form", "character-submit", "character-next", "character-back",
   "character-intro", "creation-step-label", "creation-step-track", "creation-progress-bar", "creation-progress-fill", "close-character", "cancel-character",
@@ -551,7 +667,29 @@ function storageAvailable() {
 
 function saveRun() {
   try {
-    localStorage.setItem(STORE_KEYS.run, JSON.stringify(state.run));
+    const saveId = state.activeSaveId || createSaveId();
+    const updatedAt = new Date().toISOString();
+    const slot = {
+      schemaVersion: 1,
+      pack: state.pack,
+      run: state.run
+    };
+    const index = readSaveIndex();
+    const existing = index.slots.find((save) => save.id === saveId);
+    const metadata = {
+      id: saveId,
+      name: state.run.character.name,
+      level: state.run.level,
+      location: state.run.location,
+      updatedAt
+    };
+    localStorage.setItem(`${STORE_KEYS.saveSlotPrefix}${saveId}`, JSON.stringify(slot));
+    index.slots = existing
+      ? index.slots.map((save) => save.id === saveId ? metadata : save)
+      : [...index.slots, metadata];
+    index.lastPlayedId = saveId;
+    localStorage.setItem(STORE_KEYS.saveIndex, JSON.stringify(index));
+    state.activeSaveId = saveId;
     elements["save-state"].textContent = "Run autosaves on this device";
     return true;
   } catch (error) {
@@ -633,7 +771,7 @@ function validatePack(raw) {
 function enterDungeon(options = {}) {
   if (state.run.hp <= 0) {
     showToast("You are still too weak to travel. Rest at the Ceiba House before returning to the tomb.");
-    if (state.run.location === "city" && TOWN_MAP[state.run.townPosition.y]?.[state.run.townPosition.x] === "D") {
+    if (state.run.location === "city" && townMapAtCurrentLevel()[state.run.townPosition.y]?.[state.run.townPosition.x] === "D") {
       state.run.townPosition = { ...TOWN_SPAWN };
       render();
     }
@@ -1788,12 +1926,13 @@ function refreshCompanionFormation(dx = 0, dy = 0) {
   });
 }
 
-function finishPlayerTurn(elapsedMinutes = 10) {
+function finishPlayerTurn(elapsedMinutes = 10, movementMode = null) {
   state.run.steps += 1;
   if (state.run.location === "dungeon" && !state.run.lost && !state.run.won) {
     tickConditions();
     advanceSurvivalTime(false, elapsedMinutes);
     if (!state.run.lost) alliesTakeTurn();
+    state.run.dodging = movementMode !== "dash" && movementMode !== "disengage";
     if (!state.run.lost) enemiesTakeTurn();
   }
   state.run.dodging = false;
@@ -1859,6 +1998,7 @@ function movePlayer(dx, dy) {
   if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || (!dx && !dy)) return false;
   const previousFacing = state.run.player.facing || "south";
   state.run.player.facing = facingForDelta(dx, dy);
+  const movementMode = state.disengageReady ? "disengage" : state.dashReady ? "dash" : "walk";
   const stride = state.dashReady ? 2 : 1;
   let moved = false;
   let enteredRoom = false;
@@ -1907,7 +2047,7 @@ function movePlayer(dx, dy) {
     );
     if (!state.disengageReady) {
       for (const enemy of leavingThreats) {
-        enemyAttack(enemy, true);
+        enemyAttack(enemy, true, movementMode === "walk");
         if (state.run.lost) {
           state.dashReady = false;
           state.disengageReady = false;
@@ -1938,7 +2078,7 @@ function movePlayer(dx, dy) {
   if (moved) {
     state.lookTarget = null;
     state.trapStepConfirm = null;
-    finishPlayerTurn();
+    finishPlayerTurn(10, movementMode);
   }
   else {
     state.dashReady = false;
@@ -2263,13 +2403,6 @@ function attackTargets() {
   return [...adjacent, ...ranged];
 }
 
-function dodge() {
-  if (state.run.lost || state.run.won) return;
-  state.run.dodging = true;
-  addLog("You take the Dodge action; attacks against you have disadvantage until your next turn.");
-  finishPlayerTurn();
-}
-
 function dash() {
   if (state.run.lost || state.run.won) return;
   state.dashReady = !state.dashReady;
@@ -2425,7 +2558,7 @@ function showCombatFeedback(kind, message, target = {}) {
   }
 }
 
-function enemyAttack(enemy, opportunity = false) {
+function enemyAttack(enemy, opportunity = false, automaticDodge = state.run.dodging) {
   const targets = partyMembers().filter((member) => member.hero ? state.run.hp > 0 : member.hp > 0);
   const target = targets[randomInt(targets.length) - 1];
   if (!target) return;
@@ -2434,7 +2567,7 @@ function enemyAttack(enemy, opportunity = false) {
     enemyId: enemy.id,
     companionId: target.hero ? "" : target.id
   });
-  const dodging = target.hero && state.run.dodging;
+  const dodging = target.hero && automaticDodge;
   const rolls = dodging ? [randomInt(20), randomInt(20)] : [randomInt(20)];
   const die = Math.min(...rolls);
   const total = die + enemy.attackBonus;
@@ -2454,7 +2587,7 @@ function enemyAttack(enemy, opportunity = false) {
         actor: "companion", companionId: target.id, x: target.x, y: target.y
       });
     }
-    addLog(`${enemy.name} hits ${target.hero ? "you" : target.name} for ${damage} damage${die === 20 ? " (critical)" : ""}${opportunity ? " with an opportunity attack" : dodging ? " despite Dodge" : ""}.`);
+    addLog(`${enemy.name} hits ${target.hero ? "you" : target.name} for ${damage} damage${die === 20 ? " (critical)" : ""}${opportunity ? " with an opportunity attack" : dodging ? " despite your guard" : ""}.`);
   } else {
     addLog(`${enemy.name} misses ${target.hero ? "you" : target.name}${opportunity ? " with an opportunity attack" : ""} (d20 ${rolls.join("/")}, total ${total} vs. AC ${armorClass}).`);
     showCombatFeedback("miss", "Missed", { actor: target.hero ? "player" : "companion", x: target.x, y: target.y, companionId: target.id });
@@ -2797,9 +2930,10 @@ function isTownWellAt(x, y) {
   return TOWN_WELL.x === x && TOWN_WELL.y === y;
 }
 
-function townCanOccupy(x, y) {
-  return y >= 0 && y < TOWN_MAP.length && x >= 0 && x < TOWN_MAP[y].length &&
-    [".", "D", "W"].includes(TOWN_MAP[y][x]) && !townNpcAt(x, y);
+function townCanOccupy(x, y, projectLevels = state.run?.progress?.town || {}) {
+  const map = townMapAtLevel(projectLevels);
+  return y >= 0 && y < map.length && x >= 0 && x < map[y].length &&
+    [".", "D", "W", "r", "p", "B", "V"].includes(map[y][x]) && !townNpcAt(x, y);
 }
 
 function townDistance(first, second) {
@@ -2904,7 +3038,7 @@ function townStepToward(target, reach = 1) {
       const y = current.y + direction.y;
       if (seen.has(key(x, y)) || !townCanOccupy(x, y)) continue;
       // Don't route over the tomb gate unless that's where you're going.
-      if (TOWN_MAP[y]?.[x] === "D" && !(target.x === x && target.y === y)) continue;
+      if (townMapAtCurrentLevel()[y]?.[x] === "D" && !(target.x === x && target.y === y)) continue;
       seen.add(key(x, y));
       const first = current.first || direction;
       if (townDistance({ x, y }, target) <= reach) return first;
@@ -2930,7 +3064,7 @@ function moveTownPlayer(dx, dy) {
     talkToTownNpc(npc.id);
     return;
   }
-  if (TOWN_MAP[y]?.[x] === "H") {
+  if (townMapAtCurrentLevel()[y]?.[x] === "H") {
     openHouse();
     return;
   }
@@ -2940,7 +3074,7 @@ function moveTownPlayer(dx, dy) {
   }
   // Diagonal steps follow the same rules as straight ones: only the destination matters.
   state.run.townPosition = { x, y };
-  if (TOWN_MAP[y][x] === "D") {
+  if (townMapAtCurrentLevel()[y][x] === "D") {
     enterDungeon();
     return;
   }
@@ -3360,7 +3494,7 @@ function contextualInteraction() {
         })))
       };
     }
-    if (TOWN_MAP[position.y]?.[position.x] === "D") {
+    if (townMapAtCurrentLevel()[position.y]?.[position.x] === "D") {
       return { label: "Enter the tomb", action: enterDungeon };
     }
     if (besideHouse(position)) {
@@ -3461,7 +3595,7 @@ function interact() {
 
 function townBuildingBounds(code) {
   const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-  TOWN_MAP.forEach((row, y) => [...row].forEach((cell, x) => {
+  townMapAtCurrentLevel().forEach((row, y) => row.forEach((cell, x) => {
     if (cell !== code) return;
     box.minX = Math.min(box.minX, x);
     box.minY = Math.min(box.minY, y);
@@ -3471,14 +3605,50 @@ function townBuildingBounds(code) {
   return box;
 }
 
+function townViewShape() {
+  const viewport = document.getElementById("town-map-viewport");
+  const across = Math.max(3, (window.matchMedia("(max-width: 540px)").matches ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom);
+  const width = viewport?.clientWidth || 0;
+  const height = viewport?.clientHeight || 0;
+  if (width < 60 || height < 60) return { cols: across, rows: across, tile: 0 };
+  const tile = Math.floor((Math.min(width, height) - 4) / across);
+  const odd = (count) => {
+    const whole = Math.max(3, Math.min(19, Math.floor(count)));
+    return whole % 2 ? whole : whole - 1;
+  };
+  return { cols: odd(width / tile), rows: odd(height / tile), tile };
+}
+
+function resizeTownMap() {
+  const map = elements["town-map"];
+  if (!map) return { cols: 0, rows: 0, tile: 0 };
+  const shape = townViewShape();
+  map.style.setProperty("--town-columns", shape.cols);
+  map.style.setProperty("--town-rows", shape.rows);
+  if (shape.tile) {
+    map.style.width = `${shape.cols * shape.tile}px`;
+    map.style.height = `${shape.rows * shape.tile}px`;
+  } else {
+    map.style.removeProperty("width");
+    map.style.removeProperty("height");
+  }
+  return shape;
+}
+
 function renderTownMap() {
   syncVillagerPositions();
   const fragment = document.createDocumentFragment();
-  elements["town-map"].style.setProperty("--town-columns", TOWN_MAP[0].length);
+  const townMap = townMapAtCurrentLevel();
   const player = state.run.townPosition;
+  const { cols, rows } = resizeTownMap();
+  const centeredOrigin = (position, viewSize, mapSize) => mapSize > viewSize
+    ? Math.max(0, Math.min(position - Math.floor(viewSize / 2), mapSize - viewSize))
+    : Math.floor((mapSize - viewSize) / 2);
+  const originX = centeredOrigin(player.x, cols, TOWN_LAYOUT.columns);
+  const originY = centeredOrigin(player.y, rows, TOWN_LAYOUT.rows);
   const nearNpc = TOWN_NPCS.find((npc) => townDistance(player, npc) <= 1);
   const onWell = townDistance(player, TOWN_WELL) === 0;
-  const onTrail = TOWN_MAP[player.y]?.[player.x] === "D";
+  const onTrail = townMap[player.y]?.[player.x] === "D";
   const interactionLabel = townInteractionLabel();
   elements["town-interact-label"].textContent = interactionLabel;
   elements["town-interact-button"].disabled = interactionLabel === "Nothing nearby";
@@ -3492,19 +3662,22 @@ function renderTownMap() {
         ? "The Ceiba Well is nearby. Step onto its tile to draw clean water."
     : onTrail
       ? "The broken imperial seal opens onto the tomb's outer halls. Step through to begin your expedition."
-      : "You stand in Chiltomatlan's shaded plaza. The travelers' house is northwest, the market northeast, the empty house down the southwest lane, and the forbidden tomb road runs south through the gate.";
-  for (let y = 0; y < TOWN_MAP.length; y += 1) {
-    for (let x = 0; x < TOWN_MAP[y].length; x += 1) {
-      const code = TOWN_MAP[y][x];
+      : "You stand in Chiltomatlan's ceremonial plaza. The stepped temple is north, the market quarter east, homes and gardens west, and the processional road leads south to the tomb gate.";
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < cols; column += 1) {
+      const x = originX + column;
+      const y = originY + row;
+      const code = townMap[y]?.[x] || ".";
       const npc = townNpcAt(x, y);
       const tile = document.createElement("button");
+      const building = TOWN_BUILDINGS.find((entry) => entry.code === code);
       tile.type = "button";
-      tile.className = `town-tile ${code === "#" ? "town-wall" : code === "I" ? "town-inn" : code === "M" ? "town-market" : code === "H" ? "town-house" : code === "D" ? "town-gate" : code === "W" ? "town-well" : "town-street"}`;
+      tile.className = `town-tile ${code === "#" ? "town-wall" : code === "I" ? "town-inn" : code === "M" ? "town-market" : code === "H" ? "town-house" : code === "D" ? "town-gate" : code === "W" ? "town-well" : code === "~" ? "town-canal" : code === "B" ? "town-bridge" : code === "V" ? "town-bridge-vertical" : code === "r" ? "town-route" : code === "p" ? "town-plaza" : building ? `town-building town-${building.id}` : "town-street"}`;
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
       if (code === "H") {
         const house = houseState();
-        tile.style.backgroundImage = `url("${houseArtUrl(house.owned ? house.style : "calli")}")`;
+        tile.style.backgroundImage = `url("${houseArtUrl(house.owned ? house.style : "calli")}"), url("./resources/tiles/town-street.png?v=90")`;
         tile.classList.toggle("is-for-sale", !house.owned);
         const box = townBuildingBounds("H");
         if (!house.owned && x === box.maxX && y === box.minY) {
@@ -3514,18 +3687,29 @@ function renderTownMap() {
           tile.append(sign);
         }
       }
-      if (code === "I" || code === "M" || code === "H") {
-        // Inn and market are each one painting spread across their whole footprint.
+      if (building?.tilePrefix) {
+        const tileX = x - building.x;
+        const tileY = y - building.y;
+        tile.style.backgroundImage = `url("./resources/tiles/${building.tilePrefix}-${tileX}-${tileY}.png"), url("./resources/tiles/town-street.png?v=90")`;
+      }
+      if (!building?.tilePrefix && (code === "I" || code === "M" || code === "H")) {
         const box = townBuildingBounds(code);
         const width = box.maxX - box.minX + 1;
         const height = box.maxY - box.minY + 1;
-        tile.style.backgroundSize = `${width * 100}% ${height * 100}%`;
-        tile.style.backgroundPosition = `${width > 1 ? ((x - box.minX) / (width - 1)) * 100 : 50}% ${height > 1 ? ((y - box.minY) / (height - 1)) * 100 : 50}%`;
+        const imagePosition = `${width > 1 ? ((x - box.minX) / (width - 1)) * 100 : 50}% ${height > 1 ? ((y - box.minY) / (height - 1)) * 100 : 50}%`;
+        if (code === "M") {
+          tile.style.backgroundSize = `${width * 100}% ${height * 100}%`;
+          tile.style.backgroundPosition = imagePosition;
+        } else {
+          tile.style.backgroundSize = `${width * 100}% ${height * 100}%, 100% 100%`;
+          tile.style.backgroundPosition = `${imagePosition}, center`;
+        }
       }
       const isPlayer = player.x === x && player.y === y;
       const label = npc ? `${npc.name}, speak with them` : code === "W" ? "Ceiba Well, draw clean water for the party" : code === "D" ? "Broken imperial seal, enter the tomb" :
-        code === "I" ? "Ceiba House inn" : code === "M" ? "Chiltomatlan market stalls" :
-        code === "H" ? (houseState().owned ? "Your house" : "An empty house for sale") : code === "#" ? "Building or town wall" : "Town street";
+        code === "H" ? (houseState().owned ? "Your house" : "An empty house for sale") : building ? building.name : code === "~" ? "Irrigation canal" :
+        code === "B" || code === "V" ? "Canal footbridge" : code === "r" ? "Processional and market causeway" : code === "p" ? "Ceremonial plaza" :
+        code === "#" ? "Town boundary" : "Town street";
       tile.setAttribute("aria-label", isPlayer ? `${state.run.character.name}, you are here` : label);
       tile.title = label;
       if (isPlayer) {
@@ -3537,7 +3721,8 @@ function renderTownMap() {
           tile.classList.add("town-villager");
           tile.append(villagerSprite(npc.id, "town-person-marker town-villager-sprite"));
         } else if (npc.id === "patolli-player") {
-          tile.append(createResourceSprite("tokens", "patolli-board.png", "town-person-marker"));
+          tile.classList.add("town-patolli-board-tile");
+          tile.append(createResourceSprite("tokens", "patolli-board.png", "town-person-marker town-patolli-board"));
         } else {
           tile.append(createResourceSprite("tokens", `${npc.id}.png`, "town-person-marker"));
         }
@@ -3911,7 +4096,6 @@ function renderActions() {
   const icons = {
     "wait-button": "kit",
     "attack-button": "weapon",
-    "dodge-button": "armor",
     "dash-button": "tool",
     "disengage-button": "armor",
     "search-button": "tool",
@@ -3939,6 +4123,11 @@ function renderActions() {
     button.title = tooltip;
     button.dataset.tooltip = tooltip;
     button.dataset.shortcut = shortcut === " " ? "space" : shortcut;
+    if (id === "dash-button" || id === "disengage-button") {
+      const pressed = id === "dash-button" ? state.dashReady : state.disengageReady;
+      button.setAttribute("aria-pressed", String(pressed));
+      button.classList.toggle("is-selected", pressed);
+    }
     const glyph = document.createElement("span");
     glyph.className = "action-glyph";
     glyph.setAttribute("aria-hidden", "true");
@@ -3986,7 +4175,7 @@ function renderActions() {
       ? "Flanked · Advantage on melee attacks" : "Engaged · flank with an ally for Advantage")
       : `Explore · tap to move · Passive Perception ${passivePerception}`;
   elements["action-mode"].textContent = state.dashReady ? "Dash armed"
-    : state.disengageReady ? "Disengage armed" : "";
+    : state.disengageReady ? "Disengage armed" : "Auto-guard active";
   const interactionLabel = dungeonInteractionLabel();
   const atEntrance = isAtDungeonEntrance();
   addButton(interactionLabel, interact, "space enter e", false,
@@ -4015,11 +4204,9 @@ function renderActions() {
         elements["action-combat"], `spell-${spellId}-button`);
     });
   }
-  addButton(state.run.dodging ? "Dodge · active" : "Dodge", dodge, "v", true,
-    ended || state.run.dodging, elements["action-combat"], "dodge-button");
-  addButton(state.dashReady ? "Cancel Dash" : "Dash · next move", dash, "t", true,
+  addButton("Dash · next move", dash, "t", true,
     ended, elements["action-combat"], "dash-button");
-  addButton(state.disengageReady ? "Cancel Disengage" : "Disengage · next move", disengage, "y", true,
+  addButton("Disengage · next move", disengage, "y", true,
     ended, elements["action-combat"], "disengage-button");
   addButton("Search", searchArea, "f", true, ended, elements["action-explore"], "search-button");
   addButton(nearbyHazard ? "Disarm trap" : "Disarm · search first", disarmNearbyHazard, "shift+f", true,
@@ -4333,10 +4520,10 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
         : "You can strike adjacent foes in melee."} Roll a d20 + ${stats.attackBonus >= 0 ? "+" : ""}${stats.attackBonus}; a hit deals ${stats.damageDice}${stats.damageBonus >= 0 ? "+" : ""}${stats.damageBonus}. A natural 20 doubles the damage dice. Uses your turn.`
     },
     {
-      name: "Dodge",
-      status: inDungeon ? "Available" : "Dungeon action",
+      name: "Automatic guard",
+      status: inDungeon ? "Active by default" : "Dungeon defense",
       state: inDungeon ? "available" : "context",
-      description: "Spend your turn defending yourself. Attacks against you have disadvantage until your next turn."
+      description: "Attacks against you have disadvantage by default. Moving with Dash or Disengage opts out of this guard for that turn."
     },
     {
       name: "Dash",
@@ -4951,8 +5138,9 @@ function renderStartScreen() {
   document.body.classList.toggle("dungeon-game", Boolean(state.gameStarted && state.run?.location === "dungeon"));
   elements["continue-game"].disabled = !hasSave;
   elements["continue-hint"].textContent = hasSave
-    ? t("Saved game · {name} · {location}", {
+    ? t("Saved game · {name} · Level {level} · {location}", {
       name: state.run.character.name,
+      level: state.run.level,
       location: t(state.run.location === "city" ? "Chiltomatlan" : state.run.location === "store" ? "Chiltomatlan market" : "Expedition")
     })
     : t("No saved game on this device.");
@@ -5336,11 +5524,9 @@ function parseSavedRun(saved, pack) {
     townNpcAt(saved.townPosition.x, saved.townPosition.y)) saved.townPosition = { ...TOWN_PLAZA };
   saved.progress = normalizeProgress(saved.progress, pack);
   saved.house = normalizeHouse(saved.house);
-  if (Number.isInteger(saved.townPosition?.x) && Number.isInteger(saved.townPosition?.y) &&
-    TOWN_MAP[saved.townPosition.y]?.[saved.townPosition.x] === "H") saved.townPosition = { ...TOWN_PLAZA };
-  // The town map changes between versions; anyone standing somewhere that's now a wall moves to the plaza.
   if (!Number.isInteger(saved.townPosition?.x) || !Number.isInteger(saved.townPosition?.y) ||
-    !townCanOccupy(saved.townPosition.x, saved.townPosition.y)) saved.townPosition = { ...TOWN_PLAZA };
+    !townCanOccupy(saved.townPosition.x, saved.townPosition.y, saved.progress.town)) saved.townPosition = { ...TOWN_PLAZA };
+  saved.townMapVersion = TOWN_MAP_VERSION;
   if (saved.hasEnteredDungeon === undefined) saved.hasEnteredDungeon = true;
   if (typeof saved.hasEnteredDungeon !== "boolean") return null;
   if (saved.unsecuredLoot === undefined) saved.unsecuredLoot = { gold: 0, items: [] };
@@ -5804,40 +5990,186 @@ function parseSavedRun(saved, pack) {
 }
 
 function loadState() {
-  let savedPack = null;
-  let savedRun = null;
   try {
-    savedPack = localStorage.getItem(STORE_KEYS.pack);
-    savedRun = localStorage.getItem(STORE_KEYS.run);
-  } catch {
-    return;
-  }
-  if (savedPack) {
-    try {
-      const pack = validatePack(JSON.parse(savedPack));
-      if (pack.id === starterPack.id && [
-        "The Great Temple of the Fallen Lord",
-        "The Greenstone Echo",
-        "The Tomb Beneath Chiltomatlan"
-      ].includes(pack.title)) {
-        state.pack = starterPack;
-        localStorage.setItem(STORE_KEYS.pack, JSON.stringify(starterPack));
-      } else if (pack.id !== "quiet-vault") state.pack = pack;
-      else localStorage.setItem(STORE_KEYS.pack, JSON.stringify(starterPack));
-    } catch (error) {
-      showToast(`Saved pack could not be loaded: ${escapeMessage(error)}`);
-      state.pack = starterPack;
+    const rawIndex = localStorage.getItem(STORE_KEYS.saveIndex);
+    if (rawIndex) {
+      const index = parseSaveIndex(rawIndex);
+      const lastPlayed = index.slots.find((save) => save.id === index.lastPlayedId)
+        || [...index.slots].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+      if (lastPlayed) activateSaveSlot(lastPlayed.id, { markPlayed: false });
+      return;
     }
+
+    const savedPack = localStorage.getItem(STORE_KEYS.pack);
+    const savedRun = localStorage.getItem(STORE_KEYS.run);
+    if (!savedRun) return;
+    const pack = normalizeSavedPack(savedPack ? JSON.parse(savedPack) : starterPack);
+    const run = parseSavedRun(JSON.parse(savedRun), pack);
+    if (!run) throw new Error("saved run did not match its adventure.");
+    state.pack = pack;
+    state.run = run;
+    upgradeGreatTempleContent();
+    const saveId = createSaveId();
+    state.activeSaveId = saveId;
+    saveRun();
+  } catch (error) {
+    showToast(`Saved game could not be loaded: ${escapeMessage(error)}`);
   }
-  if (savedRun) {
-    try {
-      state.run = parseSavedRun(JSON.parse(savedRun), state.pack);
-      if (!state.run) throw new Error("saved run did not match the active pack.");
-      upgradeGreatTempleContent();
-    } catch (error) {
-      showToast(`Saved run could not be loaded: ${escapeMessage(error)} Start a new game to replace it.`);
+}
+
+function createSaveId() {
+  return typeof globalThis.crypto?.randomUUID === "function"
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+function parseSaveIndex(serialized) {
+  const index = JSON.parse(serialized);
+  if (!index || index.schemaVersion !== 1 || !Array.isArray(index.slots)) {
+    throw new Error("save list has an unsupported format.");
+  }
+  const slots = index.slots;
+  if (slots.some((save) => !save || typeof save.id !== "string" ||
+    !/^[a-z0-9-]{8,64}$/i.test(save.id) || typeof save.name !== "string" ||
+    !Number.isInteger(save.level) || typeof save.location !== "string" ||
+    typeof save.updatedAt !== "string") || new Set(slots.map((save) => save.id)).size !== slots.length) {
+    throw new Error("save list contains invalid character entries.");
+  }
+  return {
+    schemaVersion: 1,
+    lastPlayedId: typeof index.lastPlayedId === "string" ? index.lastPlayedId : null,
+    slots
+  };
+}
+
+function readSaveIndex() {
+  const serialized = localStorage.getItem(STORE_KEYS.saveIndex);
+  return serialized
+    ? parseSaveIndex(serialized)
+    : { schemaVersion: 1, lastPlayedId: null, slots: [] };
+}
+
+function normalizeSavedPack(raw) {
+  if (raw?.id === starterPack.id && [
+    "The Great Temple of the Fallen Lord",
+    "The Greenstone Echo",
+    "The Tomb Beneath Chiltomatlan"
+  ].includes(raw.title)) return starterPack;
+  const pack = validatePack(raw);
+  return pack.id === "quiet-vault" ? starterPack : pack;
+}
+
+function activateSaveSlot(saveId, { markPlayed = true } = {}) {
+  const serialized = localStorage.getItem(`${STORE_KEYS.saveSlotPrefix}${saveId}`);
+  if (!serialized) throw new Error("saved character data could not be found.");
+  const slot = JSON.parse(serialized);
+  if (!slot || slot.schemaVersion !== 1 || !slot.pack || !slot.run) {
+    throw new Error("saved character data has an unsupported format.");
+  }
+  const pack = normalizeSavedPack(slot.pack);
+  const run = parseSavedRun(slot.run, pack);
+  if (!run) throw new Error("saved run did not match its adventure.");
+  if (markPlayed) {
+    const index = readSaveIndex();
+    index.lastPlayedId = saveId;
+    localStorage.setItem(STORE_KEYS.saveIndex, JSON.stringify(index));
+  }
+  state.pack = pack;
+  state.run = run;
+  state.activeSaveId = saveId;
+  upgradeGreatTempleContent();
+  return true;
+}
+
+function renderSaveManager() {
+  const index = readSaveIndex();
+  const saves = [...index.slots].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  elements["save-manager-list"].replaceChildren();
+  elements["save-manager-empty"].classList.toggle("hidden", saves.length > 0);
+  for (const save of saves) {
+    const row = document.createElement("li");
+    row.className = "save-manager-row";
+    const details = document.createElement("div");
+    details.className = "save-manager-details";
+    const name = document.createElement("strong");
+    name.textContent = save.name;
+    const metadata = document.createElement("span");
+    const date = new Date(save.updatedAt);
+    const dateLabel = Number.isNaN(date.getTime())
+      ? t("Unknown date")
+      : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+    const location = save.location === "city" ? "Chiltomatlan"
+      : save.location === "store" ? "Chiltomatlan market" : "Expedition";
+    metadata.textContent = t("Level {level} · {location} · {date}", {
+      level: save.level || 1,
+      location: t(location),
+      date: dateLabel
+    });
+    details.append(name, metadata);
+    const actions = document.createElement("div");
+    actions.className = "save-manager-actions";
+    const loadButton = document.createElement("button");
+    loadButton.className = "button";
+    loadButton.type = "button";
+    loadButton.textContent = t("Load");
+    loadButton.addEventListener("click", () => {
+      try {
+        activateSaveSlot(save.id);
+        state.gameStarted = true;
+        elements["save-manager-dialog"].close();
+        render();
+      } catch (error) {
+        showToast(t("Could not load {name}'s save: {error}", { name: save.name, error: escapeMessage(error) }));
+      }
+    });
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "button secondary";
+    deleteButton.type = "button";
+    deleteButton.textContent = t("Delete");
+    deleteButton.addEventListener("click", () => deleteSaveSlot(save));
+    actions.append(loadButton, deleteButton);
+    row.append(details, actions);
+    elements["save-manager-list"].append(row);
+  }
+}
+
+function deleteSaveSlot(save) {
+  if (!window.confirm(t("Delete {name}'s saved game? This cannot be undone.", { name: save.name }))) return;
+  try {
+    const index = readSaveIndex();
+    index.slots = index.slots.filter((entry) => entry.id !== save.id);
+    if (index.lastPlayedId === save.id) {
+      const next = [...index.slots].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+      index.lastPlayedId = next?.id || null;
+    }
+    localStorage.setItem(STORE_KEYS.saveIndex, JSON.stringify(index));
+    localStorage.removeItem(`${STORE_KEYS.saveSlotPrefix}${save.id}`);
+    if (state.activeSaveId === save.id) {
+      state.activeSaveId = index.lastPlayedId;
       state.run = null;
+      if (state.activeSaveId) {
+        try {
+          activateSaveSlot(state.activeSaveId, { markPlayed: false });
+        } catch (error) {
+          state.activeSaveId = null;
+          state.run = null;
+          showToast(t("Could not load the most recently played save: {error}", { error: escapeMessage(error) }));
+        }
+      }
     }
+    renderSaveManager();
+    renderStartScreen();
+  } catch (error) {
+    showToast(t("Could not delete {name}'s save: {error}", { name: save.name, error: escapeMessage(error) }));
+  }
+}
+
+function openSaveManager() {
+  try {
+    renderSaveManager();
+    elements["save-manager-dialog"].showModal();
+  } catch (error) {
+    showToast(t("Could not open saved games: {error}", { error: escapeMessage(error) }));
   }
 }
 
@@ -5939,11 +6271,21 @@ function connectEvents() {
     });
   });
   elements["continue-game"].addEventListener("click", () => {
-    if (!state.run) return;
-    state.gameStarted = true;
-    render();
+    if (!state.activeSaveId) return;
+    try {
+      activateSaveSlot(state.activeSaveId);
+      state.gameStarted = true;
+      render();
+    } catch (error) {
+      showToast(t("Could not continue the saved game: {error}", { error: escapeMessage(error) }));
+    }
   });
   elements["new-game"].addEventListener("click", () => openCharacterBuilder());
+  elements["load-game"].addEventListener("click", openSaveManager);
+  elements["close-save-manager"].addEventListener("click", () => elements["save-manager-dialog"].close());
+  elements["save-manager-dialog"].addEventListener("click", (event) => {
+    if (event.target === elements["save-manager-dialog"]) elements["save-manager-dialog"].close();
+  });
   const openSettings = () => {
     stopHeldMovement();
     document.getElementById("settings-run-actions")?.classList.toggle("hidden", !(state.gameStarted && state.run));
@@ -5976,7 +6318,18 @@ function connectEvents() {
       lastSize = size;
       if (state.gameStarted && state.run?.location === "dungeon") renderMap();
     }).observe(mapViewport);
+    const townViewport = document.getElementById("town-map-viewport");
+    let lastTownSize = "";
+    new ResizeObserver(() => {
+      const size = `${townViewport.clientWidth}x${townViewport.clientHeight}`;
+      if (size === lastTownSize) return;
+      lastTownSize = size;
+      if (state.gameStarted && state.run?.location === "city") renderTownMap();
+    }).observe(townViewport);
   }
+  window.addEventListener("resize", () => {
+    if (state.gameStarted && state.run?.location === "city") renderTownMap();
+  });
   mapViewport.addEventListener("pointerdown", (event) => {
     if (event.pointerType !== "touch") return;
     pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -6008,6 +6361,24 @@ function connectEvents() {
   elements["close-settings"].addEventListener("click", () => elements["settings-dialog"].close());
   elements["settings-dialog"].addEventListener("click", (event) => {
     if (event.target === elements["settings-dialog"]) elements["settings-dialog"].close();
+  });
+  elements["install-pwa"].addEventListener("click", async () => {
+    if (!deferredInstallPrompt) {
+      showToast(t("Open your browser menu and choose Install app or Add to Home Screen."));
+      return;
+    }
+    const installPrompt = deferredInstallPrompt;
+    deferredInstallPrompt = null;
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice.outcome === "accepted") {
+        pwaInstallAccepted = true;
+        updatePwaInstallOption();
+      }
+    } catch (error) {
+      showToast(t("Could not start app installation: {error}", { error: escapeMessage(error) }));
+    }
   });
   elements["language-select"].addEventListener("change", () => {
     const language = ["es", "nah", "nah-abugida", "fr", "de", "pt", "ja", "ko", "zh"].includes(elements["language-select"].value) ? elements["language-select"].value : "en";
@@ -6146,9 +6517,15 @@ function connectEvents() {
       else moveTowardTownNpc(npc);
       return;
     }
-    if (TOWN_MAP[y]?.[x] === "H") {
+    if (townMapAtCurrentLevel()[y]?.[x] === "H") {
       if (besideHouse()) openHouse();
       else moveTowardHouse();
+      return;
+    }
+    if (TOWN_BUILDINGS.some((building) => building.x <= x && x < building.x + building.width &&
+      building.y <= y && y < building.y + building.height &&
+      (!building.projectId || (state.run.progress.town[building.projectId] || 0) >= building.projectLevel))) {
+      moveTowardTownNpc({ x, y }, 1);
       return;
     }
     const dx = x - state.run.townPosition.x;
@@ -6365,6 +6742,12 @@ function connectEvents() {
   };
   document.addEventListener("pointerup", releaseActionTooltip);
   document.addEventListener("pointercancel", releaseActionTooltip);
+  document.addEventListener("click", (event) => {
+    const dialog = event.target;
+    if (!(dialog instanceof HTMLDialogElement) || !dialog.open || dialog.id === "game-over-dialog" ||
+      (dialog.id === "patolli-dialog" && state.run?.patolliGame?.status === "active")) return;
+    dialog.close();
+  });
   document.addEventListener("keydown", (event) => {
     stopHeldMovement();
     if (state.messageBox) {
@@ -6379,6 +6762,17 @@ function connectEvents() {
       return;
     }
     if (event.repeat) return;
+    if (event.key === "Escape") {
+      const dialog = document.querySelector("dialog[open]");
+      if (dialog) {
+        event.preventDefault();
+        if (dialog.id === "game-over-dialog" ||
+          (dialog.id === "patolli-dialog" && state.run?.patolliGame?.status === "active")) return;
+        if (dialog === elements["character-card-dialog"]) closeCharacterCard();
+        else dialog.close();
+        return;
+      }
+    }
     if (event.key === "Escape" && state.utilityDrawer) {
       event.preventDefault();
       closeUtilityDrawer(true);
@@ -6395,7 +6789,7 @@ function connectEvents() {
       return;
     }
     if ((event.key === "+" || event.key === "=" || event.key === "-" || event.key === "_") && !event.ctrlKey && !event.metaKey &&
-      state.gameStarted && state.run?.location === "dungeon" && !document.querySelector("dialog[open]") &&
+      state.gameStarted && ["city", "dungeon"].includes(state.run?.location) && !document.querySelector("dialog[open]") &&
       !(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement)) {
       event.preventDefault();
       setMapZoom(mapZoom + (event.key === "+" || event.key === "=" ? 1 : -1), { announce: true });
@@ -6492,6 +6886,8 @@ function registerServiceWorker() {
 }
 
 function start() {
+  updatePwaInstallOption();
+  window.matchMedia("(display-mode: standalone)").addEventListener?.("change", updatePwaInstallOption);
   storageAvailable();
   let language = "en";
   let darkMode = false;
