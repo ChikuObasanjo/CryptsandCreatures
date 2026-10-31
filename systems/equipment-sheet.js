@@ -88,7 +88,7 @@ function renderEquipmentSheet() {
   for (const [label, value] of [
     ["AC", stats.ac + mods.ac],
     ["Attack", `${stats.attackBonus + mods.attack >= 0 ? "+" : ""}${stats.attackBonus + mods.attack}`],
-    ["Damage", `${stats.damageDice}${damageBonus ? `${damageBonus > 0 ? "+" : "−"}${Math.abs(damageBonus)}` : ""}`],
+    ["Damage", `${stats.damageDice}${damageBonus ? `${damageBonus > 0 ? "+" : "−"}${Math.abs(damageBonus)}` : ""}${typeof equippedStrike === "function" ? ` · ${t(STRIKE_KINDS[equippedStrike()].name)}` : ""}`],
     ["Load", `${formatWeight(getCarriedWeight())} / ${getCarryCapacity()} lb`]
   ]) {
     const cell = document.createElement("span");
@@ -142,7 +142,7 @@ function equipmentPicker(slot) {
     const note = document.createElement("small");
     note.textContent = itemId === current ? t("Worn now")
       : !usable ? (item.strength && state.run.character.scores.str < item.strength ? `Needs Strength ${item.strength}` : t("Your calling isn't trained with this"))
-        : item.description || item.category;
+        : slot.gear === "weapon" ? `${item.category}${item.description ? ` · ${item.description}` : ""}` : item.description || item.category;
     copy.append(name, note);
     row.append(image, copy);
     list.append(row);

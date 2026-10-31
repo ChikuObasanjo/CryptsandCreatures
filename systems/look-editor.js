@@ -43,8 +43,61 @@ function chooseLookOption(select, value) {
   renderLookPicker(select);
 }
 
+// The character a face thumbnail is drawn on: the draft being edited, wherever it is.
+function lookFaceSubject(select) {
+  try {
+    if (select.closest("#mirror-fields") && typeof mirrorDraft === "function") return mirrorDraft();
+    if (typeof currentDraftCharacter === "function") return currentDraftCharacter();
+  } catch {}
+  return null;
+}
+
+function renderFacePicker(select, picker) {
+  picker.classList.add("look-faces");
+  picker.classList.remove("look-swatches", "look-chips");
+  const options = [...select.options];
+  const subject = lookFaceSubject(select) || {
+    race: "human", appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", headwear: "none", facePaint: "none", beard: "none", jewelry: "ear-spools" },
+    equipment: {}, cosmetics: {}
+  };
+  // Thumbnails show the face with the current skin, hair, and paint, but no hat in the way.
+  const bare = { ...subject, appearance: { ...subject.appearance, headwear: "none" }, cosmetics: { ...(subject.cosmetics || {}), helmet: null } };
+  const signature = options.map((option) => option.value).join("|");
+  if (picker.dataset.signature !== signature) {
+    picker.dataset.signature = signature;
+    picker.replaceChildren(...options.map((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "look-face";
+      button.dataset.value = option.value;
+      button.setAttribute("role", "radio");
+      const image = document.createElement("img");
+      image.alt = "";
+      image.width = 64;
+      image.height = 64;
+      const name = document.createElement("span");
+      button.append(image, name);
+      return button;
+    }));
+  }
+  [...picker.children].forEach((button, index) => {
+    const option = options[index];
+    const selected = option.value === select.value;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-checked", String(selected));
+    button.tabIndex = selected ? 0 : -1;
+    const url = typeof codexPortraitUrl === "function" ? codexPortraitUrl(bare, option.value) : "";
+    const image = button.firstChild;
+    if (image.getAttribute("src") !== url) image.src = url;
+    if (button.lastChild.textContent !== option.textContent) button.lastChild.textContent = option.textContent;
+  });
+  const valueLabel = select.closest("label")?.querySelector(".look-value");
+  if (valueLabel) valueLabel.textContent = select.selectedOptions[0]?.textContent || "";
+}
+
 function renderLookPicker(select) {
   const picker = lookPickerFor(select);
+  if (select.dataset.look === "faces") return renderFacePicker(select, picker);
   const swatch = select.dataset.look === "swatch";
   picker.classList.toggle("look-swatches", swatch);
   picker.classList.toggle("look-chips", !swatch);

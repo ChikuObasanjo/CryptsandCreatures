@@ -11,15 +11,15 @@ const HOUSE_STYLES = {
     name: "Adobe calli",
     art: "town-house-calli",
     price: 0,
-    tradition: "Painted like the codices",
-    description: "Sun-dried adobe, a thatched roof, and a little milpa by the door. Small, but yours.",
+    tradition: "Painted in the codex style",
+    description: "Sun-dried adobe walls, a thatched roof, and a small milpa by the door.",
     boon: "steady"
   },
   tecpan: {
     name: "Noble tecpan",
     art: "town-house-tecpan",
     price: 5000,
-    tradition: "Painted like the codices, in a lord's colors",
+    tradition: "Painted in the codex style",
     description: "A lord's house on a stepped platform: red walls, a frieze of discs, and feather banners at the door.",
     boon: "hearty"
   },
@@ -27,16 +27,16 @@ const HOUSE_STYLES = {
     name: "Japanese minka",
     art: "town-house-minka",
     price: 7500,
-    tradition: "Painted like an old Japanese scroll",
-    description: "Built by carpenters who came with the galleons from across the western sea: dark tiles, shoji screens, a veranda, and a pine. Gold clouds drift across the painting.",
+    tradition: "Painted in the style of a Japanese scroll",
+    description: "Built by carpenters who came on the galleons from across the western sea: dark roof tiles, shoji screens, a veranda, and a pine in the yard.",
     boon: "keen-eyed"
   },
   casa: {
     name: "Spanish casa",
     art: "town-house-casa",
     price: 7500,
-    tradition: "Illuminated like a medieval manuscript",
-    description: "Whitewashed walls, a tiled roof, and a little tower, drawn as a sea giant's monk would draw it: on vellum, framed in gold leaf and ivy.",
+    tradition: "Painted in the style of a Spanish illuminated manuscript",
+    description: "Whitewashed walls, a tiled roof, and a small bell tower, built the way the sea giants build at home.",
     boon: "fiery"
   }
 };
@@ -273,7 +273,7 @@ function renderHouse() {
   elements["house-portrait"].src = houseArtUrl(house.owned ? house.style : "calli");
   elements["house-eyebrow"].textContent = t(house.owned ? "Your home in Chiltomatlan" : "For sale by Tlacotl");
   elements["house-title"].textContent = house.owned ? t(style.name) : t("An empty adobe house");
-  elements["house-tagline"].textContent = house.owned ? t(style.tradition) : "A little house off the plaza, with a door that locks and a bed nobody else sleeps in.";
+  elements["house-tagline"].textContent = house.owned ? t(style.tradition) : "A small house off the plaza, with a door that locks and a bed of your own.";
   renderPurses();
   const body = document.createDocumentFragment();
 
@@ -394,6 +394,7 @@ function renderHouse() {
 // ---------- Mirror ----------
 
 const MIRROR_FIELDS = [
+  ["character-face", "face", "Face"],
   ["character-skin", "skin", "character-skin-label"], ["character-body", "body", "Build"],
   ["character-hair-style", "hairStyle", "Hair style"], ["character-crest", "crest", "character-crest-label"],
   ["character-hair", "hair", "character-hair-label"], ["character-tunic", "tunic", "Clothing color"],
@@ -427,7 +428,7 @@ function openMirror() {
   fields.append(nameLabel, pronounLabel);
   for (const [id, key, labelSource] of MIRROR_FIELDS) {
     if (key === "crest" && !CREST_STYLES[race]) continue;
-    if ((key === "hairStyle" || key === "beard") && race === "dragonborn") continue;
+    if ((key === "hairStyle" || key === "beard" || key === "face") && race === "dragonborn") continue;
     // Clothes, headwear, and necklaces are items now: change them on the equipment sheet.
     if (character.dressByItems && ["garment", "headwear", "adornment"].includes(key)) continue;
     const label = document.createElement("label");
@@ -488,7 +489,7 @@ function saveMirror() {
   character.name = draft.name;
   character.gender = draft.gender;
   character.appearance = draft.appearance;
-  addLog("You study yourself in the mirror and like what you see.");
+  addLog("You check your new look in the mirror.");
   elements["mirror-dialog"].close();
   render();
   saveRun();

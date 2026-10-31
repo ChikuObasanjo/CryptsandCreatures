@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Example: rename to shield.svg to use it. Files starting with _ are ignored. -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+<style type="text/css">
+	.st0{fill:#ff00ff;stroke:#2e211a;stroke-width:2;}
+	.st1{fill:#e1ad3b;stroke:#2e211a;stroke-width:1.5;}
+</style>
+<g id="reference"><rect width="200" height="200" fill="red"/></g>
+<circle class="st0" cx="126" cy="130" r="18"/>
+<path class="st1" d="M112 130 L140 130 L126 116 Z"/>
+</svg>

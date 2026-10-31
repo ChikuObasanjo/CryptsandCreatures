@@ -11,7 +11,7 @@
     <meta name="description" content="Explore a forbidden tomb, manage your supplies, and return to Chiltomatlan to prepare for another descent.">
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.png?v=2" type="image/png" sizes="512x512">
-    <link rel="stylesheet" href="./styles.css?v=326">
+    <link rel="stylesheet" href="./styles.css?v=336">
     <title>Crypts &amp; Creatures</title>
   </head>
   <body>
@@ -282,6 +282,7 @@
                   </div>
                 </div>
                 <div class="look-panel" data-look-panel="body">
+                  <label class="look-field look-field-wide" id="character-face-field"><span class="look-field-name"><span data-i18n="Face">Face</span><em class="look-value"></em></span><select id="character-face" name="face" data-look="faces"></select></label>
                   <label class="look-field look-field-wide"><span class="look-field-name"><span id="character-skin-label">Skin tone</span><em class="look-value"></em></span><select id="character-skin" name="skin" data-look="swatch"></select></label>
                   <label class="look-field"><span class="look-field-name"><span data-i18n="Build">Build</span><em class="look-value"></em></span><select id="character-body" name="body" data-look="chips"></select></label>
                   <label class="look-field" id="character-crest-field" hidden><span class="look-field-name"><span id="character-crest-label">Crest</span><em class="look-value"></em></span><select id="character-crest" name="crest" data-look="chips"></select></label>
@@ -357,13 +358,9 @@
             <section class="inventory-block" aria-labelledby="inventory-heading">
               <div class="inventory-heading"><strong id="inventory-heading" data-i18n="Pack">Pack</strong><span id="inventory-load"></span></div>
               <p id="inventory-security" class="inventory-security" aria-live="polite"></p>
-              <div id="inventory-filters" class="inventory-filters" role="group" aria-label="Filter backpack contents" data-i18n-attr="aria-label:Filter backpack contents">
-                <button type="button" data-inventory-filter="all" aria-pressed="true" data-i18n="All">All</button>
-                <button type="button" data-inventory-filter="supplies" aria-pressed="false" data-i18n="Food & water">Food &amp; water</button>
-                <button type="button" data-inventory-filter="gear" aria-pressed="false" data-i18n="Gear">Gear</button>
-                <button type="button" data-inventory-filter="valuables" aria-pressed="false" data-i18n="Treasures">Treasures</button>
-              </div>
-              <ul id="inventory-list" class="inventory-list"></ul>
+              <div id="inventory-filters" class="inventory-filters" role="group" aria-label="Filter backpack contents" data-i18n-attr="aria-label:Filter backpack contents"></div>
+              <ul id="inventory-list" class="inventory-list pack-grid"></ul>
+              <div id="item-card" class="item-card" hidden></div>
               <nav class="menu-list-pager" data-list-pager="inventory" aria-label="Pack pages" hidden>
                 <button class="quiet-button" type="button" data-page-list="inventory" data-page-direction="-1" aria-label="Previous pack page">←</button>
                 <span data-page-indicator></span>
@@ -502,6 +499,11 @@
           <section id="dungeon-screen" class="dungeon-screen hidden" aria-label="Dungeon exploration" data-i18n-attr="aria-label:Dungeon exploration">
             <section class="panel map-panel" aria-labelledby="map-heading">
             <div class="dungeon-controls" aria-label="Dungeon controls">
+            <div id="stance-control" class="stance-control" role="group" aria-label="Movement stance" data-i18n-attr="aria-label:Movement stance">
+              <button type="button" data-stance="guard" aria-pressed="true"><span class="stance-glyph" aria-hidden="true">◈</span><span data-i18n="Guard">Guard</span></button>
+              <button type="button" data-stance="run" aria-pressed="false"><span class="stance-glyph" aria-hidden="true">»</span><span data-i18n="Run">Run</span><kbd>T</kbd></button>
+              <button type="button" data-stance="disengage" aria-pressed="false"><span class="stance-glyph" aria-hidden="true">↶</span><span data-i18n="Disengage">Disengage</span><kbd>Y</kbd></button>
+            </div>
             <section id="action-panel" class="action-panel" aria-label="Dungeon actions">
               <div class="section-heading">
                 <div><p class="eyebrow" data-i18n="YOUR TURN">YOUR TURN</p><h2 id="actions-heading" data-i18n="Choose your next move">Choose your next move</h2></div>
@@ -512,11 +514,6 @@
               <button class="ability-guide-shortcut" id="open-ability-guide" type="button" aria-label="Open ability guide" title="Read about your abilities" data-i18n-attr="aria-label:Open ability guide">?</button>
               <div id="action-buttons" class="action-buttons">
                 <div id="action-primary" class="action-primary" aria-label="Current interaction"></div>
-                <button id="look-toggle" class="button secondary look-toggle" type="button"
-                  aria-pressed="false" aria-label="Inspect a tile" title="Inspect a tile">
-                  <img src="./resources/items/tool.png?v=77" alt="" aria-hidden="true">
-                  <span class="action-label" data-i18n="Inspect">Inspect</span>
-                </button>
                 <div class="action-groups" aria-label="Other actions">
                   <details class="action-group" id="action-group-combat">
                     <summary><img src="./resources/items/weapon.png?v=77" alt="" aria-hidden="true"><span data-i18n="Combat">Combat</span><span class="action-category-mark"></span></summary>
@@ -565,13 +562,14 @@
                   <div class="health-label"><span id="enemy-health">12 / 12 HP</span><span id="enemy-distance"></span></div>
                   <div class="health-track"><span id="enemy-health-fill"></span></div>
                   <span id="enemy-description" class="combatant-detail"></span>
+                  <span id="enemy-strikes" class="strike-chips" hidden></span>
                 </div>
               </div>
               <div id="map-status-chips" class="status-chips map-status-chips" aria-label="Conditions and boons" hidden></div>
             </div>
             <div class="section-heading">
               <div>
-                <p class="eyebrow" data-i18n="UNDER THE JUNGLE">UNDER THE JUNGLE</p>
+                <p class="eyebrow" id="map-eyebrow">UNDER THE JUNGLE</p>
                 <h2 id="map-heading" data-i18n="Dungeon entrance">Dungeon entrance</h2>
               </div>
               <span class="map-hint" data-i18n="Tap a tile to move · tap yourself to interact">Tap a tile to move · tap yourself to interact</span>
@@ -579,6 +577,11 @@
             <p id="delve-objectives" class="delve-objectives"></p>
             <div id="dungeon-map-viewport" class="dungeon-map-viewport" role="region" aria-label="Dungeon map; scroll to explore nearby tiles" tabindex="0" data-i18n-attr="aria-label:Dungeon map; scroll to explore nearby tiles">
               <div id="dungeon-map" class="dungeon-map" role="group" aria-label="Nearby dungeon tiles" data-i18n-attr="aria-label:Nearby dungeon tiles"></div>
+              <button id="look-toggle" class="button secondary look-toggle" type="button"
+                aria-pressed="false" aria-label="Inspect a tile" title="Inspect a tile">
+                <img src="./resources/items/tool.png?v=77" alt="" aria-hidden="true">
+                <span class="action-label" data-i18n="Inspect">Inspect</span>
+                </button>
             </div>
             <section id="look-inspector" class="look-inspector" aria-live="polite" hidden>
               <strong id="look-title"></strong>
@@ -827,7 +830,7 @@
           <div class="venue-heading">
             <p class="eyebrow">An obsidian mirror</p>
             <h2 id="mirror-heading">The mirror</h2>
-            <p class="venue-tagline">Polished black glass shows you as you are, and as you could be.</p>
+            <p class="venue-tagline">A polished obsidian mirror. Change your name, pronouns, and look here.</p>
           </div>
         </header>
         <div class="mirror-layout">
@@ -940,6 +943,27 @@
         <button id="target-choice-close" class="button secondary" type="button">Cancel</button>
       </section>
     </dialog>
+    <dialog id="xochipilli-dialog" class="story-dialog xochipilli-dialog" aria-labelledby="xochipilli-heading">
+      <section class="story-panel xochipilli-panel">
+        <p class="eyebrow" data-i18n="The stepped pyramid">The stepped pyramid</p>
+        <h2 id="xochipilli-heading" class="xochipilli-name">Xochipilli</h2>
+        <p class="xochipilli-title" data-i18n="Lord of Flowers">Lord of Flowers</p>
+        <figure class="xochipilli-figure">
+          <img class="xochipilli-card-art" src="./resources/ui/xochipilli-card.jpg" alt="Xochipilli seated, carved in stone" data-i18n-attr="alt:Xochipilli seated, carved in stone">
+        </figure>
+        <blockquote class="xochipilli-praise">
+          <span class="xochipilli-flower" aria-hidden="true"></span>
+          <p data-i18n="Thank you, our Lord of Flowers, for letting us enjoy these beautiful things.">Thank you, our Lord of Flowers, for letting us enjoy these beautiful things.</p>
+          <span class="xochipilli-flower" aria-hidden="true"></span>
+        </blockquote>
+        <p class="story-copy xochipilli-copy" data-i18n="Leave an offering at the pyramid and ask for friendship with the wild: for a day, wild animals are friendlier toward you.">Leave an offering at the pyramid and ask for friendship with the wild: for a day, wild animals are friendlier toward you.</p>
+        <div class="xochipilli-actions">
+          <button id="xochipilli-offer-gold" class="button" type="button" data-i18n="Offer 10 gp">Offer 10 gp</button>
+          <button id="xochipilli-offer-hp" class="button secondary" type="button" data-i18n="Offer 1 HP">Offer 1 HP</button>
+        </div>
+        <button id="xochipilli-close" class="button secondary xochipilli-close" type="button" data-i18n="Step away">Step away</button>
+      </section>
+    </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <div id="time-transition" class="time-transition" role="status" aria-live="polite" hidden></div>
     <section id="message-box" class="rpg-message-box" aria-labelledby="message-box-title" aria-live="polite" hidden>
@@ -953,36 +977,48 @@
         <button id="message-box-advance" class="button secondary" type="button" data-i18n="Continue">Continue</button>
       </div>
     </section>
-    <script src="./data/locales.js?v=13" defer></script>
-    <script src="./data/items.js?v=8" defer></script>
+    <script src="./data/locales.js?v=15" defer></script>
+    <script src="./data/items.js?v=12" defer></script>
     <script src="./data/progression.js?v=3" defer></script>
-    <script src="./data/enemies.js?v=7" defer></script>
-    <script src="./data/content.js?v=4" defer></script>
-    <script src="./data/spells.js?v=2" defer></script>
-    <script src="./data/character-options.js?v=9" defer></script>
+    <script src="./data/enemies.js?v=12" defer></script>
+    <script src="./data/content.js?v=5" defer></script>
+    <script src="./data/spells.js?v=5" defer></script>
+    <script src="./data/character-options.js?v=10" defer></script>
     <script src="./data/exotics.js?v=4" defer></script>
-    <script src="./data/wardrobe.js?v=5" defer></script>
-    <script src="./data/goods.js?v=2" defer></script>
-    <script src="./data/tomb-gear.js?v=1" defer></script>
+    <script src="./data/wardrobe.js?v=6" defer></script>
+    <script src="./data/goods.js?v=3" defer></script>
+    <script src="./data/tomb-gear.js?v=2" defer></script>
+    <script src="./data/ecology.js?v=3" defer></script>
     <script src="./systems/patolli.js?v=6" defer></script>
-    <script src="./systems/progression.js?v=8" defer></script>
-    <script src="./systems/relics.js?v=1" defer></script>
-    <script src="./systems/codex-figure.js?v=13" defer></script>
-    <script src="./systems/shop.js?v=5" defer></script>
-    <script src="./systems/house.js?v=7" defer></script>
-    <script src="./systems/camp.js?v=1" defer></script>
+    <script src="./systems/progression.js?v=14" defer></script>
+    <script src="./systems/relics.js?v=2" defer></script>
+    <script src="./systems/behaviors.js?v=5" defer></script>
+    <script src="./systems/strikes.js?v=3" defer></script>
+    <script src="./systems/biome.js?v=1" defer></script>
+    <script src="./systems/ecology.js?v=8" defer></script>
+    <script src="./systems/knacks.js?v=2" defer></script>
+    <script src="./systems/abilities.js?v=3" defer></script>
+    <script src="./data/figure-art.js?v=1" defer></script>
+    <script src="./systems/figure-art.js?v=1" defer></script>
+    <script src="./data/character-textures.js?v=2" defer></script>
+    <script src="./systems/character-textures.js?v=1" defer></script>
+    <script src="./systems/codex-figure.js?v=19" defer></script>
+    <script src="./systems/shop.js?v=7" defer></script>
+    <script src="./systems/house.js?v=9" defer></script>
+    <script src="./systems/camp.js?v=5" defer></script>
+    <script src="./systems/duende-quest.js?v=3" defer></script>
     <script src="./systems/item-art.js?v=1" defer></script>
     <script src="./systems/sound.js?v=2" defer></script>
-    <script src="./systems/equipment-sheet.js?v=3" defer></script>
-    <script src="./systems/sheets.js?v=4" defer></script>
-    <script src="./data/villagers.js?v=5" defer></script>
-    <script src="./data/lore.js?v=1" defer></script>
-    <script src="./systems/villagers.js?v=5" defer></script>
-    <script src="./systems/characters.js?v=23" defer></script>
-    <script src="./systems/look-editor.js?v=1" defer></script>
-    <script src="./systems/dungeons.js?v=106" defer></script>
-    <script src="./admob.config.js?v=1" defer></script>
-    <script type="module" src="./systems/rewarded-ads.js?v=1"></script>
-    <script src="./app.js?v=199" defer></script>
+    <script src="./systems/equipment-sheet.js?v=4" defer></script>
+    <script src="./systems/sheets.js?v=9" defer></script>
+    <script src="./data/villagers.js?v=6" defer></script>
+    <script src="./data/lore.js?v=2" defer></script>
+    <script src="./data/favors.js?v=1" defer></script>
+    <script src="./systems/villagers.js?v=7" defer></script>
+    <script src="./systems/favors.js?v=1" defer></script>
+    <script src="./systems/characters.js?v=26" defer></script>
+    <script src="./systems/look-editor.js?v=2" defer></script>
+    <script src="./systems/dungeons.js?v=112" defer></script>
+    <script src="./app.js?v=212" defer></script>
   </body>
 </html>

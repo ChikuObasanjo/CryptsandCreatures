@@ -28,7 +28,7 @@ function abilityModifier(score) {
 
 function maxSpellSlots(classId, level = 1) {
   if (FULL_CASTER_CLASSES.has(classId)) return 2 + Math.floor(Math.max(0, level - 1) / 4);
-  if (HALF_CASTER_CLASSES.has(classId) && level >= 2) return 1 + Math.floor((level - 2) / 5);
+  if (HALF_CASTER_CLASSES.has(classId) && level >= 2) return 1 + Math.floor((level - 2) / 3);
   return 0;
 }
 
@@ -260,7 +260,7 @@ function makeLegacyCharacter() {
     legacy: true, name: "Wayfarer", gender: "other", race: "human", heritage: "", class: "fighter", background: "folk-hero",
     scoreMethod: "standard", baseScores: { str: 14, dex: 12, con: 14, int: 10, wis: 12, cha: 10 },
     scores: { str: 14, dex: 12, con: 14, int: 10, wis: 12, cha: 10 },
-    appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band", facePaint: "none", body: "standard", beard: "none", jewelry: "ear-spools", crest: "none", trim: TRIM_DEFAULT },
+    appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", tunic: "#334d78", garment: "woven-tunic", adornment: "none", headwear: "feather-band", facePaint: "none", face: "calm", body: "standard", beard: "none", jewelry: "ear-spools", crest: "none", trim: TRIM_DEFAULT },
     cosmetics: { owned: [], helmet: null, clothes: null },
     equipment: { weapon: "macuahuitl", armor: "scale", shield: false, cloak: false }
   };
@@ -345,6 +345,7 @@ function currentDraftCharacter() {
       adornment: elements["character-adornment"].value,
       headwear: elements["character-headwear"].value,
       facePaint: elements["character-face-paint"].value,
+      face: elements["character-face"].value || "calm",
       body: elements["character-body"].value,
       beard: elements["character-beard"].value,
       jewelry: elements["character-jewelry"].value,
@@ -395,6 +396,7 @@ function initializeCharacterBuilder() {
   fillSelect(elements["character-adornment"], CLOTHING_ADORNMENTS.map((id) => [id, ADORNMENT_LABELS[id]]), "none");
   fillSelect(elements["character-headwear"], HEADWEAR_STYLES.map((id) => [id, HEADWEAR_LABELS[id]]), "feather-band");
   fillSelect(elements["character-face-paint"], FACE_PAINT_STYLES.map((id) => [id, FACE_PAINT_LABELS[id]]), "none");
+  fillSelect(elements["character-face"], FACE_STYLES.map((id) => [id, FACE_LABELS[id]]), "calm");
   syncAppearanceOptions("human", defaultAppearanceFor("human"));
   fillSelect(elements["half-elf-bonus-one"], ABILITIES.filter(([key]) => key !== "cha").map(([key, name]) => [key, name]), "str");
   fillSelect(elements["half-elf-bonus-two"], ABILITIES.filter(([key]) => !["cha", "str"].includes(key)).map(([key, name]) => [key, name]), "dex");
@@ -503,10 +505,12 @@ function syncEquipmentOptions(resetToDefaults = false) {
   const shieldOption = elements["character-shield"].querySelector('option[value="yes"]');
   shieldOption.disabled = !selectedClass.shield;
   if (!selectedClass.shield) elements["character-shield"].value = "no";
+  const knack = typeof KNACKS !== "undefined" ? KNACKS[elements["character-class"].value] : null;
   elements["class-description"].textContent = [
-    window.cryptsLocale.t(selectedClass.description).split(";")[0],
+    window.cryptsLocale.t(selectedClass.description).split(";")[0].replace(/([^.。!?！？])$/, "$1."),
+    knack ? `${window.cryptsLocale.t(knack.name)}: ${window.cryptsLocale.t(knack.text)}` : "",
     window.cryptsLocale.t("Your role affects starting health and which weapons and armor are available.")
-  ].join(". ");
+  ].filter(Boolean).join(" ");
 }
 
 function selectedClassSkills() {
@@ -589,6 +593,7 @@ function updateCharacterPreview() {
         adornment: elements["character-adornment"].value || "none",
         headwear: elements["character-headwear"].value || "none",
         facePaint: elements["character-face-paint"].value || "none",
+        face: elements["character-face"].value || "calm",
         body: elements["character-body"].value || "standard",
         beard: elements["character-beard"].value || "none",
         jewelry: elements["character-jewelry"].value || "ear-spools",
@@ -752,6 +757,7 @@ function openCharacterBuilder() {
   elements["character-adornment"].value = CLOTHING_ADORNMENTS.includes(profile.appearance?.adornment) ? profile.appearance.adornment : "none";
   elements["character-headwear"].value = HEADWEAR_STYLES.includes(profile.appearance?.headwear) ? profile.appearance.headwear : "none";
   elements["character-face-paint"].value = FACE_PAINT_STYLES.includes(profile.appearance?.facePaint) ? profile.appearance.facePaint : "none";
+  elements["character-face"].value = FACE_STYLES.includes(profile.appearance?.face) ? profile.appearance.face : "calm";
   const profileLook = normalizeAppearance({ ...(profile.appearance || {}) }, profile.race);
   syncAppearanceOptions(profile.race, profileLook);
   elements["character-shield"].value = profile.equipment?.shield ? "yes" : "no";
@@ -884,5 +890,6 @@ function syncAppearanceOptions(race, look = {}) {
   elements["character-crest-field"].hidden = !crests.length;
   elements["character-hair-style-field"].hidden = scaled;
   elements["character-beard-field"].hidden = scaled;
+  elements["character-face-field"].hidden = scaled;
   elements["character-race"].dataset.lastRace = race;
 }

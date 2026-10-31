@@ -24,7 +24,7 @@
       description: "A thrusting spear with a broad blade of knapped flint as long as a hand, trimmed with feathers below the head, as Maya lords carry it on their painted walls." },
     "stingray-spine": { name: "Stingray-spine dagger", origin: "maya", art: "stingray", icon: "dagger", analog: "dagger",
       dice: "1d4", finesse: true, attackBonus: 2, damageBonus: 1, trait: "lifedrinker", minFloor: 6, weight: 0.5, price: 300,
-      description: "A Maya lord's bloodletter: a barbed stingray spine set in a carved bone grip. It was made to offer blood. It takes it just as well. Lifedrinker: regain 2 HP when you defeat a creature." }
+      description: "A Maya lord's bloodletter: a barbed stingray spine set in a carved bone grip, made for offering one's own blood. Lifedrinker: regain 2 HP when you defeat a creature." }
   };
 
   const armors = {

@@ -75,7 +75,7 @@ function relicRiteBlocked(entry) {
   if (rite.only && !relicCallingFits(rite.only)) {
     return entry.id === "obsidian-mirror" ? "Only a wizard, sorcerer, or warlock can open the mirror's road." : "Only a spellcaster can wake this relic.";
   }
-  if (entry.id !== "rising-water" && !inDungeon) return "Its power only wakes inside the tomb.";
+  if (entry.id !== "rising-water" && !inDungeon) return "Its power works only inside the tomb.";
   if (!rite.consumed && relicRiteState()[entry.id]) return "Its power is spent until your next delve.";
   if (entry.id === "incensario" && !relicTargets(5).length) return "No creature is close enough to breathe the smoke.";
   if (entry.id === "tecciztli" && !relicTargets(6).length) return "No creature is near enough to hear it.";

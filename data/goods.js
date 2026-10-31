@@ -19,8 +19,6 @@
       weight: 0.5, price: 0.2, description: "Warm maize flatbreads wrapped in a cloth. Cheap, light, and good with everything." },
     pinole: { name: "Pinole pouch", sprite: "supply", food: 25, nutrients: { protein: 10, carbohydrates: 40, greens: 10 },
       weight: 0.3, price: 0.4, description: "Toasted maize ground with chia and a little cacao. Runners carried it for days; mix it with water and keep moving." },
-    chapulines: { name: "Toasted chapulines", sprite: "chilis", food: 25, nutrients: { protein: 50, carbohydrates: 5, greens: 10 },
-      weight: 0.3, price: 0.5, description: "Grasshoppers toasted with lime, salt, and chili. Crunchy, sour, and full of strength." },
     nopalitos: { name: "Nopal salad", sprite: "soup", food: 35, nutrients: { protein: 5, carbohydrates: 10, greens: 55 },
       weight: 1, price: 0.5, description: "Tender cactus paddles, cleaned of spines and dressed with onion and herbs." },
     tecuitlatl: { name: "Tecuitlatl cakes", sprite: "ration", food: 30, nutrients: { protein: 35, carbohydrates: 10, greens: 40 },
@@ -81,7 +79,7 @@
     cuauhololli: { name: "Cuauhololli war club", analog: "mace", icon: "mace", dice: "1d8", weight: 3, price: 12, trait: "thundering",
       description: "A hardwood club with a heavy carved ball at the end. Thundering: hits sometimes stagger the target." },
     huitzauhqui: { name: "Huitzauhqui studded club", analog: "macuahuitl", icon: "studded-club", dice: "1d10", weight: 5, price: 40,
-      description: "A broad hardwood paddle studded with obsidian points along both edges. Heavier and meaner than a macuahuitl." }
+      description: "A broad hardwood paddle studded with obsidian points along both edges. Heavier than a macuahuitl, and it tears as well as cuts." }
   };
 
   // ---------- Native armor ----------
@@ -102,7 +100,7 @@
     quachtli: { name: "Bolt of quachtli cotton", sprite: "clothing", price: 28, weight: 2, minFloor: 2,
       description: "A standard length of fine white cotton cloth. Tribute was counted in these; so were debts." },
     tecciztli: { name: "Conch-shell trumpet", sprite: "spondylus-shell", price: 60, weight: 1.5, minFloor: 3,
-      description: "A great sea conch with the tip cut away. Its blast once opened temple ceremonies at dawn. Blown down a stairwell, it echoes back a moment too late, as if something below were answering." },
+      description: "A great sea conch with the tip cut away, once blown to open temple ceremonies at dawn. Blown down a stairwell, its echo comes back a moment late." },
     "amber-drop": { name: "Amber with a trapped insect", sprite: "jade-bead", price: 75, weight: 0.2, minFloor: 4,
       description: "A drop of golden amber from the southern highlands, a tiny ancient bee caught inside." },
     "jaguar-pelt": { name: "Jaguar pelt", sprite: "treasure", price: 90, weight: 5, minFloor: 4,
@@ -112,7 +110,7 @@
     "feather-shield": { name: "Feather-mosaic shield", sprite: "treasure", price: 260, weight: 3, minFloor: 8,
       description: "A ceremonial chimalli faced with a coyote of blue and red feathers and fringed with gold. Never meant for battle." },
     "crystal-skull": { name: "Rock-crystal skull", sprite: "obsidian-eccentric", price: 350, weight: 2, minFloor: 10,
-      description: "A skull ground from a single block of clear quartz over generations. It is very cold to the touch, except at the jaw, which is warm, as if it had been talking." },
+      description: "A skull ground from a single block of clear quartz over generations. It is cold to the touch everywhere except the jaw, which is warm." },
     "jadeite-mask": { name: "Jadeite funerary mask", sprite: "turquoise-mask", price: 480, weight: 2, minFloor: 11,
       description: "A death mask of fitted jadeite with shell-and-obsidian eyes, made for a lord whose name was scraped away. The mask was made for a living face. It was never worn in death." }
   };

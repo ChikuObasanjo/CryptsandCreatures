@@ -594,42 +594,42 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
   padding: 0;
   border: 0;
   background-color: var(--paper-deep);
-  background-image: url("./resources/tiles/town-street.png?v=90");
+  background-image: url("./resources/tiles/town-street.png?v=92");
   background-position: center;
   background-size: 100% 100%;
   overflow: visible;
 }
 .town-tile:focus-visible { z-index: 2; outline-offset: -3px; }
-.town-tile.town-wall { background-image: url("./resources/tiles/town-wall.png?v=90"); }
+.town-tile.town-wall { background-image: url("./resources/tiles/town-wall.png?v=91"); }
 .town-tile.town-street,
-.town-tile.town-well { background-image: url("./resources/tiles/town-street.png?v=90"); }
-.town-tile.town-inn { background-image: url("./resources/tiles/town-inn-full.png?v=90"), url("./resources/tiles/town-street.png?v=90"); }
+.town-tile.town-well { background-image: url("./resources/tiles/town-street.png?v=92"); }
+.town-tile.town-inn { background-image: url("./resources/tiles/town-inn-full.png?v=90"), url("./resources/tiles/town-street.png?v=92"); }
 .town-tile.town-market { background-image: url("./resources/tiles/town-market-full.png?v=90"); background-color: #dcc28e; }
-.town-tile.town-gate { background-image: url("./resources/tiles/town-gate.png?v=90"), url("./resources/tiles/town-street.png?v=90"); }
-.town-tile.town-route {
-  background-color: #b99a67;
-  background-image: repeating-linear-gradient(90deg, transparent 0 22%, rgba(91, 67, 43, 0.22) 22% 25%, transparent 25% 48%, rgba(244, 231, 200, 0.26) 48% 51%, transparent 51% 74%, rgba(91, 67, 43, 0.22) 74% 77%, transparent 77%);
-  box-shadow: inset 0 3px rgba(255, 239, 198, 0.35), inset 0 -3px rgba(74, 54, 36, 0.24);
+.town-tile.town-gate { background-image: url("./resources/tiles/town-gate.png?v=90"), url("./resources/tiles/town-street.png?v=92"); }
+.town-tile.town-route { background-image: url("./resources/tiles/town-route.png?v=1"); }
+.town-tile.town-plaza { background-image: url("./resources/tiles/town-plaza.png?v=1"); }
+.town-tile.town-canal { background-color: #5c9896; background-image: url("./resources/tiles/town-canal.png?v=1"); }
+.town-tile.town-canal.is-vertical { background-image: url("./resources/tiles/town-canal-vertical.png?v=1"); }
+/* A stone bank wherever the canal meets land. */
+.town-tile.town-canal::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border: 0 solid #cdbd9c;
+  box-shadow: none;
 }
-.town-tile.town-plaza {
-  background-color: #d3bd8a;
-  background-image: repeating-linear-gradient(0deg, transparent 0 47%, rgba(89, 68, 45, 0.18) 47% 50%), repeating-linear-gradient(90deg, transparent 0 47%, rgba(89, 68, 45, 0.18) 47% 50%);
+.town-tile.town-canal.bank-n::before { border-top-width: 4px; }
+.town-tile.town-canal.bank-s::before { border-bottom-width: 4px; }
+.town-tile.town-canal.bank-w::before { border-left-width: 4px; }
+.town-tile.town-canal.bank-e::before { border-right-width: 4px; }
+.town-tile.town-canal::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border: 0 solid rgba(43, 33, 27, 0.55);
 }
-.town-tile.town-canal {
-  background-color: #397f8c;
-  background-image: repeating-linear-gradient(0deg, transparent 0 34%, rgba(222, 236, 204, 0.46) 35% 38%, transparent 39% 63%, rgba(30, 77, 85, 0.5) 64% 67%, transparent 68%);
-  box-shadow: inset 3px 0 rgba(215, 193, 143, 0.8), inset -3px 0 rgba(215, 193, 143, 0.8);
-}
-.town-tile.town-bridge {
-  background-color: #b99a67;
-  background-image: repeating-linear-gradient(90deg, transparent 0 25%, rgba(73, 53, 35, 0.24) 25% 29%, transparent 29% 50%), linear-gradient(0deg, transparent 0 26%, #d7c49a 26% 74%, transparent 74%);
-  box-shadow: inset 0 3px rgba(255, 239, 198, 0.35), inset 0 -3px rgba(74, 54, 36, 0.24);
-}
-.town-tile.town-bridge-vertical {
-  background-color: #b99a67;
-  background-image: repeating-linear-gradient(0deg, transparent 0 25%, rgba(73, 53, 35, 0.24) 25% 29%, transparent 29% 50%), linear-gradient(90deg, transparent 0 26%, #d7c49a 26% 74%, transparent 74%);
-  box-shadow: inset 3px 0 rgba(255, 239, 198, 0.35), inset -3px 0 rgba(74, 54, 36, 0.24);
-}
+.town-tile.town-canal.bank-n::after { border-top-width: 1.5px; top: 4px; }
+.town-tile.town-canal.bank-s::after { border-bottom-width: 1.5px; bottom: 4px; }
+.town-tile.town-canal.bank-w::after { border-left-width: 1.5px; left: 4px; }
+.town-tile.town-canal.bank-e::after { border-right-width: 1.5px; right: 4px; }
+.town-tile.town-bridge { background-image: url("./resources/tiles/town-bridge.png?v=1"); }
+.town-tile.town-bridge-vertical { background-image: url("./resources/tiles/town-bridge-vertical.png?v=1"); }
 .town-tile > img {
   position: absolute;
   inset: 3%;
@@ -1105,8 +1105,8 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
   font-style: normal;
   font-size: 11px;
 }
-.legend-wall { background: #5a554b url("./resources/tiles/wall.png?v=90") center / cover; }
-.legend-floor { background: #ece0c1 url("./resources/tiles/floor.png?v=90") center / cover; }
+.legend-wall { background: #5a554b url("./resources/tiles/wall.png?v=91") center / cover; }
+.legend-floor { background: #ece0c1 url("./resources/tiles/floor.png?v=91") center / cover; }
 .legend-player { background: var(--gold); border-radius: 50% !important; }
 .legend-companion { background: var(--jade); border-radius: 50% !important; }
 .legend-enemy { background: var(--red); border-radius: 50% !important; }
@@ -1126,25 +1126,25 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
   box-shadow: inset 0 0 0 0.5px rgba(20, 12, 8, 0.35);
 }
 .map-tile.wall,
-.map-tile.stone { background-color: #2d241e; background-image: url("./resources/tiles/wall.png?v=90"); }
+.map-tile.stone { background-color: #2d241e; background-image: url("./resources/tiles/wall.png?v=91"); }
 .map-tile.stone { filter: brightness(0.6) saturate(0.85); }
 .map-tile.wall.wall-variant-1 { background-position: 100% 0; filter: brightness(0.96); }
 .map-tile.wall.wall-variant-2 { filter: brightness(0.92) saturate(0.95); }
 .map-tile.wall.wall-variant-3 { filter: brightness(1.04); }
 .map-tile.wall.wall-edge { box-shadow: inset 0 0 0 1px rgba(20, 12, 8, 0.6); }
-.map-tile.floor { background-color: #ece0c1; background-image: url("./resources/tiles/floor.png?v=90"); }
-.map-tile.corridor { background-color: #e3d4b0; background-image: url("./resources/tiles/corridor.png?v=90"); }
-.map-tile.door { background-color: #e3d4b0; background-image: url("./resources/tiles/floor.png?v=90"); }
+.map-tile.floor { background-color: #ece0c1; background-image: url("./resources/tiles/floor.png?v=91"); }
+.map-tile.corridor { background-color: #e3d4b0; background-image: url("./resources/tiles/corridor.png?v=91"); }
+.map-tile.door { background-color: #e3d4b0; background-image: url("./resources/tiles/floor.png?v=91"); }
 .map-tile.door::before {
   content: "";
   position: absolute;
   inset: 3%;
-  background: url("./resources/tokens/door-closed.png?v=80") center / contain no-repeat;
+  background: url("./resources/tokens/door-closed.png?v=81") center / contain no-repeat;
   pointer-events: none;
 }
-.map-tile.door.door-open::before { background-image: url("./resources/tokens/door-open.png?v=80"); }
+.map-tile.door.door-open::before { background-image: url("./resources/tokens/door-open.png?v=81"); }
 .map-tile.unseen,
-.map-tile.map-edge { background-color: #1f1b2c; background-image: url("./resources/tiles/fog.png?v=90"); filter: brightness(0.78) saturate(0.85); }
+.map-tile.map-edge { background-color: #1f1b2c; background-image: url("./resources/tiles/fog.png?v=91"); filter: brightness(0.78) saturate(0.85); }
 .map-tile.map-edge { filter: brightness(0.45); }
 .map-tile.look-selected { z-index: 3; box-shadow: inset 0 0 0 3px var(--gold), 0 0 0 2px var(--line); }
 .map-tile.map-entrance { background-color: #ece0c1; }
@@ -1210,6 +1210,41 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
 .map-marker-sprite { width: 100%; height: 100%; object-fit: contain; }
 
 .companion-down { filter: grayscale(1) brightness(0.8) !important; transform: rotate(-80deg) translateY(10%); }
+
+.player-step {
+  animation: player-step 0.22s cubic-bezier(0.22, 0.75, 0.25, 1) both;
+  transform-origin: 50% 82%;
+  will-change: transform;
+}
+.creature-step {
+  animation: creature-step 0.22s cubic-bezier(0.22, 0.75, 0.25, 1) both;
+  will-change: transform;
+}
+@keyframes player-step {
+  from {
+    transform: translate(var(--step-x, 0), var(--step-y, 0));
+  }
+  72% {
+    transform: translate(2%, -1%);
+  }
+  to {
+    transform: translate(0, 0);
+  }
+}
+@keyframes creature-step {
+  from { transform: translate(var(--step-x, 0), var(--step-y, 0)); }
+  to { transform: translate(0, 0); }
+}
+
+.town-map.map-follow-step,
+.dungeon-map.map-follow-step {
+  animation: map-follow-step 0.22s cubic-bezier(0.22, 0.75, 0.25, 1) both;
+  will-change: transform;
+}
+@keyframes map-follow-step {
+  from { transform: translate(var(--map-step-x, 0), var(--map-step-y, 0)); }
+  to { transform: translate(0, 0); }
+}
 
 .strike-lunge { animation: strike-lunge 0.34s ease-out; }
 @keyframes strike-lunge { 45% { transform: translate(var(--strike-x, 0), var(--strike-y, 0)); } }
@@ -1583,6 +1618,39 @@ dialog::backdrop { background: rgba(26, 17, 12, 0.58); backdrop-filter: blur(2px
 .target-choice-panel { gap: 10px; }
 .target-choice-list { display: grid; gap: 8px; }
 .target-choice-list .button { justify-content: flex-start; text-align: left; }
+/* Xochipilli's card: a codex-style page of praise, framed in red and flowers. */
+.xochipilli-dialog { width: min(520px, calc(100vw - 24px)); }
+.xochipilli-panel {
+  justify-items: center; text-align: center; gap: 8px;
+  border: 3px double #b8213a; border-radius: 10px;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, #e6b33a 14%, transparent), transparent 55%),
+    var(--card);
+  box-shadow: inset 0 0 0 6px var(--card), inset 0 0 0 8px color-mix(in srgb, #b8213a 35%, transparent);
+  padding: 18px 18px 16px;
+}
+.xochipilli-panel .eyebrow { margin: 0; letter-spacing: 0.12em; }
+.xochipilli-name { margin: 0; font: 700 clamp(28px, 6vw, 36px)/1 var(--font-display); color: #b8213a; }
+.xochipilli-title { margin: -2px 0 4px; font: 700 13px/1.2 var(--font-ui); letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-2); }
+.xochipilli-figure {
+  margin: 0; padding: 6px; border: 2px solid var(--line); border-radius: 6px; background: var(--paper-deep);
+  box-shadow: 0 3px 0 var(--line);
+}
+.xochipilli-card-art { display: block; width: min(230px, 62vw); aspect-ratio: 3 / 4; object-fit: cover; border-radius: 3px; }
+.xochipilli-praise {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  margin: 6px 0 2px; padding: 10px 12px; width: 100%;
+  border-top: 2px solid #b8213a; border-bottom: 2px solid #b8213a;
+}
+.xochipilli-praise p { margin: 0; font: italic 600 clamp(16px, 4vw, 19px)/1.4 var(--font-display); color: var(--text); }
+/* A four-petalled codex flower. */
+.xochipilli-flower {
+  width: 32px; height: 32px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg stroke='%232b211b' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M20 18 Q12 4 20 2 Q28 4 20 18Z' fill='%23d9485f'/%3E%3Cpath d='M22 20 Q36 12 38 20 Q36 28 22 20Z' fill='%23e6b33a'/%3E%3Cpath d='M20 22 Q28 36 20 38 Q12 36 20 22Z' fill='%23d9485f'/%3E%3Cpath d='M18 20 Q4 28 2 20 Q4 12 18 20Z' fill='%23e6b33a'/%3E%3Ccircle cx='20' cy='20' r='4.5' fill='%233f8a5c'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+}
+.xochipilli-copy { margin: 0; color: var(--text-2); font-size: 14.5px; }
+.xochipilli-actions { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.xochipilli-close { width: 100%; }
 
 .game-over-portrait {
   justify-self: center;
@@ -3745,7 +3813,7 @@ body.nahuatl-abugida :is(p, li, span, strong, em, small, label, button, h1, h2, 
 .equip-slot-copy small { color: var(--muted); font: 700 11px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
 .equip-slot-copy strong { font: 700 13.5px/1.2 var(--font-ui); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .equip-doll { display: grid; place-items: center; border: 2px solid var(--line); border-radius: 12px; background: var(--paper-deep) var(--paper-texture); overflow: hidden; min-height: 250px; }
-.equip-doll-sprite { width: 128%; max-width: none; height: auto; margin-top: 6%; }
+.equip-doll-sprite { width: 128%; max-width: none; height: auto; margin-top: 4px; }
 .equip-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .equip-stats span { display: grid; gap: 2px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--card-2); text-align: center; }
 .equip-stats small { color: var(--muted); font: 700 11px/1 var(--font-ui); text-transform: uppercase; }
@@ -3960,4 +4028,696 @@ body.pad-size-xl { --pad-scale: 1.4; }
 @media (max-width: 699px) {
   .save-manager-row { align-items: stretch; flex-direction: column; }
   .save-manager-actions .button { flex: 1; }
+}
+
+/* Creature moods: asleep, feeding, fleeing, ignoring you, unaware */
+.map-tile.creature-asleep .tile-entity-creature::after,
+.map-tile.creature-feeding .tile-entity-creature::after,
+.map-tile.creature-fleeing .tile-entity-creature::after,
+.map-tile.creature-ignoring-you .tile-entity-creature::after,
+.map-tile.creature-minding-its-own-business .tile-entity-creature::after,
+.map-tile.creature-sluggish .tile-entity-creature::after,
+.map-tile.creature-hunting .tile-entity-creature::after,
+.map-tile.creature-starving .tile-entity-creature::after,
+.map-tile.creature-unaware .tile-entity-creature::after {
+  position: absolute;
+  top: -2%;
+  right: 2%;
+  font: 700 clamp(9px, 1.6vw, 14px)/1 var(--font-caps);
+  color: var(--ink, #2e211a);
+  background: color-mix(in srgb, var(--card, #f6eedb) 88%, transparent);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 4px;
+  pointer-events: none;
+}
+.map-tile.creature-asleep .tile-entity-creature::after { content: "z"; color: var(--jade, #2f8f78); }
+.map-tile.creature-feeding .tile-entity-creature::after { content: "~"; color: var(--gold-deep, #9a6b12); }
+.map-tile.creature-fleeing .tile-entity-creature::after { content: "!"; color: var(--red, #a43f30); }
+.map-tile.creature-ignoring-you .tile-entity-creature::after { content: "·"; color: var(--jade, #2f8f78); }
+.map-tile.creature-unaware .tile-entity-creature::after { content: "?"; color: var(--text-2, #6b5443); }
+.map-tile.creature-minding-its-own-business .tile-entity-creature::after { content: "·"; color: var(--jade, #2f8f78); }
+.map-tile.creature-sluggish .tile-entity-creature::after { content: "z"; color: var(--gold-deep, #9a6b12); }
+.map-tile.creature-hunting .tile-entity-creature::after { content: "»"; color: var(--red, #a43f30); }
+.map-tile.creature-starving .tile-entity-creature::after { content: "‼"; color: var(--red, #a43f30); }
+.map-tile.creature-asleep .tile-entity-creature img,
+.map-tile.creature-asleep .tile-entity-creature svg { filter: saturate(0.6) brightness(0.92); }
+.enemy-habit { margin: 4px 0 0; font-size: 13px; line-height: 1.35; color: var(--text-2); font-style: italic; }
+
+/* ---------- Build 27: stance switch, quick actions, map Inspect button ---------- */
+.dungeon-controls { grid-template-areas: "stance" "actions" "dpad"; }
+.stance-control {
+  grid-area: stance;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 3px;
+  border: 2px solid var(--line);
+  border-radius: calc(var(--radius) + 2px);
+  background: color-mix(in srgb, var(--card) 85%, var(--line));
+}
+.stance-control button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: 700 13px/1.1 var(--font-ui);
+  cursor: pointer;
+  min-width: 0;
+}
+.stance-control button span:not(.stance-glyph) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stance-control button kbd { font: 700 10px/1 var(--font-ui); opacity: 0.55; border: 1px solid currentColor; border-radius: 3px; padding: 1px 3px; }
+.stance-control .stance-glyph { font-size: 15px; line-height: 1; }
+.stance-control button[aria-pressed="true"] { background: var(--gold); color: #2a1c15; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18); }
+.stance-control button[data-stance="guard"][aria-pressed="true"] { background: var(--jade); color: #fff; }
+.stance-control button:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+.stance-control.is-exposed { border-color: var(--red); animation: stance-warn 1.4s ease-in-out infinite; }
+@keyframes stance-warn { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 35%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .stance-control.is-exposed { animation: none; } }
+
+/* The Inspect button now lives on the map itself. */
+.dungeon-map-viewport > .look-toggle {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 6;
+  grid-area: auto;
+  flex-direction: row;
+  gap: 4px;
+  min-height: 0;
+  padding: 4px 9px;
+  font-size: 12px;
+  border-radius: 99px;
+  opacity: 0.92;
+}
+.dungeon-map-viewport > .look-toggle img { width: 16px; height: 16px; }
+
+/* Quick actions: the main interaction plus up to four likely next moves. */
+.action-buttons { grid-template-columns: minmax(0, 1fr); grid-template-areas: "primary" "groups"; }
+.action-primary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.action-primary .button.quick-main { grid-column: 1 / -1; }
+.action-primary .button.quick-action {
+  min-height: 44px;
+  padding: 5px 8px;
+  font-size: 13.5px;
+  background: var(--card);
+  color: var(--text);
+  border: 2px solid var(--line);
+}
+.action-primary .button.quick-action .action-glyph img { width: 22px; height: 22px; }
+.action-primary .button.quick-combat { border-color: var(--red); }
+.action-primary .button.quick-spell { border-color: var(--blue, #3f7ea8); }
+.action-primary .button.quick-supply { border-color: var(--gold-deep, #9a6b12); }
+.action-primary .button.quick-action:hover:not(:disabled) { background: color-mix(in srgb, var(--card) 80%, var(--line)); }
+.action-primary .button.quick-main:disabled { opacity: 0.55; }
+.action-groups { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.action-group > summary { min-height: 40px; }
+.action-mode:empty { display: none; }
+.action-panel > .ability-guide-shortcut { top: -2px; }
+.turn-status { padding-right: 36px; }
+
+@media (max-width: 1099px) and (orientation: portrait), (max-width: 599px), (orientation: landscape) and (max-height: 819px) {
+  .dungeon-controls { grid-template-areas: "stance stance" "dpad actions"; }
+}
+@media (max-width: 460px) {
+  .action-buttons { grid-template-columns: minmax(0, 1fr); grid-template-areas: "primary" "groups"; }
+  .action-primary { grid-area: primary; grid-column: auto; }
+  .action-groups { grid-area: groups; }
+  .action-primary .button.quick-action { min-height: 40px; font-size: 11.5px; line-height: 1.08; padding: 3px 5px; white-space: normal; text-align: center; justify-content: center; }
+  .action-primary .button.quick-action .action-glyph { display: none; }
+  .action-primary .button.quick-action .action-label { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; text-align: center; overflow-wrap: anywhere; }
+  /* Keep the panel unpositioned so a group's sheet spans the whole control dock; the "?"
+     sits in the turn-status row instead of floating over the stance switch. */
+  .action-panel { position: static; }
+  .action-panel > .section-heading { grid-row: 1; grid-column: 1; }
+  .action-panel > .ability-guide-shortcut { position: static; grid-row: 1; grid-column: 1; justify-self: end; align-self: center; z-index: 2; }
+  .action-primary .button.quick-main { min-height: 44px; }
+  .action-groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .action-group > summary { flex-direction: column; min-height: 34px; gap: 1px; padding: 2px 3px; font-size: 10.5px; }
+  .action-group > summary img { width: 16px; height: 16px; }
+  .turn-status { -webkit-line-clamp: 1; }
+  .stance-control button { min-height: 32px; font-size: 12px; }
+  .stance-control button kbd { display: none; }
+}
+
+/* Top bar on laptop widths: compact labels before anything collides. */
+#journal-toggle { white-space: nowrap; }
+.spell-slot-resource { white-space: nowrap; }
+@media (max-width: 1499px) {
+  .brand-full { display: none; }
+  .brand-compact { display: inline; }
+  .topbar { gap: 10px; }
+  .topbar-actions { flex: 1; justify-content: flex-end; min-width: 0; }
+  .header-resources { flex: 1; min-width: 0; gap: 6px; }
+  .topbar-meter-resource { flex: 1 1 110px; min-width: 0; }
+  .topbar-meter-label small, .resource-copy small, .spell-slot-label { display: none; }
+  .topbar-resource, .topbar-meter-resource, .spell-slot-resource { padding: 4px 8px; }
+}
+/* Shortcut keys are shown on each button and in the ability guide, so the long key list goes. */
+.action-panel > .keyboard-hint { display: none; }
+
+/* Tiles a creature is winding up to strike next turn. */
+.map-tile.threat-tile { box-shadow: inset 0 0 0 2px var(--red); }
+.map-tile.threat-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 34%, transparent) 0 5px, transparent 5px 10px);
+  animation: threat-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes threat-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .map-tile.threat-tile::after { animation: none; } }
+.map-tile.creature-winding-up .tile-entity-creature::after { content: "!!"; color: #fff; background: var(--red); border-color: var(--red); position: absolute; top: -2%; right: 2%; font: 800 clamp(9px, 1.6vw, 14px)/1 var(--font-caps); border-radius: 999px; padding: 1px 4px; }
+
+/* Face presets: a row of small portraits. */
+.look-faces { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.look-face {
+  display: grid; justify-items: center; gap: 3px; padding: 5px 4px 6px; cursor: pointer;
+  border: 2px solid var(--line); border-radius: 10px; background: var(--card) var(--paper-texture); color: var(--text);
+  box-shadow: 0 2px 0 var(--line); font: 700 0.78rem/1.1 var(--font-ui); text-align: center;
+  transition: transform 0.1s ease;
+}
+.look-face img { width: 60px; height: 60px; display: block; border-radius: 50%; background: color-mix(in srgb, var(--card-2), #fff 20%); }
+.look-face:hover { transform: translateY(-1px); background: var(--card-2); }
+.look-face.is-selected { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 2px 0 var(--line); background: color-mix(in srgb, var(--jade), var(--card) 78%); }
+.look-face:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+@media (max-width: 460px) {
+  .look-faces { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .look-face img { width: 52px; height: 52px; }
+  .look-face { font-size: 0.72rem; }
+}
+.creature-strikes .strike-weak { color: var(--jade); }
+.creature-strikes .strike-resist { color: var(--red); }
+
+/* Weak spot chips on the encounter card. */
+.strike-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.strike-chips[hidden] { display: none; }
+.strike-chip {
+  font: 700 0.7rem/1.2 var(--font-ui); padding: 2px 7px; border-radius: 999px; border: 1.5px solid var(--line);
+  background: var(--card-2); color: var(--text); white-space: nowrap;
+}
+.strike-chip.is-weak { background: color-mix(in srgb, var(--jade), var(--card) 70%); border-color: var(--jade); }
+.strike-chip.is-resist { background: color-mix(in srgb, var(--red), var(--card) 78%); border-color: var(--red); }
+.strike-chip.is-unknown { color: var(--muted); border-style: dashed; }
+.strike-chip.is-yours::after { content: " ✓"; }
+.strike-chip.is-resist.is-yours::after { content: " !"; }
+
+/* Known weak spot / glancing blow: a small tag on the attack or spell button. */
+.action-buttons .button[data-forecast]::before {
+  content: attr(data-forecast-label);
+  position: absolute; top: -8px; left: 10px; z-index: 1;
+  padding: 1px 6px; border-radius: 999px; border: 1.5px solid var(--line);
+  font: 800 10px/1.3 var(--font-ui); letter-spacing: 0.02em; white-space: nowrap; pointer-events: none;
+}
+.action-buttons .button[data-forecast="weak"]::before { background: var(--gold); color: var(--ink, #2e211a); }
+.action-buttons .button[data-forecast="resist"]::before { background: var(--card); color: var(--red); border-color: var(--red); }
+
+/* The living tomb: habitat floors and the things that grow, pool, and rot on them. */
+.tile-entity-feature { z-index: 0; inset: 6% 6% 4%; }
+.tile-entity-feature .tile-sprite { opacity: 0.95; filter: drop-shadow(0 1px 0 rgba(20, 12, 8, 0.35)); }
+.tile-entity-feature .tile-sprite.is-depleted { opacity: 0.38; filter: grayscale(0.7); }
+.carcass-yield-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+.carcass-yield-icon {
+  width: 82%;
+  height: 82%;
+  position: relative;
+  z-index: 1;
+}
+.carcass-yield-ring {
+  position: absolute;
+  inset: 3%;
+  border-radius: 50%;
+  z-index: 3;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 218, 107, 0.82) 0deg var(--carcass-angle, 360deg),
+    rgba(46, 33, 26, 0.55) var(--carcass-angle, 360deg) 360deg
+  );
+  box-shadow: inset 0 0 0 1px rgba(46, 33, 26, 0.35);
+  -webkit-mask-image: radial-gradient(circle, transparent 0 76%, #000 78% 86%, transparent 88%);
+  mask-image: radial-gradient(circle, transparent 0 76%, #000 78% 86%, #0000 88%);
+  filter: drop-shadow(0 0 2px rgba(255, 218, 107, 0.28));
+  transition: background 0.22s ease-out;
+}
+.carcass-yield-pie {
+  position: absolute;
+  inset: 7%;
+  z-index: 0;
+  border-radius: 999px;
+  background: conic-gradient(
+    rgba(241, 207, 102, 0.42) 0deg var(--carcass-angle, 360deg),
+    transparent var(--carcass-angle, 360deg) 360deg
+  );
+  pointer-events: none;
+  box-shadow: inset 0 0 6px rgba(241, 207, 102, 0.22);
+  transition: background 0.22s ease-out;
+}
+.butcher-motion {
+  animation: butcher-motion 0.32s ease-out;
+}
+.carcass-harvest .tile-sprite {
+  animation: carcass-harvest 0.38s ease-out;
+}
+.butcher-particle {
+  --particle-distance: 24px;
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 5px;
+  height: 7px;
+  border-radius: 60% 40% 55% 45%;
+  background: var(--red);
+  z-index: 8;
+  pointer-events: none;
+  animation: butcher-particle 0.48s ease-out var(--particle-delay, 0ms) forwards;
+  transform-origin: center;
+}
+@keyframes butcher-motion {
+  25% { transform: translateX(-1.5%) rotate(-1deg); }
+  55% { transform: translateX(1.5%) rotate(1deg); }
+}
+@keyframes carcass-harvest {
+  35% { transform: translateX(-2%) rotate(-1deg); filter: brightness(1.12); }
+  70% { transform: translateX(1%) rotate(0.5deg); }
+}
+@keyframes butcher-particle {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  18% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--particle-angle)) translateY(calc(-1 * var(--particle-distance))) translateX(8px) scale(0.75);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .butcher-motion,
+  .carcass-harvest .tile-sprite,
+  .butcher-particle { animation: none; }
+}
+.map-tile.occupied-feature.occupied-creature .tile-entity-feature,
+.map-tile.occupied-feature.occupied-player .tile-entity-feature { opacity: 0.55; }
+.map-tile.floor.habitat-fungal-garden { background-color: color-mix(in srgb, #4a9da3 9%, transparent); box-shadow: inset 0 0 18px rgba(74, 157, 163, 0.16); }
+.map-tile.floor.habitat-insect-cavern { box-shadow: inset 0 0 18px rgba(79, 140, 94, 0.16); }
+.map-tile.floor.habitat-flooded-chamber { background-color: color-mix(in srgb, #3f74b4 10%, transparent); box-shadow: inset 0 0 18px rgba(63, 116, 180, 0.2); }
+.map-tile.floor.habitat-bat-roost { box-shadow: inset 0 0 18px rgba(44, 37, 32, 0.18); }
+.map-tile.floor.habitat-predator-den, .map-tile.floor.habitat-bone-yard { box-shadow: inset 0 0 18px rgba(122, 29, 40, 0.14); }
+.map-tile.floor.habitat-nesting-chamber { box-shadow: inset 0 0 18px rgba(229, 185, 107, 0.22); }
+.map-tile.floor.habitat-dry-chamber { box-shadow: inset 0 0 18px rgba(236, 138, 46, 0.18); }
+.map-tile.floor.habitat-shrine { box-shadow: inset 0 0 18px rgba(240, 201, 62, 0.2); }
+
+/* ---------- Build 29: class abilities on the map ---------- */
+.field-mark,
+.area-burst { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.field-mark { opacity: 0.72; mix-blend-mode: multiply; }
+.field-mark.is-fading { opacity: 0.38; }
+.field-roots { background: repeating-linear-gradient(35deg, transparent 0 18%, rgba(92, 70, 32, 0.55) 18% 24%, transparent 24% 42%), radial-gradient(circle at 50% 70%, rgba(80, 120, 50, 0.35), transparent 70%); }
+.field-storm { background: radial-gradient(ellipse at 50% 30%, rgba(60, 80, 120, 0.55), transparent 72%), repeating-linear-gradient(105deg, transparent 0 22%, rgba(70, 110, 170, 0.45) 22% 25%, transparent 25% 48%); }
+.field-maw { background: radial-gradient(circle at 50% 55%, rgba(25, 10, 30, 0.75), rgba(90, 30, 70, 0.35) 55%, transparent 75%); }
+.field-sacred { background: radial-gradient(circle at 50% 50%, rgba(230, 183, 58, 0.55), transparent 70%); mix-blend-mode: normal; opacity: 0.6; }
+.field-spring { background: radial-gradient(circle at 50% 55%, rgba(74, 157, 163, 0.6), transparent 72%); }
+.field-caltrops { background: radial-gradient(circle at 25% 30%, #241a1f 0 5%, transparent 6%), radial-gradient(circle at 70% 40%, #241a1f 0 5%, transparent 6%), radial-gradient(circle at 45% 75%, #241a1f 0 5%, transparent 6%), radial-gradient(circle at 80% 80%, #241a1f 0 4%, transparent 5%); opacity: 0.85; }
+.field-sanctuary { background: radial-gradient(circle at 50% 50%, rgba(63, 122, 85, 0.45), transparent 72%), repeating-radial-gradient(circle at 50% 50%, transparent 0 18%, rgba(63, 122, 85, 0.25) 18% 21%); mix-blend-mode: normal; opacity: 0.6; }
+.field-swarm { background: radial-gradient(circle at 22% 30%, #3f7a55 0 4%, transparent 5%), radial-gradient(circle at 64% 22%, #6b5a24 0 4%, transparent 5%), radial-gradient(circle at 44% 62%, #3f7a55 0 4%, transparent 5%), radial-gradient(circle at 78% 70%, #6b5a24 0 4%, transparent 5%), radial-gradient(circle at 50% 50%, rgba(108, 180, 138, 0.35), transparent 72%); opacity: 0.85; }
+.field-glyph { inset: 12%; border: 2px solid rgba(184, 33, 58, 0.85); border-radius: 50%; background: radial-gradient(circle, rgba(184, 33, 58, 0.25) 0 30%, transparent 32%), repeating-conic-gradient(rgba(36, 26, 31, 0.6) 0 8deg, transparent 8deg 45deg); mix-blend-mode: normal; }
+.area-burst { animation: area-burst 0.65s ease-out forwards; background: radial-gradient(circle, rgba(255, 244, 210, 0.9), rgba(230, 183, 58, 0.55) 45%, transparent 72%); z-index: 4; }
+.area-sun { background: radial-gradient(circle, rgba(255, 246, 214, 0.95), rgba(230, 183, 58, 0.65) 45%, transparent 72%); }
+.area-night, .area-maw { background: radial-gradient(circle, rgba(40, 18, 52, 0.85), rgba(110, 40, 90, 0.5) 50%, transparent 74%); }
+.area-crush, .area-storm { background: radial-gradient(circle, rgba(230, 236, 255, 0.85), rgba(70, 110, 170, 0.55) 50%, transparent 74%); }
+.area-edge, .area-point, .area-caltrops { background: radial-gradient(circle, rgba(255, 255, 255, 0.85), rgba(36, 26, 31, 0.45) 50%, transparent 74%); }
+.area-roots { background: radial-gradient(circle, rgba(160, 200, 110, 0.8), rgba(92, 70, 32, 0.5) 50%, transparent 74%); }
+.area-spring { background: radial-gradient(circle, rgba(220, 245, 245, 0.9), rgba(74, 157, 163, 0.55) 50%, transparent 74%); }
+@keyframes area-burst { 0% { opacity: 0; transform: scale(0.4); } 30% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.15); } }
+.spell-effect {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 8;
+  width: 18%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, #fff 0 12%, #d7ae4e 22%, rgba(215, 174, 78, 0) 72%);
+  filter: drop-shadow(0 0 5px rgba(255, 226, 141, 0.95));
+  animation: spell-travel 0.58s cubic-bezier(0.3, 0.55, 0.25, 1) forwards;
+}
+.spell-effect::after {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  opacity: 0;
+  animation: spell-impact 0.58s ease-out forwards;
+}
+.spell-fire {
+  color: #c94f2c;
+  background: radial-gradient(circle, #fff 0 12%, #f2a13a 28%, rgba(201, 79, 44, 0) 72%);
+  filter: drop-shadow(0 0 6px #ef7b38);
+}
+.spell-arc, .spell-lightning, .spell-storm {
+  color: #dbe8ff;
+  background: radial-gradient(circle, #fff 0 12%, #91b9ed 28%, rgba(145, 185, 237, 0) 72%);
+  filter: drop-shadow(0 0 6px #9fc8ff);
+}
+.spell-magic, .spell-night, .spell-maw {
+  color: #c69ae0;
+  background: radial-gradient(circle, #fff 0 12%, #8c62ac 28%, rgba(140, 98, 172, 0) 72%);
+  filter: drop-shadow(0 0 6px #a97bc5);
+}
+.spell-spirit, .spell-heal, .spell-sun, .spell-sacred {
+  color: #f0d878;
+  background: radial-gradient(circle, #fff 0 12%, #7bc69a 28%, rgba(123, 198, 154, 0) 72%);
+  filter: drop-shadow(0 0 6px #d8e89a);
+}
+.spell-roots, .spell-spring {
+  color: #9ebc72;
+  background: radial-gradient(circle, #fff 0 12%, #79a66a 28%, rgba(121, 166, 106, 0) 72%);
+  filter: drop-shadow(0 0 6px #99b871);
+}
+@keyframes spell-travel {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
+  12% { opacity: 1; }
+  78% { opacity: 1; transform: translate(calc(-50% + var(--spell-x)), calc(-50% + var(--spell-y))) scale(1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--spell-x)), calc(-50% + var(--spell-y))) scale(1.6); }
+}
+@keyframes spell-impact {
+  0%, 62% { opacity: 0; transform: scale(0.35); }
+  78% { opacity: var(--spell-impact, 1); transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .area-burst { animation: none; opacity: 0.6; }
+  .spell-effect, .spell-effect::after { animation: none; opacity: 0.6; }
+}
+.tile-entity-summon img { filter: drop-shadow(0 0 3px rgba(74, 157, 163, 0.9)); animation: summon-breathe 2.4s ease-in-out infinite; }
+@keyframes summon-breathe { 50% { filter: drop-shadow(0 0 6px rgba(74, 157, 163, 1)); } }
+@media (prefers-reduced-motion: reduce) { .tile-entity-summon img { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .player-step,
+  .creature-step,
+  .strike-lunge,
+  .map-follow-step { animation: none; }
+}
+.map-tile.creature-rooted .tile-entity-creature::after,
+.map-tile.creature-slowed .tile-entity-creature::after,
+.map-tile.creature-stunned .tile-entity-creature::after,
+.map-tile.creature-spellbound .tile-entity-creature::after {
+  position: absolute;
+  top: -2%;
+  right: 2%;
+  font: 700 clamp(9px, 1.6vw, 14px)/1 var(--font-caps);
+  background: color-mix(in srgb, var(--card, #f6eedb) 88%, transparent);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 4px;
+  z-index: 5;
+}
+.map-tile.creature-rooted .tile-entity-creature::after { content: "⌗"; color: #5c4620; }
+.map-tile.creature-slowed .tile-entity-creature::after { content: "…"; color: var(--blue, #3b6fae); }
+.map-tile.creature-stunned .tile-entity-creature::after { content: "✶"; color: var(--gold-deep, #9a6b12); }
+.map-tile.creature-spellbound .tile-entity-creature::after { content: "♪"; color: var(--red, #a43f30); }
+
+/* ---------- Build 30: the ground under the tomb (systems/biome.js) ---------- */
+.map-tile[class*="ground-"]::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.map-tile.ground-water::before { background: url("./resources/tiles/ground/water.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-deep::before { background: url("./resources/tiles/ground/deep.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-moss::before { background: url("./resources/tiles/ground/moss.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-roots::before { background: url("./resources/tiles/ground/roots.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-guano::before { background: url("./resources/tiles/ground/guano.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-bones::before { background: url("./resources/tiles/ground/bones.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-rubble::before { background: url("./resources/tiles/ground/rubble.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-ash::before { background: url("./resources/tiles/ground/ash.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-crystal::before { background: url("./resources/tiles/ground/crystal.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-mycelium::before { background: url("./resources/tiles/ground/mycelium.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-flesh::before { background: url("./resources/tiles/ground/flesh.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.has-camp::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 60%, rgba(240, 150, 50, 0.32), transparent 70%); pointer-events: none; z-index: 1; }
+.map-tile.habitat-damp-cavern.floor { box-shadow: inset 0 0 18px rgba(63, 122, 85, 0.16); }
+.map-tile.habitat-overgrown-ruins.floor { box-shadow: inset 0 0 18px rgba(110, 72, 40, 0.18); }
+.map-tile.habitat-earth-mouth.floor { box-shadow: inset 0 0 22px rgba(160, 40, 50, 0.28); }
+.map-tile.habitat-star-hollow.floor { box-shadow: inset 0 0 20px rgba(120, 110, 220, 0.22); }
+.map-tile.creature-sleeping-off-a-meal .tile-entity-creature::after,
+.map-tile.creature-waiting-its-turn .tile-entity-creature::after,
+.map-tile.creature-disputing-territory .tile-entity-creature::after,
+.map-tile.creature-on-the-move .tile-entity-creature::after {
+  position: absolute; top: -2%; right: 2%; font: 700 clamp(9px, 1.6vw, 14px)/1 var(--font-caps);
+  color: var(--ink, #2e211a); background: color-mix(in srgb, var(--card, #f6eedb) 88%, transparent);
+  border: 1px solid currentColor; border-radius: 999px; padding: 1px 4px; pointer-events: none;
+}
+.map-tile.creature-sleeping-off-a-meal .tile-entity-creature::after { content: "z"; }
+.map-tile.creature-waiting-its-turn .tile-entity-creature::after { content: "…"; }
+.map-tile.creature-disputing-territory .tile-entity-creature::after { content: "⚔"; }
+.map-tile.creature-on-the-move .tile-entity-creature::after { content: "»"; }
+
+/* Several things to do here: the big button and a switch to step through them. */
+.action-primary .interact-row { grid-column: 1 / -1; display: flex; gap: 5px; min-width: 0; }
+.action-primary .interact-row > .button { flex: 1 1 auto; min-width: 0; }
+.action-primary .interact-row > #interact-switch {
+  flex: 0 0 auto; width: auto; min-width: 46px; padding: 2px 6px; justify-content: center; text-align: center;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  background: var(--card); color: var(--ink); border: 2px solid var(--jade-deep, #1f6b55);
+}
+.action-primary .interact-row > #interact-switch .action-key { display: none; }
+.action-primary .interact-row > #interact-switch:hover:not(:disabled) { background: color-mix(in srgb, var(--card) 80%, var(--line)); }
+.action-primary .interact-row > #interact-switch .action-glyph { display: none; }
+.action-primary .interact-row.is-demoted { order: 2; }
+.button.here-action { border-style: dashed; }
+
+/* The pack: a grid of item boxes with a rarity outline; tapping one opens its card. */
+.inventory-list.pack-grid {
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 7px;
+}
+.pack-grid .inventory-empty { grid-column: 1 / -1; }
+.pack-cell { --rarity: #a89a80; min-width: 0; }
+.pack-cell.rarity-fine { --rarity: var(--tier-fine); }
+.pack-cell.rarity-masterwork { --rarity: var(--tier-masterwork); }
+.pack-cell.rarity-relic { --rarity: var(--tier-relic); }
+.pack-cell.rarity-exotic { --rarity: #8a3fa8; }
+body.dark-mode .pack-cell.rarity-exotic { --rarity: #c48ae0; }
+.pack-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 5px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--rarity) 34%, transparent), transparent 74%),
+    var(--card-2);
+  box-shadow: inset 0 0 0 2.5px var(--rarity), 0 3px 0 var(--line);
+  cursor: pointer;
+}
+.pack-slot:hover { background-color: var(--card); }
+.pack-slot.is-open { transform: translateY(1px); box-shadow: inset 0 0 0 3px var(--rarity), 0 2px 0 var(--line), 0 0 0 2px var(--red); }
+.pack-slot-icon { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.pack-slot-count {
+  position: absolute; right: 3px; bottom: 2px;
+  padding: 0 4px; border-radius: 6px;
+  background: var(--line); color: var(--card);
+  font: 800 11.5px/1.35 var(--font-ui); pointer-events: none;
+}
+.pack-slot-worn {
+  position: absolute; left: 3px; top: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--jade-deep, #1f6b55); color: var(--on-color, #fff);
+  font: 800 10px/1 var(--font-ui); pointer-events: none;
+}
+.item-card {
+  --rarity: #a89a80;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 2.5px var(--rarity), 0 3px 0 var(--line);
+}
+.item-card[hidden] { display: none; }
+.item-card.rarity-fine { --rarity: var(--tier-fine); }
+.item-card.rarity-masterwork { --rarity: var(--tier-masterwork); }
+.item-card.rarity-relic { --rarity: var(--tier-relic); }
+.item-card.rarity-exotic { --rarity: #8a3fa8; }
+body.dark-mode .item-card.rarity-exotic { --rarity: #c48ae0; }
+.item-card-head { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: 10px; }
+.item-card-icon {
+  grid-row: 1 / span 2; width: 64px; height: 64px; padding: 5px; border-radius: 10px;
+  background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--rarity) 34%, transparent), transparent 72%), var(--paper-deep);
+}
+.item-card-head .inventory-item-name { grid-column: 2; font: 700 18px/1.15 var(--font-display); overflow-wrap: anywhere; }
+.item-card-rarity { grid-column: 2; grid-row: 2; color: var(--rarity); font: 800 12px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.item-card-close { grid-column: 3; grid-row: 1 / span 2; align-self: start; min-width: 36px; min-height: 36px; border-radius: 99px; }
+.item-card-copy { display: grid; gap: 4px; }
+.item-card-copy .inventory-item-meta { color: var(--text-2); font-size: 13.5px; }
+.item-card-copy small { font-size: 14px; line-height: 1.4; }
+.item-card .inventory-item-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.item-card .inventory-item-actions .inventory-equip { flex: 1 1 auto; padding: 4px 14px; }
+/* ---------- Build 36: codex-style motion and spell effects ----------
+ Spells fly as painted glyphs (a sun disc, a star-eye, an obsidian blade, a jade bead, a sprout,
+ rain drops) with an ink ring on impact, instead of glowing orbs. Area spells leave a flat mineral
+ wash with an inked edge. Hits, heals, and falls tint the figure the way a codex painter would. */
+.spell-effect.spell-sun, .area-burst.area-sun { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg%3E%3Cpath d='M28.6 17.5 L38.0 20.0 L28.6 22.5 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M27.9 24.4 L32.7 32.7 L24.4 27.9 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M22.5 28.6 L20.0 38.0 L17.5 28.6 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M15.6 27.9 L7.3 32.7 L12.1 24.4 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M11.4 22.5 L2.0 20.0 L11.4 17.5 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M12.1 15.6 L7.3 7.3 L15.6 12.1 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M17.5 11.4 L20.0 2.0 L22.5 11.4 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M24.4 12.1 L32.7 7.3 L27.9 15.6 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='10' fill='%23f2d16a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='4.5' fill='%23c43c34' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E"); --wash: #e6b33a; }
+.spell-effect.spell-dawn, .area-burst.area-dawn { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg%3E%3Cpath d='M28.6 17.5 L38.0 20.0 L28.6 22.5 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M27.9 24.4 L32.7 32.7 L24.4 27.9 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M22.5 28.6 L20.0 38.0 L17.5 28.6 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M15.6 27.9 L7.3 32.7 L12.1 24.4 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M11.4 22.5 L2.0 20.0 L11.4 17.5 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M12.1 15.6 L7.3 7.3 L15.6 12.1 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M17.5 11.4 L20.0 2.0 L22.5 11.4 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M24.4 12.1 L32.7 7.3 L27.9 15.6 Z' fill='%23e6b33a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='10' fill='%23f2d16a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='4.5' fill='%23c43c34' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E"); --wash: #e6b33a; }
+.spell-effect.spell-sacred, .area-burst.area-sacred { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='15' fill='%233f8a5c' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%239fd0a8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='2.4' fill='%232b211b'/%3E%3C/svg%3E"); --wash: #3f8a5c; }
+.spell-effect.spell-night, .area-burst.area-night { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M4 20 Q20 6 36 20 Q20 34 4 20 Z' fill='%23f4ecd8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='6' fill='%232d2a4a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M4 20 Q20 6 36 20' fill='none' stroke='%23c43c34' stroke-width='3'/%3E%3C/svg%3E"); --wash: #4b4170; }
+.spell-effect.spell-crush, .area-burst.area-crush { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M8 24 L11 11 L23 7 L33 14 L32 28 L20 34 Z' fill='%23a49c8c' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M18 14 L21 21 L17 27' fill='none' stroke='%232b211b' stroke-width='1.6'/%3E%3C/svg%3E"); --wash: #8f8676; }
+.spell-effect.spell-edge, .area-burst.area-edge { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 32 Q14 10 34 5 Q26 22 6 32 Z' fill='%232e2b31' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M12 26 Q18 15 29 9' fill='none' stroke='%239a97a6' stroke-width='1.6'/%3E%3C/svg%3E"); --wash: #3a3640; }
+.spell-effect.spell-point, .area-burst.area-point { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 3 L29 22 L20 37 L11 22 Z' fill='%232e2b31' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M20 8 L24 21' stroke='%239a97a6' stroke-width='1.6'/%3E%3C/svg%3E"); --wash: #3a3640; }
+.spell-effect.spell-caltrops, .area-burst.area-caltrops { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 3 L29 22 L20 37 L11 22 Z' fill='%232e2b31' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M20 8 L24 21' stroke='%239a97a6' stroke-width='1.6'/%3E%3C/svg%3E"); --wash: #3a3640; }
+.spell-effect.spell-power, .area-burst.area-power { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='15' fill='%233f8a5c' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%239fd0a8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='2.4' fill='%232b211b'/%3E%3C/svg%3E"); --wash: #3f8a5c; }
+.spell-effect.spell-spirit, .area-burst.area-spirit { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='15' fill='%233f8a5c' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%239fd0a8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='2.4' fill='%232b211b'/%3E%3C/svg%3E"); --wash: #3f8a5c; }
+.spell-effect.spell-heal, .area-burst.area-heal { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='15' fill='%233f8a5c' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%239fd0a8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='2.4' fill='%232b211b'/%3E%3C/svg%3E"); --wash: #3f8a5c; }
+.spell-effect.spell-spring, .area-burst.area-spring { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M14 4 Q20 14 14 18 Q8 14 14 4 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M27 14 Q33 24 27 28 Q21 24 27 14 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M15 24 Q21 34 15 38 Q9 34 15 24 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E"); --wash: #5b8fc4; }
+.spell-effect.spell-regen, .area-burst.area-regen { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='15' fill='%233f8a5c' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%239fd0a8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='2.4' fill='%232b211b'/%3E%3C/svg%3E"); --wash: #3f8a5c; }
+.spell-effect.spell-sanctuary, .area-burst.area-sanctuary { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='15' fill='%233f8a5c' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%239fd0a8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='2.4' fill='%232b211b'/%3E%3C/svg%3E"); --wash: #3f8a5c; }
+.spell-effect.spell-roots, .area-burst.area-roots { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 36 L20 18' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round' fill='none'/%3E%3Cpath d='M20 22 Q8 22 6 10 Q18 10 20 22 Z' fill='%236aa04e' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M20 18 Q30 16 34 6 Q22 6 20 18 Z' fill='%238cbc5e' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E"); --wash: #6aa04e; }
+.spell-effect.spell-swarm, .area-burst.area-swarm { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 36 L20 18' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round' fill='none'/%3E%3Cpath d='M20 22 Q8 22 6 10 Q18 10 20 22 Z' fill='%236aa04e' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M20 18 Q30 16 34 6 Q22 6 20 18 Z' fill='%238cbc5e' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E"); --wash: #6aa04e; }
+.spell-effect.spell-storm, .area-burst.area-storm { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M14 4 Q20 14 14 18 Q8 14 14 4 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M27 14 Q33 24 27 28 Q21 24 27 14 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M15 24 Q21 34 15 38 Q9 34 15 24 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E"); --wash: #5b8fc4; }
+.spell-effect.spell-arc, .area-burst.area-arc { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M14 4 Q20 14 14 18 Q8 14 14 4 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M27 14 Q33 24 27 28 Q21 24 27 14 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M15 24 Q21 34 15 38 Q9 34 15 24 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E"); --wash: #5b8fc4; }
+.spell-effect.spell-lightning, .area-burst.area-lightning { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M14 4 Q20 14 14 18 Q8 14 14 4 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M27 14 Q33 24 27 28 Q21 24 27 14 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M15 24 Q21 34 15 38 Q9 34 15 24 Z' fill='%235b8fc4' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E"); --wash: #5b8fc4; }
+.spell-effect.spell-maw, .area-burst.area-maw { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M5 18 Q20 2 35 18 Q20 36 5 18 Z' fill='%239c2a3a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M9 18 L13 13 L16 18 L20 12 L24 18 L27 13 L31 18' fill='%23f4ecd8' stroke='%232b211b' stroke-width='1.4'/%3E%3C/svg%3E"); --wash: #9c2a3a; }
+.spell-effect.spell-magic, .area-burst.area-magic { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M4 20 Q20 6 36 20 Q20 34 4 20 Z' fill='%23f4ecd8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='6' fill='%232d2a4a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M4 20 Q20 6 36 20' fill='none' stroke='%23c43c34' stroke-width='3'/%3E%3C/svg%3E"); --wash: #4b4170; }
+.spell-effect.spell-fire, .area-burst.area-fire { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 36 Q8 30 12 18 Q14 24 18 22 Q14 12 22 4 Q22 14 28 16 Q34 26 20 36 Z' fill='%23e0662f' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M20 32 Q14 28 17 22 Q20 26 22 24 Q26 28 20 32 Z' fill='%23f2c24a'/%3E%3C/svg%3E"); --wash: #e0662f; }
+.spell-effect.spell-glyph, .area-burst.area-glyph { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M4 20 Q20 6 36 20 Q20 34 4 20 Z' fill='%23f4ecd8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='6' fill='%232d2a4a' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M4 20 Q20 6 36 20' fill='none' stroke='%23c43c34' stroke-width='3'/%3E%3C/svg%3E"); --wash: #4b4170; }
+.spell-effect.spell-nahual, .area-burst.area-nahual { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='15' fill='%233f8a5c' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%239fd0a8' stroke='%232b211b' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='2.4' fill='%232b211b'/%3E%3C/svg%3E"); --wash: #3f8a5c; }
+
+/* Default glyph (jade bead) for any effect without its own. */
+.spell-effect, .area-burst { --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='15' fill='%233f8a5c' stroke='%232b211b' stroke-width='2.2'/%3E%3Ccircle cx='20' cy='20' r='7' fill='%239fd0a8' stroke='%232b211b' stroke-width='2.2'/%3E%3Ccircle cx='20' cy='20' r='2.4' fill='%232b211b'/%3E%3C/svg%3E"); --wash: #3f8a5c; }
+
+/* The thrown glyph: no glow, a painted sign that arcs to its target and turns as it flies. */
+.spell-effect,
+.spell-effect.spell-fire, .spell-effect.spell-arc, .spell-effect.spell-lightning, .spell-effect.spell-storm,
+.spell-effect.spell-magic, .spell-effect.spell-night, .spell-effect.spell-maw,
+.spell-effect.spell-spirit, .spell-effect.spell-heal, .spell-effect.spell-sun, .spell-effect.spell-sacred,
+.spell-effect.spell-roots, .spell-effect.spell-spring {
+  width: 62%;
+  border-radius: 0;
+  background: var(--glyph) center / contain no-repeat;
+  filter: drop-shadow(0 2px 0 rgba(43, 33, 27, 0.25));
+  color: #2b211b;
+  animation: glyph-travel 0.6s cubic-bezier(0.45, 0.05, 0.3, 1) forwards;
+}
+/* Impact: an ink ring with a wash of the spell's color, like a painted splash. */
+.spell-effect::after {
+  inset: -30%;
+  border: 2.5px solid rgba(43, 33, 27, 0.85);
+  background: radial-gradient(circle, color-mix(in srgb, var(--wash) 38%, transparent) 0 58%, transparent 60%);
+  animation: glyph-impact 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+@keyframes glyph-travel {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(-25deg); }
+  14% { opacity: 1; transform: translate(-50%, -62%) scale(0.85) rotate(-12deg); }
+  45% { transform: translate(calc(-50% + var(--spell-x) * 0.5), calc(-50% + var(--spell-y) * 0.5 - 22%)) scale(1) rotate(0deg); }
+  76% { opacity: 1; transform: translate(calc(-50% + var(--spell-x)), calc(-50% + var(--spell-y))) scale(1) rotate(10deg); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--spell-x)), calc(-50% + var(--spell-y))) scale(1.25) rotate(14deg); }
+}
+@keyframes glyph-impact {
+  0%, 66% { opacity: 0; transform: scale(0.3); }
+  80% { opacity: 1; transform: scale(0.95); }
+  100% { opacity: 0; transform: scale(1.45); }
+}
+
+/* Area spells: a flat mineral wash with an inked rim and the glyph stamped in the middle. */
+.area-burst,
+.area-burst.area-sun, .area-burst.area-night, .area-burst.area-maw, .area-burst.area-crush, .area-burst.area-storm,
+.area-burst.area-edge, .area-burst.area-point, .area-burst.area-caltrops, .area-burst.area-roots, .area-burst.area-spring {
+  inset: 6%;
+  border-radius: 50%;
+  border: 2px solid rgba(43, 33, 27, 0.75);
+  background:
+    var(--glyph) center / 58% no-repeat,
+    color-mix(in srgb, var(--wash) 34%, transparent);
+  mix-blend-mode: normal;
+  animation: wash-burst 0.7s cubic-bezier(0.2, 0.75, 0.3, 1) forwards;
+}
+@keyframes wash-burst {
+  0% { opacity: 0; transform: scale(0.35) rotate(-20deg); }
+  28% { opacity: 1; transform: scale(1.04) rotate(0deg); }
+  60% { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+/* Steps: a small hop, the way codex figures stride. */
+@keyframes player-step {
+  from { transform: translate(var(--step-x, 0), var(--step-y, 0)); }
+  50% { transform: translate(calc(var(--step-x, 0%) * 0.45), calc(var(--step-y, 0%) * 0.45 - 7%)); }
+  to { transform: translate(0, 0); }
+}
+@keyframes creature-step {
+  from { transform: translate(var(--step-x, 0), var(--step-y, 0)); }
+  50% { transform: translate(calc(var(--step-x, 0%) * 0.45), calc(var(--step-y, 0%) * 0.45 - 5%)); }
+  to { transform: translate(0, 0); }
+}
+.player-step, .creature-step { animation-duration: 0.24s; animation-timing-function: cubic-bezier(0.33, 0.8, 0.4, 1); }
+
+/* A blow: draw back a little, lunge, settle. */
+.strike-lunge { animation: strike-lunge 0.36s cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes strike-lunge {
+  0% { transform: translate(0, 0); }
+  22% { transform: translate(calc(var(--strike-x, 0%) * -0.22), calc(var(--strike-y, 0%) * -0.22)) rotate(-3deg); }
+  52% { transform: translate(var(--strike-x, 0), var(--strike-y, 0)) rotate(4deg); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Struck: a red-ochre tint and a short recoil, then settle. No neon. */
+.hurt-flash { animation: sprite-hurt 0.5s cubic-bezier(0.3, 0.7, 0.4, 1); }
+@keyframes sprite-hurt {
+  0% { transform: translateX(0); filter: none; }
+  18% { transform: translateX(-6%) rotate(-3deg); filter: sepia(1) saturate(3.2) hue-rotate(-28deg) brightness(0.92); }
+  42% { transform: translateX(4%) rotate(2deg); filter: sepia(0.7) saturate(2.4) hue-rotate(-28deg); }
+  70% { transform: translateX(-1.5%); filter: sepia(0.25) saturate(1.4) hue-rotate(-28deg); }
+  100% { transform: translateX(0); filter: none; }
+}
+/* Healed: a jade outline drawn around the figure, and a small lift. */
+.heal-flash { animation: sprite-heal 0.7s cubic-bezier(0.3, 0.7, 0.4, 1); }
+@keyframes sprite-heal {
+  0%, 100% { transform: translateY(0); filter: none; }
+  35% {
+    transform: translateY(-4%);
+    filter: drop-shadow(1.5px 0 0 #3f8a5c) drop-shadow(-1.5px 0 0 #3f8a5c) drop-shadow(0 1.5px 0 #3f8a5c) drop-shadow(0 -1.5px 0 #3f8a5c);
+  }
+}
+/* Fallen: the figure tips over and fades to the paper's sepia. */
+.death-flash { animation: sprite-fall 0.75s cubic-bezier(0.5, 0, 0.75, 0.4) forwards; transform-origin: 50% 90%; }
+@keyframes sprite-fall {
+  0% { opacity: 1; transform: none; filter: none; }
+  35% { transform: rotate(-6deg); filter: sepia(0.6); }
+  100% { opacity: 0; transform: translateY(8%) rotate(78deg) scale(0.92); filter: sepia(1) brightness(0.9); }
+}
+
+/* Damage and healing numbers: a paper tag that pops and drifts up. */
+.impact-number { animation: impact-rise 0.8s cubic-bezier(0.2, 0.8, 0.3, 1) forwards; box-shadow: 0 2px 0 var(--line); }
+@keyframes impact-rise {
+  0% { opacity: 0; transform: translate(-50%, 35%) scale(0.7); }
+  20% { opacity: 1; transform: translate(-50%, -10%) scale(1.08); }
+  35% { transform: translate(-50%, -18%) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(1); }
+}
+
+/* Lingering fields: flatter washes, no glow. */
+.field-mark { mix-blend-mode: multiply; }
+.field-sacred, .field-sanctuary { mix-blend-mode: multiply; opacity: 0.55; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spell-effect, .spell-effect::after, .area-burst { animation: none; opacity: 0.7; }
+  .strike-lunge, .hurt-flash, .heal-flash, .player-step, .creature-step { animation: none; }
+  .death-flash { animation: none; opacity: 0; }
+  .impact-number { animation: none; }
 }

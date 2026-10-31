@@ -74,7 +74,8 @@ function renderCharacterSheet(character, stats, trainingText, gearText) {
   vital("Armor", stats.ac + mods.ac, "AC");
   vital("Attack", signed(stats.attackBonus + mods.attack), t(stats.weapon?.name || ""));
   const damageBonus = stats.damageBonus + mods.damage;
-  vital("Damage", `${stats.damageDice}${damageBonus ? signed(damageBonus) : ""}`);
+  vital("Damage", `${stats.damageDice}${damageBonus ? signed(damageBonus) : ""}`,
+    typeof equippedStrike === "function" ? t(capitalizeFirst(STRIKE_KINDS[equippedStrike()].name)) : "");
   vital("Pack limit", `${getCarryCapacity(character)} lb`);
   if (hasSpellcasting(character.class, level)) {
     vital("Spell slots", `${Math.min(state.run.spellSlots, maxSpellSlots(character.class, level))}/${maxSpellSlots(character.class, level)}`);
@@ -152,17 +153,20 @@ function connectCharacterSheet() {
 
 const ABILITY_GROUPS = [
   ["combat", "Combat"],
-  ["spells", "Spells"],
+  ["spells", "Spells and techniques"],
   ["explore", "Exploring"],
   ["items", "Items and tools"]
 ];
 const ABILITY_META = {
   Attack: ["combat", "R", "weapon"],
+  "Weak spots": ["combat", "", "weapon"],
   Dodge: ["combat", "V", "armor"],
-  Dash: ["combat", "T", "tool"],
+  Guard: ["combat", "", "armor"],
+  Run: ["combat", "T", "tool"],
   Disengage: ["combat", "Y", "armor"],
   Interact: ["explore", "Space / E", "tool"],
   Search: ["explore", "F", "tool"],
+  "The living tomb": ["explore", "Space / E", "chilis"],
   "Disarm trap": ["explore", "Shift+F", "tool"],
   Forage: ["explore", "G", "chilis"],
   Camp: ["explore", "B", "kit"],
@@ -182,7 +186,8 @@ function renderGroupedAbilities(abilities, spellRange) {
   let spellIndex = 0;
   abilities.forEach((ability, index) => {
     const isSpell = index >= spellRange[0] && index < spellRange[1];
-    const meta = ABILITY_META[ability.name] || (isSpell ? ["spells", String(++spellIndex), ability.healing ? "potion" : "keepsake"] : ["items", "", "supply"]);
+    const meta = ability.group ? [ability.group, ability.key || "", ability.icon || "keepsake"]
+      : ABILITY_META[ability.name] || (ability.knack ? ["combat", KNACKS[state.run.character.class]?.action ? "Q" : "", "keepsake"] : null) || (isSpell ? ["spells", String(++spellIndex), ability.healing ? "potion" : "keepsake"] : ["items", "", "supply"]);
     groups.get(meta[0]).push({ ...ability, key: meta[1], icon: meta[2] });
   });
   const character = state.run.character;
@@ -193,7 +198,7 @@ function renderGroupedAbilities(abilities, spellRange) {
     const section = sheetElement("section", "guide-group");
     const heading = sheetElement("div", "guide-group-heading");
     heading.append(sheetElement("h4", "sheet-section-title", t(label)));
-    if (id === "spells" && hasSpellcasting(character.class, state.run.level)) {
+    if (id === "spells" && maxSpellSlots(character.class, state.run.level) > 0) {
       const max = maxSpellSlots(character.class, state.run.level);
       const left = Math.min(state.run.spellSlots, max);
       const pips = sheetElement("span", "guide-slot-pips");
@@ -316,6 +321,54 @@ function openCreatureCard(templateId, enemy = null) {
       body.append(sheetElement("p", "creature-note is-danger",
         t("Can inflict {condition} ({chance}%): {effect}", { condition: t(condition.name), chance: inflicts.chance, effect: t(condition.description) })));
     }
+  }
+
+  // Weak spots: what's known, and how the weapon in hand will land.
+  if (typeof creatureStrikes === "function") {
+    const subject = { templateId, title: enemy?.title, name: source.name };
+    const knowledge = strikeKnowledgeText(subject);
+    if (knowledge) {
+      const note = sheetElement("p", "creature-note creature-strikes", knowledge);
+      const weaponId = state.run?.character?.equipment?.weapon;
+      if (weaponId && WEAPONS[weaponId]) {
+        const kind = weaponStrike(weaponId);
+        const forecast = strikeForecast(subject, kind);
+        const verdict = forecast === "weak" ? t("finds its weak spot") : forecast === "resist" ? t("glances off") : "";
+        if (verdict) note.append(" ", sheetElement("strong", `strike-${forecast}`, `${tieredGearName(WEAPONS[weaponId])}: ${verdict}.`));
+      }
+      body.append(note);
+    }
+  }
+
+  // The naturalist's notes: what you've seen of its life, not just of fighting it.
+  const diet = typeof ecologyDietSummary === "function" ? ecologyDietSummary(templateId) : null;
+  if (diet) {
+    const lines = [];
+    const eatsNames = { fungus: "glowcaps", plants: "roots and greens", fish: "fish", insects: "insects", small: "small creatures",
+      large: "large creatures", carrion: "the dead", provisions: "food left out", tonalli: "offerings and fresh deaths",
+      chapolin: "chapolines", chicatana: "chicatana ants", pinacate: "pinacate beetles", ahuauhtli: "water bugs" };
+    const nameOf = (id) => t(eatsNames[id] || (window.CryptsEcology.species[id] ? creatureTemplate(id)?.name || id : id));
+    if (diet.known) {
+      lines.push(sheetElement("p", "creature-note", t(diet.note)));
+      if (diet.habitats.length) lines.push(sheetElement("p", "creature-note", t("Seen in: {0}.").replace("{0}", diet.habitats.map((name) => t(name).toLowerCase()).join(", "))));
+      const eats = diet.studied ? diet.eats : diet.eatsSeen;
+      if (eats.length) lines.push(sheetElement("p", "creature-note", t(diet.studied ? "Eats: {0}." : "Seen eating: {0}.").replace("{0}", [...new Set(eats.map(nameOf))].join(", "))));
+      if (diet.hunters.length) lines.push(sheetElement("p", "creature-note", t("Hunted by: {0}.").replace("{0}", diet.hunters.map((name) => t(name)).join(", "))));
+      if (diet.meat) {
+        lines.push(sheetElement("p", "creature-note", t("Yields: {0}.").replace("{0}", t(itemDetails(diet.meat)?.name || diet.meat)) +
+          (diet.hazard ? ` ${t(diet.hazard)}` : "") + (diet.prepared ? ` ${t("You know how to butcher it.")}` : "")));
+      }
+      if (diet.taboo) lines.push(sheetElement("p", "creature-note is-danger", t("Its kills belong to Tlaloc. Don't touch them.")));
+      if (!diet.studied) lines.push(sheetElement("p", "muted", t("Watch it longer, or study it (3 defeated), to learn more.")));
+    } else {
+      lines.push(sheetElement("p", "muted", t("Watch one, or defeat one, to learn what it eats and what hunts it.")));
+    }
+    if (enemy?.eco) {
+      const hunger = ecoHungerState(enemy);
+      const words = { starving: "Starving: desperate, −2 to attack and −1 AC.", hungry: "Hungry.", fed: "Well fed.", gorged: "Gorged and sluggish." };
+      if (words[hunger]) lines.push(sheetElement("p", `creature-note${hunger === "starving" ? " is-danger" : ""}`, t(words[hunger])));
+    }
+    body.append(sheetSection("Naturalist's notes", ...lines));
   }
 
   // Bestiary ladder

@@ -4,7 +4,7 @@
 //
 // Draws the player and companions in the manner of the painted Central Mexican codices the
 // rest of the game's art comes from: a profile head with a large almond eye and ear spool,
-// a frontal torso, profile legs and sandaled feet, flat mineral colors, and heavy ink
+// a frontal torso, profile legs and feet, flat mineral colors, and heavy ink
 // outlines with a slight hand-drawn wobble. Every builder choice (people, skin, hair,
 // garment, adornment, headwear, face paint, armor, shield, cloak, weapon, Mahuiz's regalia)
 // changes the drawing. The figure is returned as SVG markup on a 200 × 200 canvas,
@@ -13,20 +13,21 @@
 const CODEX_INK = "#2e211a";
 // Line weight relative to the original bold outlines. The tomb's art is painted with a fine
 // brush, so figures use thin, slightly uneven ink lines and soft watercolor fills.
-const CODEX_LINE = 0.6;
+const CODEX_LINE = 0.7;
 const CODEX_COLORS = {
   ink: CODEX_INK,
   paper: "#f4e7c8",
   white: "#f6eedb",
   cream: "#ecd9ad",
-  red: "#b5402c",
-  redDark: "#7f2a1f",
-  gold: "#e1ad3b",
+  // Mineral colors matched to the painted codex art: carmine, ochre, Maya blue, jade.
+  red: "#b8213a",
+  redDark: "#741a26",
+  gold: "#e6b73a",
   goldDark: "#a8771f",
-  jade: "#2f8f78",
-  jadeLight: "#6cc0a2",
-  turquoise: "#3aa3a6",
-  blue: "#3f7ea8",
+  jade: "#3f7a55",
+  jadeLight: "#6cb48a",
+  turquoise: "#4a9da3",
+  blue: "#3b6fae",
   obsidian: "#231b18",
   wood: "#8a5733",
   woodLight: "#b47c47",
@@ -170,7 +171,7 @@ function codexPalette(character) {
   const tunic = appearance.tunic || "#334d78";
   const trim = appearance.trim || CODEX_COLORS.red;
   // The second color in woven borders: gold, unless the trim itself is gold-like.
-  const trimAlt = trim.toLowerCase() === CODEX_COLORS.gold ? CODEX_COLORS.red : CODEX_COLORS.gold;
+  const trimAlt = ["#e1ad3b", CODEX_COLORS.gold].includes(trim.toLowerCase()) ? CODEX_COLORS.red : CODEX_COLORS.gold;
   return {
     trim,
     trimAlt,
@@ -178,6 +179,7 @@ function codexPalette(character) {
     race,
     skin,
     skinDark: codexShade(skin, -34),
+    skinShade: codexShade(skin, -16),
     skinLight: codexShade(skin, 30),
     hair,
     hairLight: codexShade(hair, 46),
@@ -198,6 +200,10 @@ function codexFretBand(x, y, width, height, ground, ink) {
   }
   return codexShape(`M${x} ${y} L${x + width} ${y} L${x + width} ${y + height} L${x} ${y + height} Z`, ground, 1.8) +
     codexLine(d, 1.5, ink);
+}
+
+function codexBaseWeaponId(tieredId) {
+  return ((typeof WEAPONS !== "undefined" && WEAPONS[tieredId]) || {}).baseId || tieredId;
 }
 
 function codexWeapon(tieredId) {
@@ -422,6 +428,63 @@ function codexShield(palette) {
   ].join("");
 }
 
+// Face presets for every people except the Serpentkin (who wear the serpent's own head).
+// Each is a profile: the skull outline (forehead, nose, lips, chin), an eye, a brow, a
+// mouth, and a few lines of character. They are independent of hair, headwear, and paint.
+const CODEX_FACES = {
+  calm: {
+    skull: "M84 48 C86 38 104 36 111 44 L115 52 L117 58 C122 61 126 65 124 69 L118 70 L119 73 L116 75 L118 78 C115 83 109 85 103 85 L98 87 C88 85 82 77 82 66 C81 58 81 52 84 48 Z",
+    eye: "M102 60 Q107 55.5 112.5 60 Q107 63.5 102 60 Z", pupil: [108.6, 59.9, 1.9],
+    brow: ["M102 54.5 Q108 51.5 113.5 55.5", 1.8], mouth: ["M112 76 L117.5 75.5", 1.4], lines: []
+  },
+  hawk: {
+    skull: "M84 48 C86 38 104 35 111 42 L114 50 L116 54 C123 58 129 66 125 72 L118 71 L119 74 L116 76 L118 79 C115 84 109 86 103 85 L98 87 C88 85 82 77 82 66 C81 58 81 52 84 48 Z",
+    eye: "M102 60 Q107 57 112.5 59.5 Q107 62 102 60 Z", pupil: [108.4, 59.6, 1.6],
+    brow: ["M101 55.5 Q108 51.5 114 54", 2.5], mouth: ["M112 77.5 L118 77", 1.5],
+    lines: [["M113 63.5 C115 66 116 68 118 69", 1.1]]
+  },
+  round: {
+    skull: "M84 48 C86 38 104 37 110 45 L113 53 L116 59 C120 61 122 64 121 67 L117 68 L118 72 L115 74 L117 77 C115 84 108 88 101 87 L97 88 C87 86 81 78 81 66 C80 58 81 52 84 48 Z",
+    eye: "M101.5 60 Q107 54.5 112.5 60 Q107 64.5 101.5 60 Z", pupil: [108.2, 59.8, 2.1],
+    brow: ["M101 53.5 Q107 49.5 112.5 53", 1.7], mouth: ["M110 76 Q114 78.5 117 75", 1.4],
+    lines: [["M103 70 q3 2 6 1", 1]]
+  },
+  weathered: {
+    skull: "M84 48 C86 38 104 36 111 44 L115 52 L117 58 C122 61 125 66 123 70 L118 71 L119 74 L116 76 L117 79 C114 83 110 84 104 84 L98 87 C88 85 82 77 82 66 C81 58 81 52 84 48 Z",
+    eye: "M102.5 60.5 Q107 57.5 112 60.5 Q107 63 102.5 60.5 Z", pupil: [108.2, 60.4, 1.6],
+    brow: ["M101 54.5 Q108 52 114 56", 2], mouth: ["M112 77 L117 77.5", 1.4],
+    lines: [["M102.5 58.6 Q107 56.4 112 58.8", 1], ["M113 62.5 l3.2 0.8 M113 65 l3 0.2", 0.9], ["M111 71 C109 74 109 77 111 80", 1], ["M96 62 C97 66 98 69 101 71", 0.9]]
+  },
+  scarred: {
+    skull: "M84 48 C86 38 104 35 112 43 L116 52 L118 57 C124 61 127 66 124 69 L118 70 L119 72 L116 74 L119 78 L117 84 L103 86 L98 87 C88 85 82 77 82 66 C81 58 81 52 84 48 Z",
+    eye: "M102 60.5 Q107 57 112.5 60.5 Q107 63 102 60.5 Z", pupil: [108.6, 60.4, 1.7],
+    brow: ["M101 53 L114 57", 2.3], mouth: ["M111 77 L117.5 76.5", 1.5],
+    lines: [["M98 56 L105 73", 1.5, "#8c3a2c"], ["M99.5 60 l2 -0.6 M101 64 l2 -0.6 M102.5 68 l2 -0.6", 0.9, "#8c3a2c"]]
+  },
+  bright: {
+    skull: "M84 48 C86 37 104 36 111 45 L114 53 L116 59 C120 62 122 65 120 68 L116 69 L117 72 L115 74 L116 77 C114 82 108 85 102 85 L98 87 C88 85 82 77 82 66 C81 58 81 52 84 48 Z",
+    eye: "M102.5 60 Q107.5 54.5 112.5 60 Q107.5 64.5 102.5 60 Z", pupil: [108.4, 59.8, 2.3],
+    brow: ["M103 53 Q108 50.5 112.5 53.5", 1.5], mouth: ["M112 75.5 L116.5 75", 1.3], lines: []
+  },
+  broad: {
+    skull: "M84 48 C86 38 104 36 111 44 L115 52 L117 59 C123 62 127 67 123 71 L117 71 L119 74 L116 77 L118 80 C116 86 110 89 103 88 L98 88 C88 86 82 78 82 66 C81 58 81 52 84 48 Z",
+    eye: "M102 60.5 Q107 56.5 112 60.5 Q107 63.5 102 60.5 Z", pupil: [107.8, 60.3, 1.8],
+    brow: ["M101 55 Q107 52.5 113 55.5", 2.6], mouth: ["M111 76.5 L118 76", 1.6],
+    lines: [["M112 79.5 q3 1.6 5.6 0", 1.1], ["M117 65 C119 67 120 69 121 71", 1]]
+  },
+  long: {
+    skull: "M84 48 C86 38 104 36 111 44 L115 52 L118 57 C123 62 127 68 125 71 L119 71 L120 74 L117 76 L118 79 C116 85 110 88 103 87 L98 88 C88 85 82 77 82 66 C81 58 81 52 84 48 Z",
+    eye: "M102.5 60 Q107.5 57 112.5 60 Q107.5 62 102.5 60 Z", pupil: [108.5, 59.8, 1.6],
+    brow: ["M102 55 L113.5 54.5", 1.8], mouth: ["M113 77 L118.5 76.8", 1.2],
+    lines: [["M101 71 a0.9 0.9 0 1 0 0.1 0 M104 72.5 a0.9 0.9 0 1 0 0.1 0 M107 71.5 a0.9 0.9 0 1 0 0.1 0", 1.4]]
+  }
+};
+const CODEX_FACE_IDS = Object.keys(CODEX_FACES);
+
+function codexFace(appearance) {
+  return CODEX_FACES[appearance?.face] || CODEX_FACES.calm;
+}
+
 function codexHead(character, palette, north) {
   const appearance = character?.appearance || {};
   const cosmetics = character?.cosmetics || {};
@@ -478,7 +541,7 @@ function codexHead(character, palette, north) {
     front.push(codexLine("M86 70 q4 -3 8 0 M90 78 q4 -3 8 0 M100 76 q4 -3 8 0", 1.3, palette.skinDark));
     front.push(codexShape("M80 60 L72 54 L78 66 L70 66 L80 72 Z", palette.hair === c.jade ? c.cream : codexShade(palette.hair, 40), 1.8));
   } else {
-    front.push(codexShape("M84 48 C86 38 104 36 111 44 L115 52 L117 58 C122 61 126 65 124 69 L118 70 L119 73 L116 75 L118 78 C115 83 109 85 103 85 L98 87 C88 85 82 77 82 66 C81 58 81 52 84 48 Z", palette.skin));
+    front.push(codexShape(codexFace(appearance).skull, palette.skin));
     if (race === "gnome" || race === "halfling") {
       front.push(codexShape("M115 58 C124 58 128 64 125 70 C121 72 117 70 115 68 Z", palette.skin));
     }
@@ -523,10 +586,12 @@ function codexHead(character, palette, north) {
       } else if (appearance.facePaint === "red-jaw") {
         front.push(codexShape("M100 71 L116 70 C117 74 116 78 114 81 L103 82 C101 79 100 75 100 71 Z", c.red, 1.2, ' opacity="0.92"'));
       }
-      front.push(codexShape("M102 60 Q107 55.5 112.5 60 Q107 63.5 102 60 Z", c.white, 1.6));
-      front.push(codexCircle(108.6, 59.9, 1.9, CODEX_INK, 0.6));
-      front.push(codexLine("M102 54.5 Q108 51.5 113.5 55.5", 1.8));
-      front.push(codexLine("M112 76 L117.5 75.5", 1.4));
+      const face = codexFace(appearance);
+      for (const [d, width, color] of face.lines) front.push(codexLine(d, width, color || palette.skinDark));
+      front.push(codexShape(face.eye, c.white, 1.6));
+      front.push(codexCircle(face.pupil[0], face.pupil[1], face.pupil[2], CODEX_INK, 0.6));
+      front.push(codexLine(face.brow[0], face.brow[1]));
+      front.push(codexLine(face.mouth[0], face.mouth[1]));
       if (race === "half-orc") front.push(codexShape("M112 76 L114 68 L116 76 Z", c.white, 1.3));
       if (race === "halfling" || race === "gnome") front.push(`<circle cx="106" cy="70" r="3.6" fill="${c.red}" opacity="0.45"/>`);
       if (jewelry === "nose-crescent") front.push(codexShape("M116 70 C121 70 124 73 123 76 C121 74 118 73 115 73 Z", c.gold, 1.2));
@@ -598,7 +663,16 @@ function codexHead(character, palette, north) {
     front.push(codexFeather(100, 37, 6, 18, c.featherLight));
   }
 
-  // Headwear and Mahuiz's helmets.
+  // Headwear and Mahuiz's helmets (an edited SVG in resources/figure-art/helmet/ replaces them).
+  const headgearId = helmet || (headwear !== "none" ? headwear : "");
+  front.push(characterTextureLayer("helmet", headgearId, palette, north ? "north" : "") ?? figureArtOverride("helmet", headgearId, palette) ?? codexHeadgear(headwear, helmet));
+  return { back: back.join(""), front: front.join("") };
+}
+
+// The drawing for a basic headwear cut or one of Mahuiz's helmets, in head coordinates.
+function codexHeadgear(headwear, helmet) {
+  const c = CODEX_COLORS;
+  const front = [];
   if (headwear === "feather-band") {
     front.push(codexFeather(86, 44, -42, 30, c.feather));
     front.push(codexFeather(88, 42, -24, 34, c.featherLight));
@@ -713,7 +787,7 @@ function codexHead(character, palette, north) {
     front.push(codexLine("M86 40 L94 44 M84 50 L92 52", 1.6));
     front.push(codexShape("M82 30 C86 22 98 18 106 22 L104 27 C96 25 90 28 86 34 Z", c.red, 1.6));
   }
-  return { back: back.join(""), front: front.join("") };
+  return front.join("");
 }
 
 function codexTorso(character, palette, hasArmor, outfit) {
@@ -726,6 +800,14 @@ function codexTorso(character, palette, hasArmor, outfit) {
     ? "M82 92 C88 87 108 86 114 91 L119 100 C121 106 119 111 114 113 L112 118 C116 122 118 126 117 130 L82 132 C80 126 82 121 85 118 L80 101 Z"
     : "M82 92 C88 87 108 86 114 91 L117 99 L113 128 L84 130 L80 101 Z";
   const garment = appearance.garment || "woven-tunic";
+  const armorTexture = hasArmor ? characterTextureLayer("armor", (typeof ARMORS !== "undefined" && ARMORS[equipment.armor]?.baseId) || equipment.armor, palette, curvy ? "curvy" : "") : null;
+  if (!armorTexture && hasArmor) parts.push(codexArmor(equipment, palette));
+  else if (armorTexture) parts.push(armorTexture);
+  // A painted texture (art/character/clothes/<id>.dds) replaces the built-in drawing.
+  if (outfit) {
+    const outfitTexture = characterTextureLayer("clothes", outfit, palette, curvy ? "curvy" : "");
+    if (outfitTexture) return outfitTexture;
+  }
   // Cloth base or bare chest depending on the garment cut.
   if (outfit === "jaguar-clothes") {
     parts.push(codexShape(torsoPath, "#e2a536"));
@@ -824,218 +906,222 @@ function codexTorso(character, palette, hasArmor, outfit) {
     parts.push(`<path d="M110 102 l1.2 2.6 2.8 .3 -2.1 1.8 .7 2.7 -2.6-1.5 -2.6 1.5 .7-2.7 -2.1-1.8 2.8-.3z" fill="${c.gold}" stroke="${CODEX_INK}" stroke-width="0.8"/>`);
     return parts.join("");
   }
-  if (garment === "none") {
-    // Bare chest above the maxtlatl loincloth.
-    parts.push(codexShape(torsoPath, palette.skin));
-    parts.push(codexLine("M90 104 C96 106 104 106 110 103", 1.3, palette.skinDark));
-    parts.push(codexLine("M99 92 L99 100", 1, palette.skinDark));
-  } else if (garment === "cotton-wrap") {
-    parts.push(codexShape(torsoPath, palette.skin));
-    parts.push(codexLine("M90 104 C96 106 104 106 110 103", 1.3, palette.skinDark));
-    parts.push(codexShape("M104 88 L116 94 L94 130 L82 128 Z", palette.tunic));
-    parts.push(codexLine("M108 92 L88 128", 1.3, palette.tunicLight));
-    parts.push(codexShape("M108 86 C114 84 118 88 116 94 C112 96 108 94 108 86 Z", palette.tunicLight, 1.8));
-  } else if (garment === "hide-vest") {
-    parts.push(codexShape(torsoPath, palette.tunicLight));
-    parts.push(codexShape("M82 92 C88 87 98 87 100 88 L98 130 L84 130 L80 101 Z", palette.tunic));
-    parts.push(codexShape("M104 88 C108 88 112 89 114 91 L117 99 L113 128 L104 129 Z", palette.tunic));
-    parts.push(codexLine("M86 130 l-1 6 M90 130 l-1 6 M94 130 l-1 6 M106 129 l1 6 M110 129 l1 6", 1.4, palette.trimDark));
-  } else if (garment === "quechquemitl") {
-    // A quechquemitl: a woven shoulder cape that falls to a point at the chest, over a cotton blouse.
-    parts.push(codexShape(torsoPath, CODEX_COLORS.white));
-    parts.push(codexLine("M86 122 L114 120 M85 126 L114 124", 1, CODEX_COLORS.cream));
-    parts.push(codexShape("M79 92 C88 86 108 85 117 90 L116 106 L100 128 L82 108 Z", palette.tunic));
-    parts.push(codexLine("M82 108 L100 128 L116 106", 3, palette.trim));
-    parts.push(codexLine("M85 113 l-1 4 M89 118 l-1 4 M94 123 l-1 4 M106 123 l1 4 M110 118 l1 4 M114 112 l1 4", 1.2, palette.trim));
-    parts.push(codexShape("M95 88 L105 88 L103 94 L97 94 Z", palette.skin, 1.3));
-    parts.push(codexLine("M90 98 l4 4 l4 -4 l4 4 l4 -4", 1.1, palette.tunicDark));
-  } else if (garment === "tilmatli") {
-    // A tilmatli: a cotton cloak knotted at one shoulder, worn over a bare chest and loincloth.
-    parts.push(codexShape(torsoPath, palette.skin));
-    parts.push(codexLine("M90 104 C96 106 104 106 110 103", 1.3, palette.skinDark));
-    parts.push(codexShape("M100 86 L120 94 L116 138 L80 140 L78 104 C90 102 96 96 100 86 Z", palette.tunic));
-    parts.push(codexLine("M104 96 L96 136 M112 100 L108 136", 1.1, palette.tunicDark));
-    parts.push(codexShape("M79 132 L117 130 L116 138 L80 140 Z", palette.trim, 1.6));
-    parts.push(codexLine("M84 132 l0 7 M90 132 l0 7 M96 131 l0 7 M102 131 l0 7 M108 131 l0 7", 1.1, palette.trimAlt));
-    parts.push(codexShape("M100 84 C106 82 110 86 108 92 C104 94 100 90 100 84 Z", palette.trim, 1.8));
-  } else if (garment === "xicolli") {
-    // A xicolli: a sleeveless jacket, open at the front, with a woven border and fringe.
-    parts.push(codexShape(torsoPath, palette.skin));
-    parts.push(codexShape("M82 92 C88 87 98 87 100 88 L99 124 L84 126 L80 101 Z", palette.tunic));
-    parts.push(codexShape("M104 88 C108 88 112 89 114 91 L117 99 L114 123 L104 124 Z", palette.tunic));
-    parts.push(codexFretBand(81, 114, 36, 8, palette.trim, palette.trimAlt));
-    parts.push(codexLine("M84 126 l-1 6 M88 126 l-1 6 M92 126 l-1 6 M96 126 l-1 6 M106 124 l1 6 M110 124 l1 6 M114 124 l1 6", 1.4, palette.trim));
-  } else if (garment === "huipil") {
-    // A huipil: a loose woven blouse with an embroidered square yoke.
-    parts.push(codexShape(torsoPath, palette.tunicLight));
-    parts.push(codexShape("M92 90 L108 90 L108 104 L92 104 Z", palette.tunic, 1.8));
-    parts.push(codexShape("M95 90 L105 90 L104 98 L96 98 Z", palette.skin, 1.4));
-    parts.push(codexLine("M92 108 L116 106 M83 112 L117 110", 1.4, palette.trim));
-    parts.push(codexLine("M86 118 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4", 1.2, palette.tunicDark));
-  } else {
-    parts.push(codexShape(torsoPath, palette.tunic));
-    parts.push(codexLine("M92 94 C96 98 102 98 106 94", 1.4, palette.tunicDark));
-  }
-  if (curvy && !hasArmor && garment !== "cotton-wrap" && garment !== "none") parts.push(codexLine("M104 104 C110 108 114 110 117 108", 1.3, garment === "huipil" ? palette.tunic : palette.tunicDark));
-  if (garment === "woven-tunic" && !hasArmor) {
-    parts.push(codexFretBand(81, 118, 34, 8, palette.trim, palette.trimAlt));
-    parts.push(codexLine("M84 127 l0 5 M88 127 l0 5 M92 127 l0 5 M96 127 l0 5 M100 127 l0 5 M104 127 l0 5 M108 127 l0 5 M112 127 l0 5", 1.3));
-  }
-  if (garment === "feather-mantle") {
-    for (let index = 0; index < 7; index += 1) {
-      parts.push(codexFeather(80 + index * 6, 90, 180 + (index - 3) * 7, 16, index % 2 ? c.featherLight : c.feather));
+  const garmentTexture = characterTextureLayer("clothes", garment, palette, curvy ? "curvy" : "");
+  if (garmentTexture) parts.push(garmentTexture);
+  else {
+    if (garment === "none") {
+      // Bare chest above the maxtlatl loincloth: the base body shows through.
+    } else if (garment === "cotton-wrap") {
+      parts.push(codexShape("M104 88 L116 94 L94 130 L82 128 Z", palette.tunic));
+      parts.push(codexLine("M108 92 L88 128", 1.3, palette.tunicLight));
+      parts.push(codexShape("M108 86 C114 84 118 88 116 94 C112 96 108 94 108 86 Z", palette.tunicLight, 1.8));
+    } else if (garment === "hide-vest") {
+      parts.push(codexShape(torsoPath, palette.tunicLight));
+      parts.push(codexShape("M82 92 C88 87 98 87 100 88 L98 130 L84 130 L80 101 Z", palette.tunic));
+      parts.push(codexShape("M104 88 C108 88 112 89 114 91 L117 99 L113 128 L104 129 Z", palette.tunic));
+      parts.push(codexLine("M86 130 l-1 6 M90 130 l-1 6 M94 130 l-1 6 M106 129 l1 6 M110 129 l1 6", 1.4, palette.trimDark));
+    } else if (garment === "quechquemitl") {
+      // A quechquemitl: a woven shoulder cape that falls to a point at the chest, over a cotton blouse.
+      parts.push(codexShape(torsoPath, CODEX_COLORS.white));
+      parts.push(codexLine("M86 122 L114 120 M85 126 L114 124", 1, CODEX_COLORS.cream));
+      parts.push(codexShape("M79 92 C88 86 108 85 117 90 L116 106 L100 128 L82 108 Z", palette.tunic));
+      parts.push(codexLine("M82 108 L100 128 L116 106", 3, palette.trim));
+      parts.push(codexLine("M85 113 l-1 4 M89 118 l-1 4 M94 123 l-1 4 M106 123 l1 4 M110 118 l1 4 M114 112 l1 4", 1.2, palette.trim));
+      parts.push(codexShape("M95 88 L105 88 L103 94 L97 94 Z", palette.skin, 1.3));
+      parts.push(codexLine("M90 98 l4 4 l4 -4 l4 4 l4 -4", 1.1, palette.tunicDark));
+    } else if (garment === "tilmatli") {
+      // A tilmatli: a cotton cloak knotted at one shoulder, worn over a bare chest and loincloth.
+      parts.push(codexShape("M100 86 L120 94 L116 138 L80 140 L78 104 C90 102 96 96 100 86 Z", palette.tunic));
+      parts.push(codexLine("M104 96 L96 136 M112 100 L108 136", 1.1, palette.tunicDark));
+      parts.push(codexShape("M79 132 L117 130 L116 138 L80 140 Z", palette.trim, 1.6));
+      parts.push(codexLine("M84 132 l0 7 M90 132 l0 7 M96 131 l0 7 M102 131 l0 7 M108 131 l0 7", 1.1, palette.trimAlt));
+      parts.push(codexShape("M100 84 C106 82 110 86 108 92 C104 94 100 90 100 84 Z", palette.trim, 1.8));
+    } else if (garment === "xicolli") {
+      // A xicolli: a sleeveless jacket, open at the front, with a woven border and fringe.
+      parts.push(codexShape("M82 92 C88 87 98 87 100 88 L99 124 L84 126 L80 101 Z", palette.tunic));
+      parts.push(codexShape("M104 88 C108 88 112 89 114 91 L117 99 L114 123 L104 124 Z", palette.tunic));
+      parts.push(codexFretBand(81, 114, 36, 8, palette.trim, palette.trimAlt));
+      parts.push(codexLine("M84 126 l-1 6 M88 126 l-1 6 M92 126 l-1 6 M96 126 l-1 6 M106 124 l1 6 M110 124 l1 6 M114 124 l1 6", 1.4, palette.trim));
+    } else if (garment === "huipil") {
+      // A huipil: a loose woven blouse with an embroidered square yoke.
+      parts.push(codexShape(torsoPath, palette.tunicLight));
+      parts.push(codexShape("M92 90 L108 90 L108 104 L92 104 Z", palette.tunic, 1.8));
+      parts.push(codexShape("M95 90 L105 90 L104 98 L96 98 Z", palette.skin, 1.4));
+      parts.push(codexLine("M92 108 L116 106 M83 112 L117 110", 1.4, palette.trim));
+      parts.push(codexLine("M86 118 l4 -4 l4 4 l4 -4 l4 4 l4 -4 l4 4", 1.2, palette.tunicDark));
+    } else {
+      parts.push(codexShape(torsoPath, palette.tunic));
+      parts.push(codexLine("M92 94 C96 98 102 98 106 94", 1.4, palette.tunicDark));
     }
-    parts.push(codexShape("M80 88 C90 84 108 84 116 90 L116 94 C108 90 90 90 80 94 Z", c.gold, 1.8));
-  }
-  // Body armor goes over the garment.
-  if (hasArmor) {
-    const armor = (typeof ARMORS !== "undefined" && ARMORS[equipment.armor]?.baseId) || equipment.armor;
-    const art = (typeof ARMORS !== "undefined" && ARMORS[equipment.armor]?.art) || "";
-    if (art === "ehuatl") {
-      parts.push(codexShape("M81 90 C88 85 108 84 116 89 L118 100 L115 132 L83 134 L79 102 Z", c.gold, 2.6));
-      for (let y = 96; y <= 128; y += 6) {
-        for (let x = 84 + ((y / 6) % 2) * 3; x <= 112; x += 6) parts.push(codexShape(`M${x} ${y} q3 6 6 0`, (x / 6 + y / 6) % 2 ? c.red : c.featherLight, 1));
+    if (curvy && !hasArmor && garment !== "cotton-wrap" && garment !== "none") parts.push(codexLine("M104 104 C110 108 114 110 117 108", 1.3, garment === "huipil" ? palette.tunic : palette.tunicDark));
+    if (garment === "woven-tunic" && !hasArmor) {
+      parts.push(codexFretBand(81, 118, 34, 8, palette.trim, palette.trimAlt));
+      parts.push(codexLine("M84 127 l0 5 M88 127 l0 5 M92 127 l0 5 M96 127 l0 5 M100 127 l0 5 M104 127 l0 5 M108 127 l0 5 M112 127 l0 5", 1.3));
+    }
+    if (garment === "feather-mantle") {
+      for (let index = 0; index < 7; index += 1) {
+        parts.push(codexFeather(80 + index * 6, 90, 180 + (index - 3) * 7, 16, index % 2 ? c.featherLight : c.feather));
       }
-      parts.push(codexShape("M80 90 C90 86 108 86 117 90 L116 95 C108 92 90 92 81 96 Z", c.jade, 1.6));
-    } else if (art === "tlahuiztli") {
-      parts.push(codexShape("M79 90 C88 84 108 84 118 89 L120 100 L117 136 L81 138 L77 102 Z", c.red, 2.8));
-      for (let y = 95; y <= 132; y += 5) {
-        for (let x = 82 + ((y / 5) % 2) * 3; x <= 114; x += 6) parts.push(codexShape(`M${x} ${y} q3 5 6 0`, (x + y) % 3 ? c.red : c.redDark, 0.9));
-      }
-      parts.push(codexShape("M80 132 L118 130 L118 138 L81 140 Z", c.gold, 1.8));
-      parts.push(codexShape("M92 90 L106 90 L104 98 L94 98 Z", c.white, 1.4));
-    } else if (art === "jaguarshirt") {
-      // Spotted jaguar pelt over quilted cotton, with a red collar.
-      parts.push(codexShape("M80 90 C88 85 108 84 116 89 L119 100 L116 132 L82 134 L78 102 Z", "#e2a536", 2.6));
-      for (const [x, y] of [[88, 98], [102, 96], [111, 104], [94, 108], [106, 114], [86, 118], [98, 122], [110, 124]]) {
-        parts.push(`<circle cx="${x}" cy="${y}" r="3.2" fill="none" stroke="${CODEX_INK}" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="0.9" fill="${CODEX_INK}"/>`);
-      }
-      parts.push(codexShape("M86 88 C94 92 104 92 112 88 L111 93 C104 97 94 97 87 93 Z", c.red, 1.4));
-      parts.push(codexShape("M80 128 L117 126 L116 134 L82 136 Z", c.quilt, 1.6));
-    } else if (art === "jadecuirass") {
-      parts.push(codexShape("M80 90 C88 85 108 84 116 89 L119 100 L116 132 L82 134 L78 102 Z", c.quilt, 2.8));
-      for (let y = 94; y <= 124; y += 8) {
-        for (let x = 84; x <= 110; x += 7) parts.push(`<rect x="${x}" y="${y}" width="6" height="7" rx="1.6" fill="${(x + y) % 2 ? c.jade : c.jadeLight}" stroke="${CODEX_INK}" stroke-width="1"/>`);
-      }
-      parts.push(codexLine("M86 94 L86 130 M100 92 L100 132 M112 94 L112 130", 1, c.gold));
-      parts.push(codexShape("M80 128 L117 126 L116 134 L82 136 Z", c.gold, 1.8));
-    } else if (art === "cuirass" || art === "gilded") {
-      const plate = art === "gilded" ? c.gold : c.steel;
-      const trim = art === "gilded" ? c.steel : c.gold;
-      parts.push(codexShape("M80 90 C88 84 108 84 117 89 L119 100 L114 122 L84 124 L79 101 Z", plate, 2.8));
-      parts.push(codexLine("M99 88 C101 100 101 112 99 122", 1.6, art === "gilded" ? c.goldDark : c.steelDark));
-      parts.push(codexLine("M86 94 C92 100 96 104 98 112", 2.4, c.white, ' opacity="0.7"'));
-      for (const [x, y] of [[84, 98], [114, 98], [86, 118], [112, 118]]) parts.push(codexCircle(x, y, 1.6, trim, 1));
-      for (let index = 0; index < 3; index += 1) {
-        parts.push(codexShape(`M${83 + index} ${123 + index * 5} L${115 - index} ${121 + index * 5} L${115 - index} ${127 + index * 5} L${83 + index} ${129 + index * 5} Z`, plate, 1.8));
-      }
-      if (art === "gilded") parts.push(codexLine("M88 100 q4 -4 8 0 q4 4 8 0 M90 110 q4 -4 8 0 q4 4 8 0", 1.3, c.goldDark));
-      parts.push(codexShape("M102 86 C110 84 118 88 118 96 L110 98 C108 92 104 90 102 86 Z", plate, 1.8));
-    } else if (art === "byrnie") {
-      // A Norse mail shirt to mid-thigh over a padded tunic, belted with a bronze buckle.
-      parts.push(codexShape("M78 91 C88 85 108 84 118 90 L121 104 L119 142 L79 144 L75 104 Z", c.iron, 2.8));
-      let rings = "";
-      for (let y = 95; y <= 140; y += 4.5) {
-        for (let x = 80 + ((Math.round(y / 4.5)) % 2) * 2.2; x <= 116; x += 4.4) rings += `M${x - 1.5} ${y} a1.5 1.5 0 1 0 3 0 a1.5 1.5 0 1 0 -3 0 `;
-      }
-      parts.push(codexLine(rings, 0.8, "#5b605e"));
-      parts.push(codexShape("M86 88 C94 92 104 92 112 88 L111 93 C104 97 94 97 87 93 Z", "#8a7357", 1.4));
-      parts.push(codexShape("M77 118 L121 116 L121 122 L77 124 Z", c.hide, 1.8));
-      parts.push(codexShape("M95 116.5 L103 116.2 L103 123.4 L95 123.6 Z", c.gold, 1.4));
-      parts.push(codexLine("M99 117 L99 123", 1, c.goldDark));
-    } else if (art === "saltcotton") {
-      // Maya quilted armor packed with salt: thick, puffy diamonds with a dyed border.
-      parts.push(codexShape("M77 90 C88 83 108 82 119 89 L122 102 L119 136 L79 138 L74 103 Z", c.quilt, 3.2));
-      let lattice = "";
-      for (let k = -40; k <= 50; k += 9) lattice += `M${78 + k} 90 L${78 + k + 44} 136 M${122 - k} 90 L${122 - k - 44} 136 `;
-      parts.push(`<g clip-path="url(#codex-torso-clip)">${codexLine(lattice, 1, "#b9ab86")}</g>`);
-      parts.push(codexShape("M78 130 L120 128 L120 138 L79 140 Z", c.blue, 1.8));
-      parts.push(codexLine("M82 134 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3", 1.2, c.white));
-      parts.push(codexShape("M88 88 C94 92 104 92 110 88 L109 94 C104 97 94 97 89 94 Z", c.blue, 1.4));
-    } else if (art === "spondylus") {
-      // Red spondylus-shell plaques strung in rows over white cotton.
-      parts.push(codexShape("M82 90 C90 86 106 86 114 90 L116 100 L113 128 L85 130 L81 102 Z", c.quilt, 2.4));
-      for (let y = 96; y <= 122; y += 7.5) {
-        for (let x = 86 + ((Math.round(y / 7.5)) % 2) * 3.5; x <= 110; x += 7) {
-          parts.push(codexShape(`M${x - 3} ${y} C${x - 3} ${y + 5} ${x + 3} ${y + 5} ${x + 3} ${y} C${x + 1} ${y - 1.4} ${x - 1} ${y - 1.4} ${x - 3} ${y} Z`, (x + y) % 3 ? c.shell : "#e07a4f", 1.1));
-          parts.push(codexLine(`M${x} ${y - 0.6} L${x} ${y + 3.2}`, 0.6, "#8f3122"));
-        }
-      }
-      parts.push(codexShape("M84 126 L114 124 L114 130 L85 132 Z", c.jade, 1.4));
-    } else if (art === "copperscale") {
-      // Overlapping copper scales on a deerskin coat, greening at the edges.
-      parts.push(codexShape("M78 90 C88 84 108 84 118 89 L120 101 L117 136 L81 138 L76 103 Z", c.copperDark, 2.8));
-      for (let y = 94; y <= 132; y += 5) {
-        for (let x = 80 + ((Math.round(y / 5)) % 2) * 3; x <= 116; x += 6) {
-          const fill = (x * 7 + y * 3) % 11 === 0 ? c.verdigris : (x + y) % 4 ? c.copper : "#d99257";
-          parts.push(codexShape(`M${x - 3} ${y} L${x + 3} ${y} L${x + 3} ${y + 3} C${x + 3} ${y + 6} ${x - 3} ${y + 6} ${x - 3} ${y + 3} Z`, fill, 0.9));
-        }
-      }
-      parts.push(codexShape("M86 88 C94 92 104 92 112 88 L111 93 C104 97 94 97 87 93 Z", c.hide, 1.4));
-      parts.push(codexShape("M80 134 L117 132 L117 139 L81 141 Z", c.hide, 1.6));
-    } else if (art === "mixtecgold") {
-      // Red quilted cotton hung with cast-gold plaques, and little gold bells along the hem.
-      parts.push(codexShape("M80 90 C88 85 108 84 116 89 L119 100 L116 130 L82 132 L78 102 Z", c.redDark, 2.6));
-      parts.push(codexLine("M84 100 L114 99 M83 110 L115 109 M83 120 L115 119", 1, "#5a1d15"));
-      for (const [x, y] of [[90, 96], [104, 95], [97, 105], [111, 104], [88, 115], [102, 114]]) {
-        parts.push(codexShape(`M${x - 3.4} ${y - 3} L${x + 3.4} ${y - 3} L${x + 3.4} ${y + 3} L${x - 3.4} ${y + 3} Z`, c.gold, 1.1));
-        parts.push(codexCircle(x, y, 1.2, c.goldDark, 0.6));
-      }
-      for (let x = 84; x <= 114; x += 5) {
-        parts.push(codexShape(`M${x - 2} 131 C${x - 2.4} 136 ${x + 2.4} 136 ${x + 2} 131 Z`, c.gold, 0.9));
-        parts.push(codexLine(`M${x} 133.4 L${x} 135.4`, 0.6, c.goldDark));
-      }
-      parts.push(codexShape("M87 88 C94 92 104 92 111 88 L110 93 C104 96 94 96 88 93 Z", c.gold, 1.3));
-    } else if (art === "domaru" || art === "oyoroi") {
-      const lame = art === "oyoroi" ? c.lacquerRed : c.lacquer;
-      const lace = art === "oyoroi" ? c.silk : c.red;
-      parts.push(codexShape("M79 90 C88 84 108 84 118 89 L120 100 L117 134 L82 136 L78 102 Z", lame, 2.8));
-      for (let y = 97; y <= 131; y += 6) parts.push(codexLine(`M81 ${y} L118 ${y - 1}`, 1.4, c.ink));
-      let laces = "";
-      for (let x = 85; x <= 113; x += 6) laces += `M${x} 90 L${x} 134 `;
-      parts.push(codexLine(laces, 1.3, lace));
-      if (art === "oyoroi") {
-        parts.push(codexShape("M104 88 L122 90 L124 116 L106 114 Z", lame, 2.4));
-        parts.push(codexLine("M105 95 L123 97 M105.5 102 L123.5 104 M106 109 L124 111", 1.2, c.ink));
-        parts.push(codexLine("M110 89 L111 115 M116 90 L117 115", 1.2, lace));
-        parts.push(codexShape("M90 102 L108 102 L108 112 L90 112 Z", c.gold, 1.6));
-      }
-    } else if (armor === "scale") {
-      parts.push(codexShape("M80 90 C88 85 108 84 116 89 L119 100 L116 132 L82 134 L78 102 Z", c.quilt, 2.8));
-      parts.push(codexLine("M84 98 L114 98 M83 106 L115 106 M82 114 L116 114 M82 122 L116 122 M90 92 L88 132 M98 90 L98 133 M106 90 L108 133", 1.1, "#b9ab86"));
-      parts.push(codexShape("M80 128 L117 126 L116 134 L82 136 Z", c.red, 1.8));
-    } else if (armor === "chainmail") {
-      parts.push(codexShape("M78 92 C88 85 108 84 118 90 L120 102 L116 134 L82 136 L76 104 Z", c.iron, 2.8));
-      let rings = "";
-      for (let y = 96; y <= 130; y += 5) {
-        for (let x = 82 + ((y / 5) % 2) * 2.5; x <= 114; x += 5) rings += `M${x - 1.6} ${y} a1.6 1.6 0 1 0 3.2 0 a1.6 1.6 0 1 0 -3.2 0 `;
-      }
-      parts.push(codexLine(rings, 0.9, "#5b605e"));
-    } else if (armor === "hide") {
-      parts.push(codexShape("M80 91 C88 86 108 85 116 90 L118 100 L115 130 L83 132 L79 102 Z", c.hide, 2.6));
-      parts.push(codexShape("M80 104 L118 102 L117 110 L80 112 Z M81 118 L116 116 L115 124 L82 126 Z", c.hideLight, 1.6));
-      parts.push(`<g fill="${CODEX_INK}" opacity="0.55"><circle cx="90" cy="96" r="1.6"/><circle cx="104" cy="95" r="1.6"/><circle cx="96" cy="114" r="1.4"/><circle cx="108" cy="113" r="1.4"/></g>`);
-    } else if (armor === "maguey-jerkin") {
-      // Knotted maguey cord sewn in rows: pale fiber with a darker weave.
-      parts.push(codexShape("M84 90 C92 87 106 87 112 90 L114 100 L111 128 L86 129 L83 102 Z", "#cdb98b", 2.4));
-      let rows = "";
-      for (let y = 96; y <= 124; y += 5) rows += `M85 ${y} q3 -2 6 0 q3 2 6 0 q3 -2 6 0 q3 2 6 0 q3 -2 6 0 `;
-      parts.push(codexLine(rows, 0.9, "#9c8556"));
-    } else if (armor === "leather") {
-      parts.push(codexShape("M84 90 C92 87 106 87 112 90 L114 100 L111 128 L86 129 L83 102 Z", c.hide, 2.4));
-      parts.push(codexLine("M98 90 L98 128", 1.4, c.hideLight));
-      parts.push(`<g fill="${c.cream}"><circle cx="94" cy="98" r="1.2"/><circle cx="94" cy="106" r="1.2"/><circle cx="94" cy="114" r="1.2"/><circle cx="102" cy="98" r="1.2"/><circle cx="102" cy="106" r="1.2"/><circle cx="102" cy="114" r="1.2"/></g>`);
+      parts.push(codexShape("M80 88 C90 84 108 84 116 90 L116 94 C108 90 90 90 80 94 Z", c.gold, 1.8));
     }
   }
   // Adornment: collars worn at the neck and over the shoulders.
   const adornment = appearance.adornment || "none";
-  parts.push(codexAdornment(adornment));
+  parts.push(codexAdornment(adornment, palette));
+  return parts.join("");
+}
+
+// Body armor, drawn over the garment (an armor texture replaces this).
+function codexArmor(equipment, palette) {
+  const c = CODEX_COLORS;
+  const parts = [];
+  const armor = (typeof ARMORS !== "undefined" && ARMORS[equipment.armor]?.baseId) || equipment.armor;
+  const art = (typeof ARMORS !== "undefined" && ARMORS[equipment.armor]?.art) || "";
+  if (art === "ehuatl") {
+    parts.push(codexShape("M81 90 C88 85 108 84 116 89 L118 100 L115 132 L83 134 L79 102 Z", c.gold, 2.6));
+    for (let y = 96; y <= 128; y += 6) {
+      for (let x = 84 + ((y / 6) % 2) * 3; x <= 112; x += 6) parts.push(codexShape(`M${x} ${y} q3 6 6 0`, (x / 6 + y / 6) % 2 ? c.red : c.featherLight, 1));
+    }
+    parts.push(codexShape("M80 90 C90 86 108 86 117 90 L116 95 C108 92 90 92 81 96 Z", c.jade, 1.6));
+  } else if (art === "tlahuiztli") {
+    parts.push(codexShape("M79 90 C88 84 108 84 118 89 L120 100 L117 136 L81 138 L77 102 Z", c.red, 2.8));
+    for (let y = 95; y <= 132; y += 5) {
+      for (let x = 82 + ((y / 5) % 2) * 3; x <= 114; x += 6) parts.push(codexShape(`M${x} ${y} q3 5 6 0`, (x + y) % 3 ? c.red : c.redDark, 0.9));
+    }
+    parts.push(codexShape("M80 132 L118 130 L118 138 L81 140 Z", c.gold, 1.8));
+    parts.push(codexShape("M92 90 L106 90 L104 98 L94 98 Z", c.white, 1.4));
+  } else if (art === "jaguarshirt") {
+    // Spotted jaguar pelt over quilted cotton, with a red collar.
+    parts.push(codexShape("M80 90 C88 85 108 84 116 89 L119 100 L116 132 L82 134 L78 102 Z", "#e2a536", 2.6));
+    for (const [x, y] of [[88, 98], [102, 96], [111, 104], [94, 108], [106, 114], [86, 118], [98, 122], [110, 124]]) {
+      parts.push(`<circle cx="${x}" cy="${y}" r="3.2" fill="none" stroke="${CODEX_INK}" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="0.9" fill="${CODEX_INK}"/>`);
+    }
+    parts.push(codexShape("M86 88 C94 92 104 92 112 88 L111 93 C104 97 94 97 87 93 Z", c.red, 1.4));
+    parts.push(codexShape("M80 128 L117 126 L116 134 L82 136 Z", c.quilt, 1.6));
+  } else if (art === "jadecuirass") {
+    parts.push(codexShape("M80 90 C88 85 108 84 116 89 L119 100 L116 132 L82 134 L78 102 Z", c.quilt, 2.8));
+    for (let y = 94; y <= 124; y += 8) {
+      for (let x = 84; x <= 110; x += 7) parts.push(`<rect x="${x}" y="${y}" width="6" height="7" rx="1.6" fill="${(x + y) % 2 ? c.jade : c.jadeLight}" stroke="${CODEX_INK}" stroke-width="1"/>`);
+    }
+    parts.push(codexLine("M86 94 L86 130 M100 92 L100 132 M112 94 L112 130", 1, c.gold));
+    parts.push(codexShape("M80 128 L117 126 L116 134 L82 136 Z", c.gold, 1.8));
+  } else if (art === "cuirass" || art === "gilded") {
+    const plate = art === "gilded" ? c.gold : c.steel;
+    const trim = art === "gilded" ? c.steel : c.gold;
+    parts.push(codexShape("M80 90 C88 84 108 84 117 89 L119 100 L114 122 L84 124 L79 101 Z", plate, 2.8));
+    parts.push(codexLine("M99 88 C101 100 101 112 99 122", 1.6, art === "gilded" ? c.goldDark : c.steelDark));
+    parts.push(codexLine("M86 94 C92 100 96 104 98 112", 2.4, c.white, ' opacity="0.7"'));
+    for (const [x, y] of [[84, 98], [114, 98], [86, 118], [112, 118]]) parts.push(codexCircle(x, y, 1.6, trim, 1));
+    for (let index = 0; index < 3; index += 1) {
+      parts.push(codexShape(`M${83 + index} ${123 + index * 5} L${115 - index} ${121 + index * 5} L${115 - index} ${127 + index * 5} L${83 + index} ${129 + index * 5} Z`, plate, 1.8));
+    }
+    if (art === "gilded") parts.push(codexLine("M88 100 q4 -4 8 0 q4 4 8 0 M90 110 q4 -4 8 0 q4 4 8 0", 1.3, c.goldDark));
+    parts.push(codexShape("M102 86 C110 84 118 88 118 96 L110 98 C108 92 104 90 102 86 Z", plate, 1.8));
+  } else if (art === "byrnie") {
+    // A Norse mail shirt to mid-thigh over a padded tunic, belted with a bronze buckle.
+    parts.push(codexShape("M78 91 C88 85 108 84 118 90 L121 104 L119 142 L79 144 L75 104 Z", c.iron, 2.8));
+    let rings = "";
+    for (let y = 95; y <= 140; y += 4.5) {
+      for (let x = 80 + ((Math.round(y / 4.5)) % 2) * 2.2; x <= 116; x += 4.4) rings += `M${x - 1.5} ${y} a1.5 1.5 0 1 0 3 0 a1.5 1.5 0 1 0 -3 0 `;
+    }
+    parts.push(codexLine(rings, 0.8, "#5b605e"));
+    parts.push(codexShape("M86 88 C94 92 104 92 112 88 L111 93 C104 97 94 97 87 93 Z", "#8a7357", 1.4));
+    parts.push(codexShape("M77 118 L121 116 L121 122 L77 124 Z", c.hide, 1.8));
+    parts.push(codexShape("M95 116.5 L103 116.2 L103 123.4 L95 123.6 Z", c.gold, 1.4));
+    parts.push(codexLine("M99 117 L99 123", 1, c.goldDark));
+  } else if (art === "saltcotton") {
+    // Maya quilted armor packed with salt: thick, puffy diamonds with a dyed border.
+    parts.push(codexShape("M77 90 C88 83 108 82 119 89 L122 102 L119 136 L79 138 L74 103 Z", c.quilt, 3.2));
+    let lattice = "";
+    for (let k = -40; k <= 50; k += 9) lattice += `M${78 + k} 90 L${78 + k + 44} 136 M${122 - k} 90 L${122 - k - 44} 136 `;
+    parts.push(`<g clip-path="url(#codex-torso-clip)">${codexLine(lattice, 1, "#b9ab86")}</g>`);
+    parts.push(codexShape("M78 130 L120 128 L120 138 L79 140 Z", c.blue, 1.8));
+    parts.push(codexLine("M82 134 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3", 1.2, c.white));
+    parts.push(codexShape("M88 88 C94 92 104 92 110 88 L109 94 C104 97 94 97 89 94 Z", c.blue, 1.4));
+  } else if (art === "spondylus") {
+    // Red spondylus-shell plaques strung in rows over white cotton.
+    parts.push(codexShape("M82 90 C90 86 106 86 114 90 L116 100 L113 128 L85 130 L81 102 Z", c.quilt, 2.4));
+    for (let y = 96; y <= 122; y += 7.5) {
+      for (let x = 86 + ((Math.round(y / 7.5)) % 2) * 3.5; x <= 110; x += 7) {
+        parts.push(codexShape(`M${x - 3} ${y} C${x - 3} ${y + 5} ${x + 3} ${y + 5} ${x + 3} ${y} C${x + 1} ${y - 1.4} ${x - 1} ${y - 1.4} ${x - 3} ${y} Z`, (x + y) % 3 ? c.shell : "#e07a4f", 1.1));
+        parts.push(codexLine(`M${x} ${y - 0.6} L${x} ${y + 3.2}`, 0.6, "#8f3122"));
+      }
+    }
+    parts.push(codexShape("M84 126 L114 124 L114 130 L85 132 Z", c.jade, 1.4));
+  } else if (art === "copperscale") {
+    // Overlapping copper scales on a deerskin coat, greening at the edges.
+    parts.push(codexShape("M78 90 C88 84 108 84 118 89 L120 101 L117 136 L81 138 L76 103 Z", c.copperDark, 2.8));
+    for (let y = 94; y <= 132; y += 5) {
+      for (let x = 80 + ((Math.round(y / 5)) % 2) * 3; x <= 116; x += 6) {
+        const fill = (x * 7 + y * 3) % 11 === 0 ? c.verdigris : (x + y) % 4 ? c.copper : "#d99257";
+        parts.push(codexShape(`M${x - 3} ${y} L${x + 3} ${y} L${x + 3} ${y + 3} C${x + 3} ${y + 6} ${x - 3} ${y + 6} ${x - 3} ${y + 3} Z`, fill, 0.9));
+      }
+    }
+    parts.push(codexShape("M86 88 C94 92 104 92 112 88 L111 93 C104 97 94 97 87 93 Z", c.hide, 1.4));
+    parts.push(codexShape("M80 134 L117 132 L117 139 L81 141 Z", c.hide, 1.6));
+  } else if (art === "mixtecgold") {
+    // Red quilted cotton hung with cast-gold plaques, and little gold bells along the hem.
+    parts.push(codexShape("M80 90 C88 85 108 84 116 89 L119 100 L116 130 L82 132 L78 102 Z", c.redDark, 2.6));
+    parts.push(codexLine("M84 100 L114 99 M83 110 L115 109 M83 120 L115 119", 1, "#5a1d15"));
+    for (const [x, y] of [[90, 96], [104, 95], [97, 105], [111, 104], [88, 115], [102, 114]]) {
+      parts.push(codexShape(`M${x - 3.4} ${y - 3} L${x + 3.4} ${y - 3} L${x + 3.4} ${y + 3} L${x - 3.4} ${y + 3} Z`, c.gold, 1.1));
+      parts.push(codexCircle(x, y, 1.2, c.goldDark, 0.6));
+    }
+    for (let x = 84; x <= 114; x += 5) {
+      parts.push(codexShape(`M${x - 2} 131 C${x - 2.4} 136 ${x + 2.4} 136 ${x + 2} 131 Z`, c.gold, 0.9));
+      parts.push(codexLine(`M${x} 133.4 L${x} 135.4`, 0.6, c.goldDark));
+    }
+    parts.push(codexShape("M87 88 C94 92 104 92 111 88 L110 93 C104 96 94 96 88 93 Z", c.gold, 1.3));
+  } else if (art === "domaru" || art === "oyoroi") {
+    const lame = art === "oyoroi" ? c.lacquerRed : c.lacquer;
+    const lace = art === "oyoroi" ? c.silk : c.red;
+    parts.push(codexShape("M79 90 C88 84 108 84 118 89 L120 100 L117 134 L82 136 L78 102 Z", lame, 2.8));
+    for (let y = 97; y <= 131; y += 6) parts.push(codexLine(`M81 ${y} L118 ${y - 1}`, 1.4, c.ink));
+    let laces = "";
+    for (let x = 85; x <= 113; x += 6) laces += `M${x} 90 L${x} 134 `;
+    parts.push(codexLine(laces, 1.3, lace));
+    if (art === "oyoroi") {
+      parts.push(codexShape("M104 88 L122 90 L124 116 L106 114 Z", lame, 2.4));
+      parts.push(codexLine("M105 95 L123 97 M105.5 102 L123.5 104 M106 109 L124 111", 1.2, c.ink));
+      parts.push(codexLine("M110 89 L111 115 M116 90 L117 115", 1.2, lace));
+      parts.push(codexShape("M90 102 L108 102 L108 112 L90 112 Z", c.gold, 1.6));
+    }
+  } else if (armor === "scale") {
+    parts.push(codexShape("M80 90 C88 85 108 84 116 89 L119 100 L116 132 L82 134 L78 102 Z", c.quilt, 2.8));
+    parts.push(codexLine("M84 98 L114 98 M83 106 L115 106 M82 114 L116 114 M82 122 L116 122 M90 92 L88 132 M98 90 L98 133 M106 90 L108 133", 1.1, "#b9ab86"));
+    parts.push(codexShape("M80 128 L117 126 L116 134 L82 136 Z", c.red, 1.8));
+  } else if (armor === "chainmail") {
+    parts.push(codexShape("M78 92 C88 85 108 84 118 90 L120 102 L116 134 L82 136 L76 104 Z", c.iron, 2.8));
+    let rings = "";
+    for (let y = 96; y <= 130; y += 5) {
+      for (let x = 82 + ((y / 5) % 2) * 2.5; x <= 114; x += 5) rings += `M${x - 1.6} ${y} a1.6 1.6 0 1 0 3.2 0 a1.6 1.6 0 1 0 -3.2 0 `;
+    }
+    parts.push(codexLine(rings, 0.9, "#5b605e"));
+  } else if (armor === "hide") {
+    parts.push(codexShape("M80 91 C88 86 108 85 116 90 L118 100 L115 130 L83 132 L79 102 Z", c.hide, 2.6));
+    parts.push(codexShape("M80 104 L118 102 L117 110 L80 112 Z M81 118 L116 116 L115 124 L82 126 Z", c.hideLight, 1.6));
+    parts.push(`<g fill="${CODEX_INK}" opacity="0.55"><circle cx="90" cy="96" r="1.6"/><circle cx="104" cy="95" r="1.6"/><circle cx="96" cy="114" r="1.4"/><circle cx="108" cy="113" r="1.4"/></g>`);
+  } else if (armor === "maguey-jerkin") {
+    // Knotted maguey cord sewn in rows: pale fiber with a darker weave.
+    parts.push(codexShape("M84 90 C92 87 106 87 112 90 L114 100 L111 128 L86 129 L83 102 Z", "#cdb98b", 2.4));
+    let rows = "";
+    for (let y = 96; y <= 124; y += 5) rows += `M85 ${y} q3 -2 6 0 q3 2 6 0 q3 -2 6 0 q3 2 6 0 q3 -2 6 0 `;
+    parts.push(codexLine(rows, 0.9, "#9c8556"));
+  } else if (armor === "leather") {
+    parts.push(codexShape("M84 90 C92 87 106 87 112 90 L114 100 L111 128 L86 129 L83 102 Z", c.hide, 2.4));
+    parts.push(codexLine("M98 90 L98 128", 1.4, c.hideLight));
+    parts.push(`<g fill="${c.cream}"><circle cx="94" cy="98" r="1.2"/><circle cx="94" cy="106" r="1.2"/><circle cx="94" cy="114" r="1.2"/><circle cx="102" cy="98" r="1.2"/><circle cx="102" cy="106" r="1.2"/><circle cx="102" cy="114" r="1.2"/></g>`);
+  }
   return parts.join("");
 }
 
 // Necklaces and collars, drawn over the garment and armor around the neck (centered near
 // 99,90). Points on the collar are placed along a half-ellipse below the throat.
-function codexAdornment(adornment) {
+function codexAdornment(adornment, palette = {}) {
+  if (adornment && adornment !== "none") {
+    const texture = characterTextureLayer("adornment", adornment, palette);
+    if (texture) return texture;
+  }
   const c = CODEX_COLORS;
   const parts = [];
   const along = (t, rx, ry) => {
@@ -1102,7 +1188,24 @@ function codexAdornment(adornment) {
   return parts.join("");
 }
 
+// Which loincloth a figure wears: the cueitl wrap skirt under a huipil, or the plain
+// maxtlatl. Regalia suits wear none: their legs are part of the suit's own painting.
+// Each can be repainted as art/character/loincloth/<id>.dds.
+const CODEX_LOINCLOTH_SUITS = ["feathered-huipil", "ballplayer-gear", ...CODEX_KILT_SUITS];
+function codexLoinclothId(character, outfit) {
+  if (CODEX_LOINCLOTH_SUITS.includes(outfit)) return "";
+  return character?.appearance?.garment === "huipil" ? "cueitl" : "maxtlatl";
+}
+
 function codexLoincloth(character, palette, outfit) {
+  const id = codexLoinclothId(character, outfit);
+  if (!id) return "";
+  const curvy = character?.appearance?.body === "curvy";
+  return characterTextureLayer("loincloth", id, palette, curvy ? "curvy" : "") ??
+    codexLoinclothDrawing(character, palette, outfit);
+}
+
+function codexLoinclothDrawing(character, palette, outfit) {
   const c = CODEX_COLORS;
   if (outfit === "feathered-huipil") {
     return codexShape("M81 126 L117 124 L124 166 L76 168 Z", "#e9dcc0") +
@@ -1138,40 +1241,6 @@ function codexLoincloth(character, palette, outfit) {
     codexShape("M104.5 147 L118 146 L118 152 L111 157 L104 150 Z", palette.tunic, 1.6) +
     codexShape("M82 133 L89 133 L86 150 L79 146 Z", c.white, 2) +
     codexLine("M84 130 L114 129", 1.4, palette.trim);
-}
-
-function codexLegs(palette, outfit, race, near) {
-  const c = CODEX_COLORS;
-  const parts = [];
-  const legFill = CODEX_SUITS[outfit] || palette.skin;
-  const barefoot = race === "halfling";
-  // Thigh over calf, so the knee reads as a joint; the calf swells and narrows to the ankle.
-  const calf = near
-    ? [[107, 156, 5.2], [109.5, 166, 5.6], [110.5, 176, 4.1], [110.6, 183, 3.6]]
-    : [[87, 156, 5.2], [85.4, 166, 5.6], [84.2, 176, 4.1], [83.8, 183, 3.6]];
-  const thigh = near
-    ? [[99.5, 131, 7.2], [104, 146, 6.4], [107.5, 159, 5.1]]
-    : [[91, 131, 7.2], [88.6, 146, 6.4], [86.8, 159, 5.1]];
-  parts.push(codexTaper(calf, CODEX_SUITS[outfit] ? legFill : palette.skin));
-  parts.push(codexTaper(thigh, legFill));
-  parts.push(codexLine(near ? "M106.5 156.5 C108 158 109.5 158.2 110.5 157.4" : "M85.4 156.6 C86.6 158 88 158.2 89 157.6", 1.1, palette.skinDark));
-  if (outfit === "ballplayer-gear" && near) parts.push(codexShape("M103 154 L114 152 L115 164 L104 166 Z", c.hide, 1.8));
-  const foot = near
-    ? "M104 182 L118 182 C125 183 128 187 126 191 L104 191 Z"
-    : "M77 182 L91 182 C98 183 100 187 98 191 L77 191 Z";
-  parts.push(codexShape(foot, palette.skin, 2.4));
-  if (!barefoot) {
-    const sole = near ? "M102 191 L128 191 L128 194 L102 194 Z" : "M75 191 L100 191 L100 194 L75 194 Z";
-    parts.push(codexShape(sole, c.hide, 1.8));
-    // The sandal's tall heel guard, rounded at the top like the painted cactli.
-    // A low painted heel guard and crossed ankle ties, as on the codex sandals.
-    parts.push(codexShape(near ? "M102.4 191 L102.6 185 C103 182.4 105.6 181.6 107.6 182.6 L108.4 191 Z"
-      : "M75.4 191 L75.6 185 C76 182.4 78.6 181.6 80.6 182.6 L81.4 191 Z", c.red, 1.5));
-    parts.push(codexLine(near ? "M104 181 L113 186.5 M112.8 180.6 L105 186.6 M110 190.6 L117 184.2" : "M77 181 L86 186.5 M85.8 180.6 L78 186.6 M83 190.6 L90 184.2", 1.1, c.hide));
-  } else {
-    parts.push(codexLine(near ? "M118 184 C121 185 122 187 121 189" : "M91 184 C94 185 95 187 94 189", 1.2, palette.skinDark));
-  }
-  return parts.join("");
 }
 
 function codexArm(palette, outfit, near, holding) {
@@ -1292,8 +1361,8 @@ const CODEX_PAINT_DEFS =
   `<filter id="codex-wash" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">` +
   `<feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="11" result="bleed"/>` +
   `<feDisplacementMap in="SourceGraphic" in2="bleed" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="spread"/>` +
-  `<feColorMatrix in="spread" type="saturate" values="0.8" result="soft"/>` +
-  `<feComponentTransfer in="soft" result="lifted"><feFuncR type="linear" slope="0.8" intercept="0.17"/><feFuncG type="linear" slope="0.8" intercept="0.155"/><feFuncB type="linear" slope="0.8" intercept="0.13"/></feComponentTransfer>` +
+  `<feColorMatrix in="spread" type="saturate" values="0.96" result="soft"/>` +
+  `<feComponentTransfer in="soft" result="lifted"><feFuncR type="linear" slope="0.9" intercept="0.085"/><feFuncG type="linear" slope="0.9" intercept="0.078"/><feFuncB type="linear" slope="0.9" intercept="0.065"/></feComponentTransfer>` +
   `<feMorphology in="spread" operator="erode" radius="1.6" result="inner"/>` +
   `<feComposite in="spread" in2="inner" operator="out" result="rim"/>` +
   `<feColorMatrix in="rim" type="matrix" values="0 0 0 0 0.55  0 0 0 0 0.45  0 0 0 0 0.36  0 0 0 0.38 0" result="rimTone"/>` +
@@ -1306,6 +1375,18 @@ const CODEX_PAINT_DEFS =
   `<feComposite in="painted" in2="spread" operator="in" result="body"/>` +
   `<feMerge><feMergeNode in="body"/><feMergeNode in="rimTone"/></feMerge>` +
   `</filter>` +
+  // Textures in the ink pass: thin dark lines stay dark as ink; everything else (including
+  // big dark areas like obsidian, which the wash shows) turns white to cover what's behind.
+  `<filter id="codex-tex-ink" color-interpolation-filters="sRGB">` +
+  `<feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -3 -5.9 -1.1 0 3.2" result="darkness"/>` +
+  `<feComposite in="darkness" in2="SourceAlpha" operator="in" result="dark"/>` +
+  `<feMorphology in="dark" operator="erode" radius="1.3" result="thinned"/>` +
+  `<feMorphology in="thinned" operator="dilate" radius="1.5" result="masses"/>` +
+  `<feComposite in="dark" in2="masses" operator="out" result="lines"/>` +
+  `<feFlood flood-color="#fff" result="paper"/>` +
+  `<feComposite in="paper" in2="SourceAlpha" operator="in" result="cover"/>` +
+  `<feMerge><feMergeNode in="cover"/><feMergeNode in="lines"/></feMerge>` +
+  `</filter>` +
   `<filter id="codex-ink" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">` +
   `<feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="7" result="noise"/>` +
   `<feDisplacementMap in="SourceGraphic" in2="noise" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="drawn"/>` +
@@ -1313,7 +1394,7 @@ const CODEX_PAINT_DEFS =
   // empty paper) becomes clear, so only the lines remain.
   `<feFlood flood-color="#fff" result="sheet"/>` +
   `<feComposite in="drawn" in2="sheet" operator="over" result="onSheet"/>` +
-  `<feColorMatrix in="onSheet" type="matrix" values="0 0 0 0 0.24  0 0 0 0 0.165  0 0 0 0 0.12  -0.33 -0.33 -0.33 0 0.985" result="ink"/>` +
+  `<feColorMatrix in="onSheet" type="matrix" values="0 0 0 0 0.17  0 0 0 0 0.13  0 0 0 0 0.11  -0.33 -0.33 -0.33 0 0.985" result="ink"/>` +
   `<feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="5" result="dry"/>` +
   `<feColorMatrix in="dry" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.4 1.85" result="dryMask"/>` +
   `<feComposite in="ink" in2="dryMask" operator="in"/>` +
@@ -1327,8 +1408,11 @@ const CODEX_PAINT_DEFS =
 const CODEX_WATERCOLOR_FILTER = CODEX_PAINT_DEFS;
 
 function codexPaint(markup) {
+  // Painted textures (systems/character-textures.js) show their colors in the wash pass; in
+  // the ink pass only their dark outlines are kept, and the rest knocks out the lines behind.
+  const inked = markup.includes(" data-tex=\"\"") ? markup.replaceAll(" data-tex=\"\"", " filter=\"url(#codex-tex-ink)\"") : markup;
   return `<g class="codex-wash" filter="url(#codex-wash)"><g transform="translate(0.9 0.7)">${markup}</g></g>` +
-    `<g class="codex-drawing" filter="url(#codex-ink)">${markup}</g>`;
+    `<g class="codex-drawing" filter="url(#codex-ink)">${inked}</g>`;
 }
 
 // What the figure is wearing. Adventurers dress with items (character.dressByItems):
@@ -1370,7 +1454,96 @@ function codexWeaponTilt(id) {
   return 20;
 }
 
+// ---------- The base body ----------
+//
+// The figure is built like a painted codex figure: one complete body first (both legs, the
+// torso, the far arm, and the neck, in the right depth order and sharing one outer ink
+// line), then everything worn on it, then what's held in front. Clothes and armor never have
+// to redraw skin, and no limb is drawn over the torso it belongs behind.
+
+// One outer ink line around the whole body, so it reads as a single figure.
+const CODEX_BODY_LINE_FILTER = `<filter id="codex-body-line" x="-10%" y="-10%" width="120%" height="120%">` +
+  `<feMorphology in="SourceAlpha" operator="dilate" radius="0.95" result="grown"/>` +
+  `<feFlood flood-color="${CODEX_INK}"/><feComposite in2="grown" operator="in" result="edge"/>` +
+  `<feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+
+const CODEX_TORSO_PATHS = {
+  standard: "M82 92 C88 87 108 86 114 91 L117 99 L113 128 L84 130 L80 101 Z",
+  curvy: "M82 92 C88 87 108 86 114 91 L119 100 C121 106 119 111 114 113 L112 118 C116 122 118 126 117 130 L82 132 C80 126 82 121 85 118 L80 101 Z"
+};
+
+// Body parts inside the body share its outer line, so each keeps only a fine inner line.
+function codexBodyPart(markup) {
+  return markup.replace(/stroke="#2e211a" stroke-width="[\d.]+"/g, `stroke="${CODEX_INK}" stroke-width="${(0.9 * CODEX_LINE).toFixed(2)}"`);
+}
+
+function codexLegShapes(palette, near, race) {
+  const calf = near
+    ? [[107, 156, 5.2], [109.5, 166, 5.6], [110.5, 176, 4.1], [110.6, 183, 3.6]]
+    : [[87, 156, 5.2], [85.4, 166, 5.6], [84.2, 176, 4.1], [83.8, 183, 3.6]];
+  const thigh = near
+    ? [[99.5, 131, 7.2], [104, 146, 6.4], [107.5, 159, 5.1]]
+    : [[91, 131, 7.2], [88.6, 146, 6.4], [86.8, 159, 5.1]];
+  const foot = near
+    ? "M104 182 L118 182 C125 183 128 187 126 191 L104 191 Z"
+    : "M77 182 L91 182 C98 183 100 187 98 191 L77 191 Z";
+  const skin = near ? palette.skin : palette.skinShade;
+  return { calf, thigh, foot, skin };
+}
+
+function codexBody(character, palette) {
+  const appearance = character?.appearance || {};
+  const curvy = appearance.body === "curvy";
+  const texture = characterTextureLayer("body", "base", palette, curvy ? "curvy" : "");
+  const parts = [];
+  if (texture) {
+    parts.push(texture);
+  } else {
+    // Far side first: it sits behind everything else on the body.
+    const shieldArm = Boolean(character?.equipment?.shield) && !character?.iconMode;
+    if (!shieldArm) parts.push(codexFarArmSkin(palette));
+    for (const near of [false, true]) {
+      const leg = codexLegShapes(palette, near, palette.race);
+      parts.push(codexTaper(leg.calf, leg.skin));
+      parts.push(codexTaper(leg.thigh, leg.skin));
+      parts.push(codexShape(leg.foot, leg.skin, 2.4));
+    }
+    // The torso covers the tops of the thighs and the far shoulder, as a body does.
+    parts.push(codexShape(CODEX_TORSO_PATHS[curvy ? "curvy" : "standard"], palette.skin));
+    parts.push(codexLimb("M99 80 L100 92", 11, palette.skin));
+  }
+  const details = texture ? "" : [
+    codexLine("M106.5 156.5 C108 158 109.5 158.2 110.5 157.4", 1.1, palette.skinDark),
+    codexLine("M85.4 156.6 C86.6 158 88 158.2 89 157.6", 1.1, palette.skinDark),
+    codexLine("M90 104 C96 106 104 106 110 103", 1.3, palette.skinDark),
+    codexLine("M99 92 L99 100", 1, palette.skinDark),
+    palette.race === "halfling" ? codexLine("M118 184 C121 185 122 187 121 189 M91 184 C94 185 95 187 94 189", 1.2, palette.skinDark) : ""
+  ].join("");
+  return `<g class="codex-body" filter="url(#codex-body-line)">${codexBodyPart(parts.join(""))}</g>${details}`;
+}
+
+// The far (left) arm, reaching forward past the body; shaded because it's farther away.
+function codexFarArmSkin(palette) {
+  return codexTaper([[116.5, 113.5, 4], [120.5, 117, 3.6], [124.5, 120, 3.1]], palette.skinDark) +
+    codexTaper([[108.5, 95.5, 5], [112.5, 104.5, 4.5], [116.5, 113.5, 4]], palette.skinDark) +
+    codexShape("M121.2 117.4 C124.4 114.6 129.6 115.6 130.4 119.4 C131 122.8 127.6 125.2 124.2 124.4 C121.6 123.8 120.2 120 121.2 117.4 Z", palette.skinDark, 2.2);
+}
+
+// What's worn on the legs is now painted: bare legs come from the base body texture, and a
+// suit paints its own legs. Only a suit's sleeve on the far arm is still drawn here
+// (the near arm wears its own in front).
+function codexLegwear(palette, outfit) {
+  const suit = CODEX_SUITS[outfit];
+  if (!suit || outfit === "tzitzimitl-clothes") return "";
+  return codexTaper([[108.5, 95.5, 5], [112.5, 104.5, 4.5], [116.5, 113.5, 4]], codexShade(suit, -18));
+}
+
+// The head is drawn about 12% smaller than it used to be,
+// to sit right on the painted base body. It shrinks toward the chin, so the neck still meets it.
+const CODEX_HEAD_TRIM = 0.88;
+
 function buildCodexFigureSvg(character, facing = "east") {
+  characterTexturesBegin();
   character = codexDressed(character);
   const equipment = character?.equipment || {};
   const cosmetics = character?.cosmetics || {};
@@ -1384,32 +1557,56 @@ function buildCodexFigureSvg(character, facing = "east") {
   const head = codexHead(character, palette, north);
   const weaponId = equipment.weapon || "macuahuitl";
   const layers = [
-    codexBackDevice(cosmetics.back),
+    characterTextureLayer("back", cosmetics.back || "", palette) ?? figureArtOverride("back", cosmetics.back || "", palette) ?? codexBackDevice(cosmetics.back),
     equipment.cloak ? codexCloak(palette) : "",
     codexTail(palette, race),
-    head.back,
-    equipment.shield || character?.iconMode ? "" : codexArm(palette, outfit, false, false),
-    codexLegs(palette, outfit, race, false),
-    codexTorso(character, palette, hasArmor, outfit),
-    codexLegs(palette, outfit, race, true),
+    `<g transform="translate(100 88) scale(${CODEX_HEAD_TRIM}) translate(-100 -88)">${head.back}</g>`,
+    // 1. The whole body, one piece.
+    codexBody(character, palette),
+    // 2. What's worn on it: the loincloth or skirt, the garment, armor, collar.
+    codexLegwear(palette, outfit),
     codexLoincloth(character, palette, outfit),
-    codexLimb("M99 80 L100 92", 11, palette.skin),
-    `<g transform="translate(100 88) scale(${shape.head}) translate(-100 -88)">${head.front}</g>`,
+    (!hasArmor ? figureArtOverride("clothes", outfit || character?.appearance?.garment || "", palette) : null) ?? codexTorso(character, palette, hasArmor, outfit),
+    // 3. The head, then what's held in front.
+    `<g transform="translate(100 88) scale(${(shape.head * CODEX_HEAD_TRIM).toFixed(4)}) translate(-100 -88)">${head.front}</g>`,
     equipment.shield && !character?.iconMode ? codexArm(palette, outfit, false, false) : "",
-    character?.iconMode || weaponId === "none" ? "" : `<g transform="rotate(${codexWeaponTilt(weaponId)} 135 97) translate(12 0)">${codexWeapon(weaponId)}</g>`,
-    equipment.shield && !character?.iconMode ? codexShield(palette) : "",
+    character?.iconMode || weaponId === "none" ? "" : `<g transform="rotate(${codexWeaponTilt(weaponId)} 135 97) translate(12 0)">${characterTextureLayer("weapon", codexBaseWeaponId(weaponId), palette) ?? figureArtOverride("weapon", codexBaseWeaponId(weaponId), palette) ?? codexWeapon(weaponId)}</g>`,
+    equipment.shield && !character?.iconMode ? characterTextureLayer("shield", "shield", palette) ?? figureArtOverride("shield", "shield", palette) ?? codexShield(palette) : "",
     character?.iconMode ? "" : codexArm(palette, outfit, true, weaponId !== "none")
   ].join("");
   const build = { slight: 0.93, broad: 1.09 }[character?.appearance?.body] || 1;
   const body = `<g transform="translate(100 194) scale(${shape.sx * build} ${shape.sy}) translate(-100 -194)">${layers}</g>`;
   const oriented = west ? `<g transform="translate(200 0) scale(-1 1)">${body}</g>` : body;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">` +
-    `<defs>${CODEX_WATERCOLOR_FILTER}` +
+    `<defs>${CODEX_WATERCOLOR_FILTER}${characterTextureDefsMarkup()}` +
+    CODEX_BODY_LINE_FILTER +
     `<clipPath id="codex-shield"><circle cx="126" cy="130" r="17.5"/></clipPath>` +
     `<clipPath id="codex-mantle"><path d="M100 86 L120 94 L116 136 L80 138 L78 104 C90 102 96 96 100 86 Z"/></clipPath>` +
     `<clipPath id="codex-torso-clip"><path d="M77 90 C88 83 108 82 119 89 L122 102 L119 136 L79 138 L74 103 Z"/></clipPath></defs>` +
     `<ellipse cx="100" cy="193.5" rx="30" ry="3.6" fill="${CODEX_SEPIA}" opacity="0.16"/>` +
     `${codexPaint(oriented)}</svg>`;
+}
+
+// A head-and-shoulders portrait: used by the face picker and anywhere a small likeness
+// is wanted. Same head as the full figure, without the body, framed on the face.
+const codexPortraitCache = new Map();
+function codexPortraitUrl(character, faceId) {
+  const dressed = codexDressed(character);
+  const look = { ...(dressed?.appearance || {}), face: faceId || dressed?.appearance?.face };
+  const subject = { ...dressed, appearance: look };
+  const key = codexFigureKey(subject, "east") + "|portrait";
+  let url = codexPortraitCache.get(key);
+  if (url) return url;
+  characterTexturesBegin();
+  const palette = codexPalette(subject);
+  const head = codexHead(subject, palette, false);
+  const markup = head.back + codexLimb("M99 80 L100 96", 11, palette.skin) + head.front;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 38 48 48" width="128" height="128">` +
+    `<defs>${CODEX_WATERCOLOR_FILTER}${characterTextureDefsMarkup()}</defs>${codexPaint(markup)}</svg>`;
+  url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  if (codexPortraitCache.size > 200) codexPortraitCache.clear();
+  codexPortraitCache.set(key, url);
+  return url;
 }
 
 function codexFigureKey(character, facing) {
@@ -1418,7 +1615,7 @@ function codexFigureKey(character, facing) {
   const equipment = character?.equipment || {};
   const cosmetics = character?.cosmetics || {};
   return [
-    character?.race, appearance.skin, appearance.hair, appearance.hairStyle, appearance.tunic, appearance.trim, appearance.garment,
+    character?.race, appearance.face, appearance.skin, appearance.hair, appearance.hairStyle, appearance.tunic, appearance.trim, appearance.garment,
     appearance.adornment, appearance.headwear, appearance.facePaint, appearance.body, appearance.beard,
     appearance.jewelry, appearance.crest, equipment.weapon, equipment.armor,
     equipment.shield, equipment.cloak, cosmetics.helmet, cosmetics.clothes, cosmetics.back,
@@ -1464,17 +1661,18 @@ function codexGearIconUrl(kind, id) {
   const key = `${kind}:${id}`;
   if (codexIconCache.has(key)) return codexIconCache.get(key);
   let svg;
-  const filter = `<defs>${CODEX_WATERCOLOR_FILTER}</defs>`;
+  characterTexturesBegin();
+  const filter = () => `<defs>${CODEX_WATERCOLOR_FILTER}${characterTextureDefsMarkup()}</defs>`;
   if (kind === "weapon") {
     const [top, bottom] = codexWeaponExtent(id);
     const centerY = (top + bottom) / 2;
     const size = Math.max(60, (bottom - top) * 0.74 + 34);
-    svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${124 - size / 2} ${centerY - size / 2} ${size} ${size}" width="160" height="160">${filter}` +
-      `${codexPaint(`<g transform="rotate(42 124 ${centerY})">${codexWeapon(id)}</g>`)}</svg>`;
+    const art = codexPaint(`<g transform="rotate(42 124 ${centerY})">${characterTextureLayer("weapon", codexBaseWeaponId(id), {}) ?? figureArtOverride("weapon", codexBaseWeaponId(id), {}) ?? codexWeapon(id)}</g>`);
+    svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${124 - size / 2} ${centerY - size / 2} ${size} ${size}" width="160" height="160">${filter()}${art}</svg>`;
   } else if (kind === "back") {
     // Banners are shown on their own, without the wearer.
-    svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="28 0 76 120" width="160" height="160">${filter}` +
-      `${codexPaint(codexBackDevice(id))}</svg>`;
+    const art = codexPaint(characterTextureLayer("back", id, {}) ?? figureArtOverride("back", id, {}) ?? codexBackDevice(id));
+    svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="28 0 76 120" width="160" height="160">${filter()}${art}</svg>`;
   } else {
     const figure = JSON.parse(JSON.stringify(CODEX_ICON_MANNEQUIN));
     figure.iconMode = true;

@@ -411,7 +411,7 @@
     ],
     citlali: [
       { id: "count", min: 0, q: "What is the count, exactly?",
-        a: "Two calendars, turning together like gears of a mill. Twenty day-signs and thirteen numbers make the sacred count; three hundred sixty-five days make the sun count. They line up once every fifty-two years. Everyone gets very nervous about it. I find it relaxing." },
+        a: "Two calendars, turning together like two circles of dancers at different speeds. Twenty day-signs and thirteen numbers make the sacred count; three hundred sixty-five days make the sun count. They line up once every fifty-two years. Everyone gets very nervous about it. I find it relaxing." },
       { id: "daysign", min: 0, q: "What's your own day-sign?",
         a: "One Reed. A sign for priests and wanderers and people who won't sit down. My mother said it explained a lot. She meant it as a complaint. I took it as a job description." },
       { id: "skywatcher", min: 15, q: "How did you become a sky-watcher?",

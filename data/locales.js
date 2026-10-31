@@ -130,7 +130,8 @@
       const entry = { key, regex: new RegExp(source), order, literalLength: literal.length,
         allowsList: key.includes(" · "), allowsSentences: /[.!?]\s/.test(key) };
       const prefix = parts[0] ? parts[0].slice(0, 4) : "";
-      if (prefix.length >= 2) {
+      // Bucket by the first four characters; a shorter lead ("A {0}…") can't be bucketed.
+      if (prefix.length >= 4) {
         if (!byPrefix.has(prefix)) byPrefix.set(prefix, []);
         byPrefix.get(prefix).push(entry);
       } else loose.push(entry);

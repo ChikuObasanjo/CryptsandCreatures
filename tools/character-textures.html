@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Character Textures</title>
+<style>
+  :root { --paper: #efe2c2; --card: #f8f0dc; --ink: #2e211a; --soft: #6a5342; --red: #9a3324; --jade: #23745b; --rule: #d6c39a; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 Georgia, "Times New Roman", serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 1.9rem; margin: 0 0 6px; }
+  h2 { font-size: 1.25rem; margin: 30px 0 8px; color: var(--red); border-bottom: 2px solid var(--red); padding-bottom: 4px; }
+  p { max-width: 78ch; }
+  code { background: #e6d6ae; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; display: grid; gap: 4px; }
+  .card.custom { border-color: var(--jade); box-shadow: inset 0 0 0 2px var(--jade); }
+  .card img { width: 100%; aspect-ratio: 1; background: #e9dcbb; border-radius: 4px; }
+  .card strong { font-size: 13px; overflow-wrap: anywhere; }
+  .card small { color: var(--soft); font-size: 11px; overflow-wrap: anywhere; }
+  .badge { font: 700 10px/1 sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }
+  .custom .badge { color: var(--jade); }
+  .card button, .tools button { font: 700 12px sans-serif; background: var(--jade); color: #fff; border: 0; border-radius: 4px; padding: 6px 8px; cursor: pointer; }
+  .card button[disabled] { opacity: 0.6; cursor: progress; }
+  .swatches { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; }
+  .swatches button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--ink); cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Character Textures</h1>
+  <p>Every part of the adventurer you can repaint, as the game draws it right now. Cards outlined in green use your
+    texture from <code>art/character/</code>; the rest use the built-in drawing.</p>
+  <p>To repaint one: press its <b>Download starter</b> button, unzip it into <code>art/character/</code> (it already has the
+    right folder inside), edit the <code>.dds</code> in GIMP or Paint.NET, run <code>npm run build</code>, and reload this page
+    or the game. Delete your file and build again to go back to the built-in drawing. The full guide is
+    <code>art/character/README.md</code>.</p>
+  <p class="tools"><button type="button" id="download-guides">Download the alignment guides</button>
+    — faint full figures to put on a layer under new art, so it lines up.</p>
+  <p>Try your dye masks with a different clothing color:</p>
+  <div class="swatches" id="dyes"></div>
+  <div id="sections"></div>
+</main>
+<script src="../data/items.js"></script>
+<script src="../data/progression.js"></script>
+<script src="../data/character-options.js"></script>
+<script src="../data/exotics.js"></script>
+<script src="../data/wardrobe.js"></script>
+<script src="../data/goods.js"></script>
+<script src="../data/tomb-gear.js"></script>
+<script>
+  var WEAPONS = window.CryptsItems.weapons;
+  var ARMORS = window.CryptsItems.armors;
+  var COSMETICS = window.CryptsItems.cosmetics;
+  var elements = {};
+</script>
+<script src="../data/figure-art.js"></script>
+<script src="../systems/figure-art.js"></script>
+<script src="../data/character-textures.js"></script>
+<script>window.CHARACTER_TEXTURE_ROOT = "../";</script>
+<script src="../systems/character-textures.js"></script>
+<script src="../systems/codex-figure.js"></script>
+<script>
+(() => {
+  let dye = "#4f97b8";
+  const mannequin = () => ({
+    race: "human",
+    appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", tunic: dye, trim: "#b5402c", garment: "woven-tunic", adornment: "none", headwear: "none", facePaint: "none", body: "standard", face: "calm" },
+    equipment: { weapon: "none", armor: "none", shield: false, cloak: false },
+    cosmetics: { owned: [], helmet: null, clothes: null, back: null }
+  });
+  const isRegalia = (id) => COSMETICS[id] && !COSMETICS[id].basic;
+
+  // Every repaintable part: its folder, its ids, a name, and how to dress a figure in it.
+  const KINDS = [
+    { kind: "body", title: "Base body (under everything)", ids: () => ["base"], label: () => "Base body",
+      dress: (c) => { c.appearance.garment = "none"; c.equipment.weapon = "none"; } },
+    { kind: "loincloth", title: "Loincloths and skirts (over the body, under the garment)",
+      ids: () => ["maxtlatl", "cueitl"],
+      label: (id) => ({ maxtlatl: "Maxtlatl (plain loincloth)", cueitl: "Cueitl (wrap skirt, worn with a huipil)" })[id],
+      dress: (c, id) => { c.appearance.garment = id === "cueitl" ? "huipil" : "none"; } },
+    { kind: "weapon", title: "Weapons", ids: () => Object.keys(WEAPONS).filter((id) => !WEAPONS[id].baseId && id !== "none"),
+      label: (id) => WEAPONS[id].name, dress: (c, id) => { c.equipment.weapon = id; } },
+    { kind: "shield", title: "Shield", ids: () => ["shield"], label: () => "Round shield", dress: (c) => { c.equipment.shield = true; } },
+    { kind: "back", title: "Banners and back devices", ids: () => Object.keys(COSMETICS).filter((id) => COSMETICS[id].slot === "back"),
+      label: (id) => COSMETICS[id].name, dress: (c, id) => { c.cosmetics.back = id; } },
+    { kind: "helmet", title: "Headwear and helmets",
+      ids: () => [...HEADWEAR_STYLES.filter((id) => id !== "none"), ...Object.keys(COSMETICS).filter((id) => COSMETICS[id].slot === "helmet" && !COSMETICS[id].basic)],
+      label: (id) => COSMETICS[id]?.name || HEADWEAR_LABELS[id] || id,
+      dress: (c, id) => { if (isRegalia(id)) c.cosmetics.helmet = id; else c.appearance.headwear = id; } },
+    { kind: "clothes", title: "Clothes and regalia",
+      ids: () => [...GARMENT_STYLES.filter((id) => id !== "none"), ...Object.keys(COSMETICS).filter((id) => COSMETICS[id].slot === "clothes" && !COSMETICS[id].basic)],
+      label: (id) => COSMETICS[id]?.name || GARMENT_LABELS[id] || id,
+      dress: (c, id) => { if (isRegalia(id)) c.cosmetics.clothes = id; else c.appearance.garment = id; } },
+    { kind: "armor", title: "Body armor", ids: () => Object.keys(ARMORS).filter((id) => !ARMORS[id].baseId && id !== "none"),
+      label: (id) => ARMORS[id].name, dress: (c, id) => { c.equipment.armor = id; } },
+    { kind: "adornment", title: "Necklaces and collars", ids: () => CLOTHING_ADORNMENTS.filter((id) => id !== "none"),
+      label: (id) => ADORNMENT_LABELS[id] || id, dress: (c, id) => { c.appearance.adornment = id; } }
+  ];
+
+  function renderSections() {
+    const container = document.getElementById("sections");
+    container.replaceChildren();
+    for (const entry of KINDS) {
+      const heading = document.createElement("h2");
+      heading.textContent = entry.title;
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      for (const id of entry.ids()) {
+        const custom = Boolean(characterTextureEntry(entry.kind, id));
+        const card = document.createElement("article");
+        card.className = `card${custom ? " custom" : ""}`;
+        const figure = mannequin();
+        entry.dress(figure, id);
+        const image = document.createElement("img");
+        image.alt = entry.label(id);
+        image.src = codexFigureUrl(figure, "east");
+        const name = document.createElement("strong");
+        name.textContent = entry.label(id);
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = custom ? "Your texture" : "Built-in drawing";
+        const pathLine = document.createElement("small");
+        pathLine.textContent = `art/character/${entry.kind}/${id}.dds`;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "Download starter (.dds)";
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          try { await downloadStarter(entry.kind, id); } finally { button.disabled = false; }
+        });
+        card.append(image, name, badge, pathLine, button);
+        grid.append(card);
+      }
+      container.append(heading, grid);
+    }
+  }
+
+  const dyes = document.getElementById("dyes");
+  for (const color of ["#4f97b8", "#334d78", "#c0627a", "#e1ad3b", "#3d7a4a", "#efe7d6", "#2b2522"]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.style.background = color;
+    button.title = color;
+    button.addEventListener("click", () => { dye = color; codexFigureCache.clear(); renderSections(); });
+    dyes.append(button);
+  }
+
+  // ---- Baking: used by scripts/bake-character-textures.js to write the starter textures. ----
+  const WHITE = "#ffffff";
+  function paletteWith(colors) {
+    const { tunic = WHITE, trim = WHITE, skin = WHITE, hair = WHITE } = colors;
+    return {
+      race: "human", trim, trimAlt: ["#e1ad3b", CODEX_COLORS.gold].includes(trim.toLowerCase()) ? CODEX_COLORS.red : CODEX_COLORS.gold,
+      trimDark: codexShade(trim, -36), skin, skinDark: codexShade(skin, -34), skinShade: codexShade(skin, -16), skinLight: codexShade(skin, 30),
+      hair, hairLight: codexShade(hair, 46), tunic, tunicDark: codexShade(tunic, -36), tunicLight: codexShade(tunic, 52)
+    };
+  }
+  function partMarkup(kind, id, colors, variant) {
+    const palette = paletteWith(colors);
+    const character = mannequin();
+    Object.assign(character.appearance, { skin: palette.skin, hair: palette.hair, tunic: palette.tunic, trim: palette.trim });
+    if (variant === "curvy") character.appearance.body = "curvy";
+    if (kind === "body") return codexBody(character, palette);
+    if (kind === "loincloth") {
+      if (id === "cueitl") character.appearance.garment = "huipil";
+      return codexLoinclothDrawing(character, palette, "");
+    }
+    if (kind === "weapon") return codexWeapon(id);
+    if (kind === "shield") return codexShield(palette);
+    if (kind === "back") return codexBackDevice(id);
+    if (kind === "helmet") return isRegalia(id) ? codexHeadgear("none", id) : codexHeadgear(id, null);
+    if (kind === "adornment") return codexAdornment(id, palette);
+    if (kind === "armor") { character.equipment.armor = id; return codexArmor(character.equipment, palette); }
+    if (kind === "clothes") {
+      const outfit = isRegalia(id) ? id : "";
+      if (!outfit) character.appearance.garment = id;
+      character.appearance.adornment = "none";
+      return codexTorso(character, palette, false, outfit);
+    }
+    return "";
+  }
+  const BAKE_DEFS = `<defs>${CODEX_BODY_LINE_FILTER}<clipPath id="codex-shield"><circle cx="126" cy="130" r="17.5"/></clipPath>` +
+    `<clipPath id="codex-mantle"><path d="M100 86 L120 94 L116 136 L80 138 L78 104 C90 102 96 96 100 86 Z"/></clipPath>` +
+    `<clipPath id="codex-torso-clip"><path d="M77 90 C88 83 108 82 119 89 L122 102 L119 136 L79 138 L74 103 Z"/></clipPath></defs>`;
+  function rasterize(svg, size) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = size; canvas.height = size;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0, size, size);
+        resolve(context.getImageData(0, 0, size, size).data);
+      };
+      image.onerror = () => reject(new Error("could not draw"));
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    });
+  }
+  const rawSvg = (markup) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">${BAKE_DEFS}${markup}</svg>`;
+  const toBase64 = (bytes) => { let text = ""; for (let i = 0; i < bytes.length; i += 32768) text += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768)); return btoa(text); };
+
+  // One part: the base texture (dye areas white) and a mask for each color it takes.
+  window.bakePart = async (kind, id, variant = "", size = 512) => {
+    const base = await rasterize(rawSvg(partMarkup(kind, id, {}, variant)), size);
+    const result = { base: toBase64(base), masks: {} };
+    for (const [channel, key] of [["dye", "tunic"], ["trim", "trim"], ["skin", "skin"], ["hair", "hair"]]) {
+      const dark = await rasterize(rawSvg(partMarkup(kind, id, { [key]: "#000000" }, variant)), size);
+      const mask = new Uint8ClampedArray(base.length);
+      let any = 0;
+      for (let i = 0; i < base.length; i += 4) {
+        const diff = Math.max(Math.abs(base[i] - dark[i]), Math.abs(base[i + 1] - dark[i + 1]), Math.abs(base[i + 2] - dark[i + 2]));
+        const value = Math.min(255, Math.round(diff * 1.15));
+        mask[i] = mask[i + 1] = mask[i + 2] = value;
+        mask[i + 3] = 255;
+        if (value > 24) any += 1;
+      }
+      if (any > 12) result.masks[channel] = toBase64(mask);
+    }
+    return result;
+  };
+  window.bakeList = () => KINDS.map((entry) => ({
+    kind: entry.kind, title: entry.title,
+    parts: entry.ids().map((id) => ({ id, name: entry.label(id), tilt: entry.kind === "weapon" ? codexWeaponTilt(id) : null }))
+  }));
+  // Faint guide figures to line new art up against.
+  window.bakeGuide = async (name, size = 512) => {
+    const figure = mannequin();
+    const tilt = { "figure": null, "weapon-guide-20": 20, "weapon-guide-8": 8, "weapon-guide-0": 0 }[name];
+    let svg = buildCodexFigureSvg(figure, "east");
+    if (tilt !== null && tilt !== undefined) {
+      const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><g transform="translate(-12 0) rotate(${-tilt} 135 97)"><image href="${url}" width="200" height="200"/></g></svg>`;
+    }
+    return toBase64(await rasterize(svg, size));
+  };
+
+  // ---- Starter downloads: the built-in drawing as an editable DDS, zipped with its masks. ----
+  const fromBase64 = (text) => Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
+  function ddsBytes(size, rgba, grayscale) {
+    const header = new DataView(new ArrayBuffer(128));
+    const words = [[0, 0x20534444], [4, 124], [8, 0x100f], [12, size], [16, size], [20, size * (grayscale ? 1 : 4)], [28, 1], [76, 32],
+      [80, grayscale ? 0x20000 : 0x41], [88, grayscale ? 8 : 32], [92, grayscale ? 0xff : 0xff0000], [96, grayscale ? 0 : 0xff00],
+      [100, grayscale ? 0 : 0xff], [104, grayscale ? 0 : 0xff000000], [108, 0x1000]];
+    for (const [at, value] of words) header.setUint32(at, value >>> 0, true);
+    const pixels = new Uint8Array(size * size * (grayscale ? 1 : 4));
+    for (let i = 0; i < size * size; i += 1) {
+      if (grayscale) { pixels[i] = Math.round(0.3 * rgba[i * 4] + 0.59 * rgba[i * 4 + 1] + 0.11 * rgba[i * 4 + 2]); continue; }
+      pixels[i * 4] = rgba[i * 4 + 2]; pixels[i * 4 + 1] = rgba[i * 4 + 1]; pixels[i * 4 + 2] = rgba[i * 4]; pixels[i * 4 + 3] = rgba[i * 4 + 3];
+    }
+    const out = new Uint8Array(128 + pixels.length);
+    out.set(new Uint8Array(header.buffer), 0);
+    out.set(pixels, 128);
+    return out;
+  }
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n += 1) { let c = n; for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = (bytes) => { let c = 0xffffffff; for (const b of bytes) c = CRC[(c ^ b) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  // A plain (uncompressed) zip, which every computer can open.
+  function zip(files) {
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+    for (const { name, data } of files) {
+      const nameBytes = new TextEncoder().encode(name);
+      const crc = crc32(data);
+      const local = new DataView(new ArrayBuffer(30));
+      [[0, 0x04034b50, 4], [4, 20, 2], [8, 0, 2], [14, crc, 4], [18, data.length, 4], [22, data.length, 4], [26, nameBytes.length, 2]]
+        .forEach(([at, value, width]) => (width === 4 ? local.setUint32(at, value >>> 0, true) : local.setUint16(at, value, true)));
+      chunks.push(new Uint8Array(local.buffer), nameBytes, data);
+      const entry = new DataView(new ArrayBuffer(46));
+      [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [16, crc, 4], [20, data.length, 4], [24, data.length, 4], [28, nameBytes.length, 2], [42, offset, 4]]
+        .forEach(([at, value, width]) => (width === 4 ? entry.setUint32(at, value >>> 0, true) : entry.setUint16(at, value, true)));
+      central.push(new Uint8Array(entry.buffer), nameBytes);
+      offset += 30 + nameBytes.length + data.length;
+    }
+    const centralSize = central.reduce((sum, part) => sum + part.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    [[0, 0x06054b50, 4], [8, files.length, 2], [10, files.length, 2], [12, centralSize, 4], [16, offset, 4]]
+      .forEach(([at, value, width]) => (width === 4 ? end.setUint32(at, value >>> 0, true) : end.setUint16(at, value, true)));
+    return new Blob([...chunks, ...central, new Uint8Array(end.buffer)], { type: "application/zip" });
+  }
+  function save(name, blob) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 1000);
+  }
+  async function downloadStarter(kind, id) {
+    const files = [];
+    const add = (baked, suffix) => {
+      files.push({ name: `${kind}/${id}${suffix}.dds`, data: ddsBytes(512, fromBase64(baked.base), false) });
+      for (const [channel, mask] of Object.entries(baked.masks)) files.push({ name: `${kind}/${id}${suffix}.${channel}.dds`, data: ddsBytes(512, fromBase64(mask), true) });
+    };
+    const standard = await window.bakePart(kind, id, "", 512);
+    add(standard, "");
+    if (kind === "clothes" || kind === "body") {
+      const curvy = await window.bakePart(kind, id, "curvy", 512);
+      if (curvy.base !== standard.base) add(curvy, ".curvy");
+    }
+    save(`${id}-starter.zip`, zip(files));
+  }
+  document.getElementById("download-guides").addEventListener("click", async () => {
+    const files = [];
+    for (const name of ["figure", "weapon-guide-20", "weapon-guide-8", "weapon-guide-0"]) {
+      files.push({ name: `guides/${name}.dds`, data: ddsBytes(512, fromBase64(await window.bakeGuide(name, 512)), false) });
+    }
+    save("alignment-guides.zip", zip(files));
+  });
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    renderSections();
+    await loadCharacterTextures();
+    renderSections();
+  });
+})();
+</script>
+</body>
+</html>

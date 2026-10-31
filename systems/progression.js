@@ -23,7 +23,9 @@ function createProgress() {
     conditions: [],
     buffs: [],
     dishesCooked: 0,
-    loreHeard: []
+    naturalist: {},
+    loreHeard: [],
+    strikeLore: {}
   };
 }
 
@@ -40,6 +42,11 @@ function normalizeProgress(raw, pack) {
   if (raw.bestiary && typeof raw.bestiary === "object" && !Array.isArray(raw.bestiary)) {
     for (const [id, kills] of Object.entries(raw.bestiary)) {
       if (templateIds.has(id) && Number.isInteger(kills) && kills > 0) progress.bestiary[id] = Math.min(kills, 100000);
+    }
+  }
+  if (raw.strikeLore && typeof raw.strikeLore === "object" && !Array.isArray(raw.strikeLore)) {
+    for (const [id, lore] of Object.entries(raw.strikeLore)) {
+      if (templateIds.has(id) && lore && typeof lore === "object") progress.strikeLore[id] = { weak: lore.weak === true, resist: lore.resist === true };
     }
   }
   const bounties = raw.bounties;
@@ -61,6 +68,17 @@ function normalizeProgress(raw, pack) {
   const knownRemarks = new Set(Object.values(window.CryptsLore?.townsfolk || {}).flat().map((remark) => remark.id));
   progress.loreHeard = Array.isArray(raw.loreHeard)
     ? [...new Set(raw.loreHeard.filter((id) => knownRemarks.has(id)))] : [];
+  progress.duende = typeof normalizeDuendeState === "function" ? normalizeDuendeState(raw.duende) : raw.duende;
+  // The naturalist's notes: what you've seen of each living thing (data/ecology.js).
+  if (raw.naturalist && typeof raw.naturalist === "object" && !Array.isArray(raw.naturalist)) {
+    for (const [id, entry] of Object.entries(raw.naturalist).slice(0, 200)) {
+      if (!entry || typeof entry !== "object" || !/^[a-z0-9-]{1,40}$/.test(id)) continue;
+      progress.naturalist[id] = {
+        seen: int(entry.seen, 0, 9999, 0),
+        facts: Array.isArray(entry.facts) ? entry.facts.filter((fact) => typeof fact === "string" && fact.length <= 60).slice(0, 24) : []
+      };
+    }
+  }
   return progress;
 }
 
@@ -222,7 +240,7 @@ function grantBuff(id) {
   const list = progress().buffs.filter((entry) => entry.id !== id && entry.until > state.run.gameMinutes);
   list.push({ id, until: state.run.gameMinutes + buff.minutes });
   progress().buffs = list;
-  addLog(`${t(buff.name)}: ${t(buff.description)} (8 hours).`);
+  addLog(`${t(buff.name)}: ${t(buff.description)} (${Math.floor(buff.minutes / 60)} hours).`);
 }
 
 function hasCondition(id) {
@@ -232,6 +250,10 @@ function hasCondition(id) {
 function applyCondition(id, source) {
   const condition = PROGRESSION.conditions[id];
   if (!condition || state.run.hp <= 0) return false;
+  if (id === "poison" && activeBuff("unbitten")) {
+    addLog(`${source}'s poison can't take hold of you: you're Unbitten.`);
+    return false;
+  }
   if (equippedArmorTrait() === "warded") {
     addLog(`Your warded armor turns aside ${source}'s ${t(condition.name).toLowerCase()} touch.`);
     return false;
@@ -284,11 +306,21 @@ function heroStatModifiers() {
     mods.ac += 1;
   }
   if (hasCondition("weakened")) mods.attack -= 2;
+  if (hasCondition("susto")) mods.attack -= 2;
+  if (hasCondition("tlaloc-ache")) mods.ac -= 1;
+  if (activeBuff("coiled")) mods.ac += 1;
+  if (typeof heroAbilityModifiers === "function") {
+    const ability = heroAbilityModifiers();
+    mods.ac += ability.ac;
+    mods.damage += ability.damage;
+    mods.attack += ability.attack || 0;
+  }
   return mods;
 }
 
 function buffSkillBonus(skill) {
   let bonus = ["perception", "survival"].includes(skill) && activeBuff("keen-eyed") ? 2 : 0;
+  if (skill === "stealth" && activeBuff("hushed")) bonus += 2;
   if (skill === "perception" && activeBuff("bold")) bonus -= 2;
   return bonus;
 }
@@ -304,6 +336,15 @@ function criticalThreshold() {
 function bestiaryRank(templateId) {
   const kills = state.run?.progress?.bestiary?.[templateId] || 0;
   return [...PROGRESSION.bestiaryTiers].reverse().find((tier) => kills >= tier.kills) || null;
+}
+
+// "· weak: crushing · glances off: edge" for a bestiary row, once known.
+function bestiaryStrikeLine(template) {
+  if (typeof knownStrikes !== "function") return "";
+  const subject = { templateId: template.id };
+  const known = knownStrikes(subject);
+  const strikes = creatureStrikes(subject);
+  return `${known.weak ? ` · ${t("weak to {0}").replace("{0}", t(STRIKE_KINDS[strikes.weak].plural))}` : ""}${known.resist ? ` · ${t("{0} glance off").replace("{0}", t(STRIKE_KINDS[strikes.resist].plural))}` : ""}`;
 }
 
 function bestiaryBonus(enemy) {
@@ -331,7 +372,8 @@ function foodDrainPerHour() {
 
 function waterDrainPerHour() {
   const granary = state.run?.progress?.town?.granary || 0;
-  return Math.max(1, WATER_DRAIN_PER_HOUR - (granary >= 2 ? 1 : 0) - (equippedArmorTrait() === "provisioned" ? 1 : 0));
+  const jar = typeof carriesReward === "function" && carriesReward("sweating-jar") ? 1 : 0;
+  return Math.max(1, WATER_DRAIN_PER_HOUR - (granary >= 2 ? 1 : 0) - (equippedArmorTrait() === "provisioned" ? 1 : 0) - jar);
 }
 
 // ---------- Elites, guardians, and loot ----------
@@ -351,6 +393,8 @@ function decorateEnemy(enemy, { isBoss = false } = {}) {
     return enemy;
   }
   if (floor < 2 || randomInt(100) > Math.min(25, 10 + floor * 1.5)) return enemy;
+  // Guardians of wild places and harmless omens don't come in elite kinds.
+  if (["chaneque", "alux", "maquizcoatl"].includes(enemy.templateId)) return enemy;
   const titles = PROGRESSION.eliteTitles;
   enemy.elite = true;
   enemy.title = titles[randomInt(titles.length) - 1];
@@ -412,14 +456,20 @@ function onCreatureDefeated(enemy) {
 
 // ---------- Recipes ----------
 
+// A recipe that needs a naturalist's knowledge (you have to have seen the creature, or
+// gathered the thing) stays unknown until you have.
+function recipeKnown(recipe) {
+  return !recipe.requires || (typeof naturalistKnows === "function" && naturalistKnows(recipe.requires));
+}
+
 function availableRecipes() {
-  return Object.entries(PROGRESSION.recipes).filter(([, recipe]) =>
+  return Object.entries(PROGRESSION.recipes).filter(([, recipe]) => recipeKnown(recipe) &&
     Object.entries(recipe.ingredients).every(([id, quantity]) => inventoryQuantity(id) >= quantity));
 }
 
 function cookingBlocked() {
   return state.run.location === "dungeon" && (!atCamp() || state.run.enemies.some((enemy) =>
-    enemy.alive && distanceInSquares(enemy, state.run.player) <= 7));
+    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= 7));
 }
 
 function openCookMenu() {
@@ -430,7 +480,7 @@ function openCookMenu() {
   }
   const options = availableRecipes();
   if (!options.length) {
-    const hints = Object.values(PROGRESSION.recipes).map((recipe) =>
+    const hints = Object.values(PROGRESSION.recipes).filter(recipeKnown).map((recipe) =>
       `${t(recipe.name)}: ${Object.keys(recipe.ingredients).map((id) => itemDetails(id).name).join(" + ")}`);
     showRpgMessage("Camp recipes", `You don't have the ingredients for a dish yet. ${hints.join(". ")}.`);
     return;
@@ -774,6 +824,21 @@ function renderProgressJournal() {
   const next = nextRenownTier();
   elements["renown-line"].textContent = `${tier.title} · ${data.bounties.completed} bounties completed${next ? ` · ${next.bounties - data.bounties.completed} more for ${next.title}` : ""}${tier.rewardBonus ? ` · rewards +${Math.round(tier.rewardBonus * 100)}%` : ""}`;
   const bounties = document.createDocumentFragment();
+  for (const id of typeof openFavors === "function" ? openFavors() : []) {
+    const favor = favorFor(id);
+    const carried = carryingFavorItem(id);
+    const card = document.createElement("article");
+    card.className = `bounty-card favor-card${carried ? " is-ready" : ""}`;
+    const title = document.createElement("strong");
+    title.textContent = favor.title;
+    const status = document.createElement("span");
+    status.className = "bounty-status";
+    status.textContent = carried ? t("You have it. Bring it to {0}.", { 0: VILLAGE.villagers[id].name }) : t("Favor for {0}", { 0: VILLAGE.villagers[id].name });
+    const hint = document.createElement("small");
+    hint.textContent = favor.hint;
+    card.append(title, status, hint);
+    bounties.append(card);
+  }
   for (const bounty of data.bounties.active) {
     const card = document.createElement("article");
     const done = bountyComplete(bounty);
@@ -803,32 +868,35 @@ function renderProgressJournal() {
   elements["bounty-list"].replaceChildren(bounties);
 
   const bestiary = document.createDocumentFragment();
-  const known = state.pack.enemies.filter((enemy) => data.bestiary[enemy.id]);
+  // You learn a creature by killing it or by watching it (the naturalist's notes).
+  const observed = (id) => (data.naturalist?.[id]?.seen || 0) > 0;
+  const known = state.pack.enemies.filter((enemy) => data.bestiary[enemy.id] || observed(enemy.id));
   elements["bestiary-count"].textContent = `${known.length} / ${state.pack.enemies.length}`;
   for (const enemy of state.pack.enemies) {
     const kills = data.bestiary[enemy.id] || 0;
-    const row = document.createElement(kills ? "button" : "div");
-    row.className = `bestiary-entry${kills ? " is-known" : " is-unknown"}`;
-    if (kills) {
+    const seen = kills || observed(enemy.id);
+    const row = document.createElement(seen ? "button" : "div");
+    row.className = `bestiary-entry${seen ? " is-known" : " is-unknown"}`;
+    if (seen) {
       row.type = "button";
       row.dataset.creatureId = enemy.id;
       row.title = t("Show the full creature card");
     }
-    const art = kills ? createSprite(enemy.sprite || enemySpriteForId(enemy.id), "bestiary-sprite") : document.createElement("span");
-    if (!kills) {
+    const art = seen ? createSprite(enemy.sprite || enemySpriteForId(enemy.id), "bestiary-sprite") : document.createElement("span");
+    if (!seen) {
       art.className = "bestiary-sprite bestiary-unknown";
       art.textContent = "?";
     }
     const copy = document.createElement("span");
     copy.className = "bestiary-copy";
     const name = document.createElement("strong");
-    name.textContent = kills ? t(enemy.name) : "Unknown";
+    name.textContent = seen ? t(enemy.name) : "Unknown";
     const rank = bestiaryRank(enemy.id);
     const nextTier = PROGRESSION.bestiaryTiers.find((entry) => entry.kills > kills);
     const detail = document.createElement("small");
     detail.textContent = kills
-      ? `${rank.title} · ${kills} defeated${nextTier ? ` · ${nextTier.kills - kills} to ${nextTier.title.toLowerCase()}` : ""}`
-      : "Defeat one to record it.";
+      ? `${rank.title} · ${kills} defeated${nextTier ? ` · ${nextTier.kills - kills} to ${nextTier.title.toLowerCase()}` : ""}${bestiaryStrikeLine(enemy)}`
+      : seen ? t("Observed, never fought") : "Watch one, or defeat one, to record it.";
     copy.append(name, detail);
     row.append(art, copy);
     bestiary.append(row);

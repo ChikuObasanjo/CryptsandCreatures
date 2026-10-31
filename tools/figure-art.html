@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Figure Art Workshop</title>
+<style>
+  :root { --paper: #efe2c2; --card: #f8f0dc; --ink: #2e211a; --soft: #6a5342; --red: #9a3324; --jade: #23745b; --rule: #d6c39a; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 Georgia, "Times New Roman", serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 1.9rem; margin: 0 0 6px; }
+  h2 { font-size: 1.25rem; margin: 30px 0 8px; color: var(--red); border-bottom: 2px solid var(--red); padding-bottom: 4px; }
+  p, li { max-width: 78ch; }
+  code { background: #e6d6ae; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; display: grid; gap: 6px; }
+  .card.custom { border-color: var(--jade); box-shadow: inset 0 0 0 2px var(--jade); }
+  .card img { width: 100%; aspect-ratio: 1; background: #e9dcbb; border-radius: 4px; }
+  .card strong { font-size: 13px; overflow-wrap: anywhere; }
+  .card small { color: var(--soft); font-size: 11px; overflow-wrap: anywhere; }
+  .badge { font: 700 10px/1 sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }
+  .custom .badge { color: var(--jade); }
+  button { font: 700 12px sans-serif; background: var(--jade); color: #fff; border: 0; border-radius: 4px; padding: 6px 8px; cursor: pointer; }
+  button.secondary { background: #8a7357; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 18px; height: 18px; border: 1px solid var(--ink); display: inline-block; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Figure Art Workshop</h1>
+  <p><b>Older tool.</b> The easier way to repaint gear is now <a href="character-textures.html">Character Textures</a> (DDS files you edit in GIMP or Paint.NET). This SVG workshop still works; a DDS texture wins over an SVG drawing for the same part.</p>
+  <p>Redraw any part of the adventurer figure in Illustrator (or any SVG editor) and the game will use your drawing. Download a part's template, edit it, and save it as an SVG at the path shown on its card. Run <code>npm run build</code> (or <code>Start Game.bat</code>) and the game picks it up. Cards outlined in green already use your drawing.</p>
+  <ul>
+    <li>Keep the 200 × 200 artboard. The figure faces east (right).</li>
+    <li>The faint figure in the <code>reference</code> layer is only a guide; the game ignores it, so leave it or delete it.</li>
+    <li>Outlines colored <code>#2e211a</code> are painted as ink lines. Every other color is painted as a watercolor wash.</li>
+    <li>These colors are swapped for the adventurer's own, so dyed clothing stays dyeable:</li>
+  </ul>
+  <div class="legend">
+    <span><i style="background:#ff00ff"></i><code>#ff00ff</code> clothing dye</span>
+    <span><i style="background:#00ffff"></i><code>#00ffff</code> trim</span>
+    <span><i style="background:#ffff00"></i><code>#ffff00</code> skin</span>
+    <span><i style="background:#00ff00"></i><code>#00ff00</code> hair</span>
+  </div>
+  <p>Weapon templates are drawn upright, before the game tilts them into the hand, so the reference figure appears tilted in them.</p>
+  <div id="sections"></div>
+</main>
+
+<script>window.FIGURE_ART_BASE = "../resources/figure-art/";</script>
+<script src="../data/items.js"></script>
+<script src="../data/progression.js"></script>
+<script src="../data/character-options.js"></script>
+<script src="../data/exotics.js"></script>
+<script src="../data/wardrobe.js"></script>
+<script src="../data/goods.js"></script>
+<script src="../data/tomb-gear.js"></script>
+<script>
+  var WEAPONS = window.CryptsItems.weapons;
+  var ARMORS = window.CryptsItems.armors;
+  var COSMETICS = window.CryptsItems.cosmetics;
+</script>
+<script src="../data/figure-art.js"></script>
+<script src="../systems/figure-art.js"></script>
+<script src="../systems/character-textures.js"></script>
+<script src="../systems/codex-figure.js"></script>
+<script>
+(() => {
+  const mannequin = () => ({
+    race: "human",
+    appearance: { skin: "#9a603c", hair: "#211a17", hairStyle: "short", tunic: "#4f97b8", trim: "#b5402c", garment: "woven-tunic", adornment: "none", headwear: "none", facePaint: "none" },
+    equipment: { weapon: "none", armor: "none", shield: false, cloak: false },
+    cosmetics: { owned: [], helmet: null, clothes: null, back: null }
+  });
+  const flatPalette = codexPalette(mannequin());
+  const toUrl = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  const kinds = [];
+
+  const weaponIds = Object.keys(WEAPONS).filter((id) => !WEAPONS[id].baseId);
+  kinds.push({
+    kind: "weapon", title: "Weapons", ids: weaponIds, label: (id) => WEAPONS[id].name,
+    figure: (id) => { const c = mannequin(); c.equipment.weapon = id; return c; },
+    part: (id) => codexWeapon(id),
+    reference: (id) => {
+      const c = mannequin();
+      return `<g transform="translate(-12 0) rotate(${-codexWeaponTilt(id)} 135 97)"><image xlink:href="${toUrl(buildCodexFigureSvg(c))}" href="${toUrl(buildCodexFigureSvg(c))}" width="200" height="200"/></g>`;
+    }
+  });
+  const backs = Object.keys(COSMETICS).filter((id) => COSMETICS[id].slot === "back");
+  kinds.push({
+    kind: "back", title: "Banners and back devices", ids: backs, label: (id) => COSMETICS[id].name,
+    figure: (id) => { const c = mannequin(); c.cosmetics.back = id; return c; },
+    part: (id) => codexBackDevice(id)
+  });
+  kinds.push({
+    kind: "shield", title: "Shield", ids: ["shield"], label: () => "Round shield",
+    figure: () => { const c = mannequin(); c.equipment.shield = true; return c; },
+    part: () => codexShield(flatPalette)
+  });
+  const helmets = [
+    ...HEADWEAR_STYLES.filter((id) => id !== "none"),
+    ...Object.keys(COSMETICS).filter((id) => COSMETICS[id].slot === "helmet" && !COSMETICS[id].basic)
+  ];
+  kinds.push({
+    kind: "helmet", title: "Headwear and helmets", ids: helmets,
+    label: (id) => COSMETICS[id]?.name || HEADWEAR_LABELS[id] || id,
+    figure: (id) => { const c = mannequin(); if (COSMETICS[id] && !COSMETICS[id].basic) c.cosmetics.helmet = id; else c.appearance.headwear = id; return c; },
+    part: (id) => (COSMETICS[id] && !COSMETICS[id].basic) ? codexHeadgear("none", id) : codexHeadgear(id, null)
+  });
+  const clothes = [
+    ...GARMENT_STYLES.filter((id) => id !== "none"),
+    ...Object.keys(COSMETICS).filter((id) => COSMETICS[id].slot === "clothes" && !COSMETICS[id].basic)
+  ];
+  kinds.push({
+    kind: "clothes", title: "Clothes and regalia (torso)", ids: clothes,
+    label: (id) => COSMETICS[id]?.name || GARMENT_LABELS[id] || id,
+    figure: (id) => { const c = mannequin(); if (COSMETICS[id] && !COSMETICS[id].basic) c.cosmetics.clothes = id; else c.appearance.garment = id; return c; },
+    part: (id) => {
+      const c = mannequin();
+      c.appearance.tunic = "#ff00ff"; c.appearance.trim = "#00ffff";
+      const outfit = COSMETICS[id] && !COSMETICS[id].basic ? id : "";
+      if (!outfit) c.appearance.garment = id;
+      return codexTorso(c, codexPalette(c), false, outfit);
+    }
+  });
+
+  function template(entry, id) {
+    const without = mannequin();
+    const reference = entry.reference ? entry.reference(id)
+      : `<image xlink:href="${toUrl(buildCodexFigureSvg(without))}" href="${toUrl(buildCodexFigureSvg(without))}" width="200" height="200"/>`;
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 200 200" width="200" height="200">
+  <g id="reference" opacity="0.3">${reference}</g>
+  <g id="art">${entry.part(id)}</g>
+</svg>
+`;
+  }
+
+  function download(name, text) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([text], { type: "image/svg+xml" }));
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 500);
+  }
+
+  function renderSections() {
+    const container = document.getElementById("sections");
+    container.replaceChildren();
+    for (const entry of kinds) {
+      const heading = document.createElement("h2");
+      heading.textContent = entry.title;
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      for (const id of entry.ids) {
+        const custom = Boolean(figureArt.loaded[entry.kind]?.[id]);
+        const card = document.createElement("article");
+        card.className = `card${custom ? " custom" : ""}`;
+        const image = document.createElement("img");
+        image.alt = entry.label(id);
+        image.src = codexFigureUrl(entry.figure(id), "east");
+        const name = document.createElement("strong");
+        name.textContent = entry.label(id);
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = custom ? "Your drawing" : "Built-in drawing";
+        const pathLine = document.createElement("small");
+        pathLine.textContent = `resources/figure-art/${entry.kind}/${id}.svg`;
+        const row = document.createElement("div");
+        row.className = "row";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "Download template";
+        button.addEventListener("click", () => download(`${id}.svg`, template(entry, id)));
+        row.append(button);
+        card.append(image, name, badge, pathLine, row);
+        grid.append(card);
+      }
+      container.append(heading, grid);
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    renderSections();
+    await loadFigureArt();
+    codexFigureCache.clear();
+    renderSections();
+  });
+})();
+</script>
+</body>
+</html>

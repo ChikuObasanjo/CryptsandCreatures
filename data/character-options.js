@@ -4,6 +4,8 @@ const GENDERS = ["man", "woman", "other"];
 const GARMENT_STYLES = ["woven-tunic", "cotton-wrap", "feather-mantle", "hide-vest", "huipil", "quechquemitl", "tilmatli", "xicolli", "none"];
 const CLOTHING_ADORNMENTS = ["none", "jade-beads", "shell-beads", "feather-trim"];
 const HEADWEAR_STYLES = ["none", "feather-band", "cotton-wrap", "jade-circlet"];
+// Face presets (drawn in systems/codex-figure.js CODEX_FACES).
+const FACE_STYLES = ["calm", "hawk", "round", "weathered", "scarred", "bright", "broad", "long"];
 const FACE_PAINT_STYLES = ["none", "jade-lines", "terracotta-marks", "black-band", "gold-dots", "maya-blue", "white-stripes", "red-jaw"];
 const FULL_CASTER_CLASSES = new Set(["bard", "cleric", "druid", "sorcerer", "warlock", "wizard"]);
 const HALF_CASTER_CLASSES = new Set(["paladin", "ranger"]);
@@ -194,6 +196,10 @@ const GARMENT_LABELS = {
 };
 const ADORNMENT_LABELS = { none: "None", "jade-beads": "Jade beads", "shell-beads": "Shell beads", "feather-trim": "Feather trim" };
 const HEADWEAR_LABELS = { "feather-band": "Feather band", none: "None", "cotton-wrap": "Cotton headwrap", "jade-circlet": "Jade circlet" };
+const FACE_LABELS = {
+  calm: "Calm", hawk: "Hawk-nosed", round: "Round-cheeked", weathered: "Weathered",
+  scarred: "Scarred", bright: "Bright-eyed", broad: "Broad", long: "Long-faced"
+};
 const FACE_PAINT_LABELS = {
   none: "None", "jade-lines": "Jade lines", "terracotta-marks": "Terracotta marks", "black-band": "Black eye band",
   "gold-dots": "Gold dots", "maya-blue": "Maya blue cheeks", "white-stripes": "White stripes", "red-jaw": "Red jaw paint"
@@ -225,6 +231,7 @@ function normalizeAppearance(appearance, race) {
   if (!raceSkinTones(race).some((tone) => tone.value === appearance.skin)) appearance.skin = raceSkinTones(race)[0].value;
   if (!raceHairColors(race).some((color) => color.value === appearance.hair)) appearance.hair = raceHairColors(race)[0].value;
   if (!HAIR_STYLES.includes(appearance.hairStyle)) appearance.hairStyle = "short";
+  if (!FACE_STYLES.includes(appearance.face)) appearance.face = "calm";
   if (!TRIM_COLORS.some((color) => color.value === appearance.trim)) appearance.trim = TRIM_DEFAULT;
   return appearance;
 }

@@ -34,20 +34,20 @@ window.CryptsContent = {
     "The keeper lays out a weapon and a Travel Bundle. The deeper halls will test both.",
     "In the lamplight, choose the colors and details that make this adventurer yours."
   ],
-  tombHistory: "Nearly a century ago, an ancient tomb was uncovered outside Chiltomatlan. Its walls name no king, kingdom, or homeland. The Empire sent eagle warriors and temple priests to investigate, but they could not pass the inner halls. They sealed the entrance and declared the tomb forbidden. Since then, the promise of its hidden treasure has drawn adventurers to Chiltomatlan. The old seal has cracked enough to let you enter the outer chambers. The oldest songs in Chiltomatlan say the town was not built near the tomb by chance, but where new life comes up.",
+  tombHistory: "Nearly a century ago, a tomb was uncovered outside Chiltomatlan. Its walls name no king, kingdom, or homeland. The Empire sent eagle warriors and temple priests to investigate, but they could not pass the inner halls. They sealed the entrance and declared the tomb forbidden. Since then, talk of its treasure has drawn adventurers to Chiltomatlan. The old seal has cracked enough to let you into the outer chambers. The oldest songs in Chiltomatlan say the town was built here on purpose, beside a place where new life comes up from below.",
   starterPack: {
     schemaVersion: 1,
     id: "tomb-beneath-the-ceiba",
     title: "The Tomb Beneath Chiltomatlan",
-    description: "A century ago, the Empire sealed this nameless king's tomb and declared it forbidden. Explore its reopened halls, manage your supplies, claim what you can, and return to Chiltomatlan. Something stirs beyond the inner seal.",
+    description: "A century ago, the Empire sealed this nameless king's tomb and declared it forbidden. Explore its reopened halls, manage your supplies, claim what you can, and return to Chiltomatlan. A steady pulse sounds from beyond the inner seal.",
     enemies: window.CryptsEnemies.starter,
     rooms: [
       { id: "entry", type: "entrance", name: "The Rootbound Stair", text: "The Empire's weathered seal lies broken at the threshold. No record names the king buried here. You descend into the outer halls that the imperial expedition could not pass a century ago.", dc: 10 },
       { id: "painted-gallery", type: "quiet", name: "The Unclaimed Gallery", text: "Painted processions show a ruler whose face has been carefully erased. The colors and symbols match no history kept in Chiltomatlan." },
-      { id: "sunken-snare", type: "trap", name: "Hall of Hollow Drums", text: "Stone drums line the passage. One answers your footfall with a low pulse. Uneven floor-stones guard the way.", dc: 12, damage: "1d6" },
-      { id: "jade-offering", type: "treasure", name: "The Terracotta Figurine Niche", text: "A little terracotta bird rests among old offerings of cacao beans and river shells. Its beak points toward the sealed depths.", reward: { gold: 9, potions: 1, xp: 10, items: [{ id: "jade-bead", quantity: 2 }, { id: "terracotta-figurine", quantity: 1 }] } },
-      { id: "mask-sentinel", type: "combat", name: "The Night-Axe Gate", text: "Two moss-covered masks flank an inner gate. A Yohualtepoztli stirs as you approach.", enemyId: "yohualtepoztli" },
-      { id: "cenote-hunter", type: "combat", name: "The Drowned Archive", text: "Water covers the floor of a drowned archive. Something swift stirs beneath the floating bark pages.", enemyId: "cenote-stalker" },
+      { id: "sunken-snare", type: "trap", name: "Hall of Hollow Drums", text: "Stone drums line the passage, and one gives a low note when you step near it. The floor-stones here are uneven; watch your footing.", dc: 12, damage: "1d6" },
+      { id: "jade-offering", type: "treasure", name: "The Terracotta Figurine Niche", text: "A small terracotta bird sits among old offerings of cacao beans and river shells, its beak pointed toward the inner seal.", reward: { gold: 9, potions: 1, xp: 10, items: [{ id: "jade-bead", quantity: 2 }, { id: "terracotta-figurine", quantity: 1 }] } },
+      { id: "mask-sentinel", type: "combat", name: "The Night-Axe Gate", text: "Two moss-covered masks flank an inner gate. A Yohualtepoztli guards it.", enemyId: "yohualtepoztli" },
+      { id: "cenote-hunter", type: "combat", name: "The Drowned Archive", text: "Water covers the floor of a flooded archive. Bark-paper pages float on the surface, and fish dart beneath them.", enemyId: "cenote-stalker" },
       { id: "obsidian-sanctum", type: "boss", name: "The Deep Pulse", text: "A low, steady pulse comes from beyond the inner seal. Camazotz stands between you and its source. Defeating it is optional; the treasure and the way back matter more to your expedition.", enemyId: "camazotz" },
       { id: "jungle-daylight", type: "exit", name: "The Broken Seal", text: "The stair climbs toward Chiltomatlan and the jungle beyond. Carry what you have found back to safety." }
     ]

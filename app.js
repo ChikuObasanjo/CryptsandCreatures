@@ -224,7 +224,7 @@ const TOWN_NPCS = [
 ];
 const MOBILE_MAP_VIEW_SIZE = 7;
 const DESKTOP_MAP_VIEW_SIZE = 9;
-const DICE_PATTERN = /^([1-4])d(4|6|8|10|12|20)([+-]\d{1,2})?$/i;
+const DICE_PATTERN = /^([1-9]|1\d|20)d(4|6|8|10|12|20)([+-]\d{1,2})?$/i;
 const XP_THRESHOLDS = [0, 0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
 const MAX_LEVEL = 20;
 const HEALER_KIT_USES = 10;
@@ -236,7 +236,7 @@ const NUTRIENT_DECAY_HOURS = 12;
 const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
-const SPRITE_RESOURCE_VERSION = 82;
+const SPRITE_RESOURCE_VERSION = 85;
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
@@ -321,6 +321,10 @@ const state = {
   disengageReady: false,
   scoreRolls: [],
   combatEffects: [],
+  playerMoveEffect: null,
+  creatureMoveEffects: {},
+  carcassHarvestEffects: {},
+  playerCarcassHarvestUntil: 0,
   toastTimer: 0,
   messageBox: null,
   messageReturnFocus: null,
@@ -329,6 +333,7 @@ const state = {
   characterInfoPage: 0,
   storeCategory: "supplies",
   inventoryFilter: "all",
+  itemCard: null,
   listPages: { equipment: 0, inventory: 0, storeBuy: 0, storeSell: 0 },
   dialogCopies: {},
   utilityDrawer: null,
@@ -400,8 +405,8 @@ const elements = Object.fromEntries([
   "half-elf-bonuses", "half-elf-bonus-one", "half-elf-bonus-two",
   "score-method", "score-method-note", "ability-score-fields", "roll-scores", "point-buy-remaining", "ability-bonus-note",
   "character-weapon", "character-armor", "character-shield", "character-cloak", "equipment-note", "starter-kit-summary",
-  "character-preview", "character-summary", "character-skin", "character-hair-style", "character-hair", "character-tunic", "character-garment", "character-adornment", "character-headwear", "character-face-paint", "character-error", "character-body", "character-beard", "character-jewelry", "character-crest", "character-trim", "look-turn", "look-randomize", "character-skin-label", "character-hair-label", "character-crest-label", "character-crest-field", "character-hair-style-field", "character-beard-field",
-  "character-heading", "character-subtitle", "character-portrait", "character-equipment", "equipment-list", "inventory-list", "inventory-load", "inventory-security",
+  "character-preview", "character-summary", "character-skin", "character-hair-style", "character-hair", "character-tunic", "character-garment", "character-adornment", "character-headwear", "character-face-paint", "character-face", "character-face-field", "character-error", "character-body", "character-beard", "character-jewelry", "character-crest", "character-trim", "look-turn", "look-randomize", "character-skin-label", "character-hair-label", "character-crest-label", "character-crest-field", "character-hair-style-field", "character-beard-field",
+  "character-heading", "character-subtitle", "character-portrait", "character-equipment", "equipment-list", "inventory-list", "item-card", "inventory-load", "inventory-security",
   "panel-equipment", "panel-gear", "panel-info", "panel-abilities",
   "class-guide-heading", "class-guide-copy", "class-training-copy", "character-level-progress",
   "player-hp-stat", "character-carry-capacity", "character-stat-details", "character-equipment-bonus",
@@ -409,6 +414,7 @@ const elements = Object.fromEntries([
   "character-card-dialog", "close-character-card", "close-character-card-top", "city-screen", "store-screen", "dungeon-screen",
   "town-story", "return-to-city", "shop-message", "store-buy-heading", "store-buy-list", "store-sell-list", "store-carry-load",
   "town-map", "town-location-copy", "town-interact-button", "town-interact-label", "town-dialog", "town-dialog-heading", "town-dialog-copy", "town-dialog-action", "town-dialog-shop", "town-dialog-close", "town-dialog-portrait", "town-dialog-role", "town-dialog-x",
+  "xochipilli-dialog", "xochipilli-offer-gold", "xochipilli-offer-hp", "xochipilli-close",
   "target-choice-dialog", "target-choice-heading", "target-choice-list", "target-choice-close",
   "cosmetic-shop-dialog", "cosmetic-shop-items", "cosmetic-shop-gold", "cosmetic-shop-message", "cosmetic-shop-close",
   "town-dialog-learn", "patolli-dialog", "patolli-rules", "patolli-rules-toggle", "patolli-rules-page-number", "patolli-rules-previous", "patolli-rules-next", "patolli-last-result", "patolli-setup", "patolli-difficulty", "patolli-wager", "patolli-wager-note", "patolli-start",
@@ -425,8 +431,8 @@ const elements = Object.fromEntries([
   "inventory-filters",
   "level-up-dialog", "level-up-heading", "level-up-copy", "level-up-mode", "level-up-one", "level-up-two", "level-up-two-label", "apply-level-up",
   "level-up-mode-select",
-  "dungeon-map-viewport", "dungeon-map", "map-heading", "look-toggle", "look-inspector", "look-title", "look-description",
-  "compact-log", "room-type", "room-name", "room-status", "room-description",
+  "dungeon-map-viewport", "dungeon-map", "map-heading", "stance-control", "look-toggle", "look-inspector", "look-title", "look-description",
+  "compact-log", "map-eyebrow", "room-type", "room-name", "room-status", "room-description",
   "encounter", "enemy-portrait", "enemy-name", "enemy-description", "enemy-health", "enemy-health-fill", "enemy-distance",
   "combat-player-hp", "combat-player-health-fill", "combat-player-portrait", "player-combatant", "combat-character-name",
   "combat-player-ac", "combat-player-attack", "combat-level", "combat-potions",
@@ -434,7 +440,7 @@ const elements = Object.fromEntries([
   "xp-line", "level-badge", "event-log", "header-expedition-kit",
   "toast", "message-box", "message-box-title", "message-box-text", "message-box-page",
   "message-box-advance", "message-box-close", "save-state",
-  "enemy-rank", "player-conditions", "map-status-chips", "renown-line", "bounty-list", "bestiary-list", "bestiary-count", "projects-summary",
+  "enemy-rank", "enemy-strikes", "player-conditions", "map-status-chips", "renown-line", "bounty-list", "bestiary-list", "bestiary-count", "projects-summary",
   "shop-portrait", "shop-title", "shop-keeper", "shop-tagline", "shop-purse", "shop-load-text", "shop-load-fill", "shop-perks",
   "shop-tabs", "shop-categories", "shop-sell-all", "shop-grid", "shop-detail", "shop-detail-body",
   "projects-dialog", "projects-list", "projects-gold", "projects-message", "projects-close", "projects-x", "house-dialog", "house-portrait", "house-eyebrow", "house-title", "house-tagline", "house-body", "house-close", "mirror-dialog", "mirror-fields", "mirror-preview", "mirror-message", "mirror-save", "mirror-cancel", "workshop-panel", "workshop-list"
@@ -497,7 +503,7 @@ function showRpgMessage(title, text) {
   window.clearTimeout(state.toastTimer);
   elements.toast.classList.remove("visible");
   state.messageReturnFocus = document.activeElement;
-  state.messageBox = { title, pages: messagePages(text), page: 0 };
+  state.messageBox = { title, pages: messagePages(typeof t === "function" ? t(text) : text), page: 0 };
   renderRpgMessage();
   elements["message-box-advance"].focus({ preventScroll: true });
 }
@@ -524,6 +530,10 @@ function dismissRpgMessage() {
   } else if (state.lookMode) {
     elements["look-toggle"].focus({ preventScroll: true });
   }
+  // A conversation can continue with a choice once its line has been read.
+  const next = state.afterMessage;
+  state.afterMessage = null;
+  if (typeof next === "function") next();
 }
 
 function addLog(message) {
@@ -791,7 +801,11 @@ function enterDungeon(options = {}) {
     state.run.log = state.run.log.slice(0, 30);
   }
   upgradeGreatTempleContent();
-  if (state.run.location !== "dungeon") state.run.relicRites = {};
+  if (state.run.location !== "dungeon") {
+    state.run.stance = "guard";
+    state.run.relicRites = {};
+    refreshKnackOnDelve();
+  }
   state.run.location = "dungeon";
   render();
 }
@@ -843,6 +857,7 @@ function traverseDungeonStair(stair) {
     const arrivalStair = state.run.floorStairs.find((entry) => entry.id === stair.id);
     if (!arrivalStair) throw new Error(`Floor ${targetFloor} has no matching stair connection "${stair.id}".`);
     state.run.player = { ...state.run.player, x: arrivalStair.x, y: arrivalStair.y };
+    clearArrivalTile();
     state.run.currentRoom = roomIndexAt(arrivalStair.x, arrivalStair.y);
     refreshCompanionFormation();
     revealAroundPlayer();
@@ -854,6 +869,7 @@ function traverseDungeonStair(stair) {
 }
 
 function returnToChiltomatlan() {
+  state.run.stance = "guard";
   if (isAtDungeonEntrance() && !state.run.lost) {
     state.dashReady = false;
     state.disengageReady = false;
@@ -962,7 +978,8 @@ function secureExpeditionLoot() {
 }
 
 function debitExpeditionItemLoot(itemId, quantity) {
-  if (state.run.location !== "dungeon") return;
+  // Unsecured loot only exists on an expedition; debit it wherever the item is spent so the
+  // loot list can never claim more than the pack holds.
   const loot = expeditionLoot();
   const entry = loot.items.find((item) => item.id === itemId);
   if (!entry) return;
@@ -1014,7 +1031,7 @@ function campAndRest() {
     return;
   }
   if (state.run.location === "dungeon" && state.run.enemies.some((enemy) =>
-    enemy.alive && distanceInSquares(enemy, state.run.player) <= 7
+    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= 7
   )) {
     elements["party-message"].textContent = "Too close to danger to make camp. Find a quiet room first.";
     showToast("Too close to danger to make camp. Find a quiet room first.");
@@ -1022,13 +1039,36 @@ function campAndRest() {
   }
   const previousHours = state.run.gameHours;
   const members = partyMembers();
-  advanceSurvivalTime(true, 8 * 60);
+  // In the tomb the night passes hour by hour, and something may come; in town it's safe.
+  let night = { slept: 8, visitor: null };
+  if (state.run.location === "dungeon" && typeof restThroughTheNight === "function") {
+    night = restThroughTheNight();
+  } else {
+    advanceSurvivalTime(true, 8 * 60);
+    if (typeof ecologyAdvance === "function") ecologyAdvance();
+  }
   if (state.run.lost) {
     render();
     showRestTransition(previousHours, state.run.gameHours);
     return;
   }
+  if (night.slept < 6) {
+    // Too short to count as a full rest: some sleep and some healing, nothing else.
+    for (const member of members) {
+      if (night.slept >= 4) member.needs.hoursAwake = 0;
+      if (!canHeal(member.needs)) continue;
+      if (member.hero) state.run.hp = Math.min(state.run.maxHp, state.run.hp + Math.floor((state.run.maxHp - state.run.hp) * night.slept / 8));
+      else if (member.hp > 0) member.hp = Math.min(member.maxHp, member.hp + Math.floor((member.maxHp - member.hp) * night.slept / 8));
+    }
+    addLog(`You slept ${night.slept} of 8 hours: not enough to recover spells, abilities, or ailments.`);
+    if (night.visitor) wakeToVisitor(night.visitor);
+    render();
+    showRestTransition(previousHours, state.run.gameHours);
+    return;
+  }
   state.run.spellSlots = maxSpellSlots(state.run.character.class, state.run.level);
+  refreshKnackOnRest();
+  refreshAbilitiesOnRest();
   clearConditions(progress().conditions.length ? "Rest eases your ailments." : "");
   if (state.run.location === "city" && factionMember("ceiba-house")) {
     const day = Math.floor(state.run.gameHours / 24);
@@ -1126,6 +1166,7 @@ function campAndRest() {
   elements["party-message"].textContent = message;
   addLog(message);
   if (fed) addLog(`${fed} meal${fed === 1 ? "" : "s"} restore food and add nutrients.`);
+  if (night.visitor) wakeToVisitor(night.visitor);
   render();
   animateAction("camp");
   showRestTransition(previousHours, state.run.gameHours);
@@ -1310,7 +1351,7 @@ function getRoom() {
 }
 
 function enemiesAdjacent() {
-  return state.run.enemies.filter((enemy) => enemy.alive && distanceInSquares(enemy, state.run.player) === 1);
+  return state.run.enemies.filter((enemy) => enemy.alive && !enemy.friendly && distanceInSquares(enemy, state.run.player) === 1);
 }
 
 function chooseFromOptions(title, options) {
@@ -1336,9 +1377,9 @@ function chooseFromOptions(title, options) {
   elements["target-choice-list"].querySelector("button")?.focus();
 }
 
-function chooseEnemyTarget(title, enemies, action) {
+function chooseEnemyTarget(title, enemies, action, strike = "") {
   chooseFromOptions(title, enemies.map((enemy) => ({
-    label: `${enemy.name} · ${distanceInSquares(enemy, state.run.player)} squares · ${enemy.hp}/${enemy.maxHp} HP`,
+    label: `${enemy.name} · ${distanceInSquares(enemy, state.run.player)} squares · ${enemy.hp}/${enemy.maxHp} HP${strike ? strikeForecastLabel(enemy, strike) : ""}`,
     action: () => action(enemy)
   })));
 }
@@ -1354,6 +1395,8 @@ function resolveRoomEntry(index) {
   if (!room.visited) {
     room.visited = true;
     addLog(`You enter ${room.name}.`);
+    const habitatText = typeof ecologyRoomText === "function" ? ecologyRoomText(room) : "";
+    if (habitatText) addLog(habitatText);
   }
   if (room.type === "treasure" && !room.mainTreasure && !room.cleared) {
     room.cleared = true;
@@ -1384,7 +1427,7 @@ function itemDetails(id) {
     const weapon = WEAPONS[key];
     const market = WEAPON_PRICES[key];
     return weapon && market
-      ? { id, name: tieredGearName(weapon), description: tieredGearDescription(weapon) || t(weapon.description), weight: market[0], price: market[1], category: t("Weapon"), categoryId: "Weapon", slot: "weapon", equipmentId: key, tier: weapon.tier || null, trait: weapon.trait || null }
+      ? { id, name: tieredGearName(weapon), description: tieredGearDescription(weapon) || t(weapon.description), weight: market[0], price: market[1], category: `${t("Weapon")} · ${t(STRIKE_KINDS[weaponStrike(key)].name)}`, categoryId: "Weapon", slot: "weapon", equipmentId: key, tier: weapon.tier || null, trait: weapon.trait || null }
       : null;
   }
   if (id.startsWith("armor:")) {
@@ -1454,7 +1497,8 @@ function getCarryCapacity(character = state.run?.character, inventory = state.ru
   // Porters' gear (tumplines, net bags) adds capacity; each kind counts once.
   const bonus = [...new Set(inventory.map((entry) => entry.id))]
     .reduce((total, id) => total + (GEAR_ITEMS[id]?.capacityBonus || 0), 0);
-  return strength * 15 + bonus;
+  const ants = typeof activeBuff === "function" && state.run?.progress && activeBuff("ant-back") ? 30 : 0;
+  return strength * 15 + bonus + ants;
 }
 
 // Secured gold stays in your strongbox at the Ceiba House; only gold found on the
@@ -1763,6 +1807,8 @@ function completeOptionalQuest(enemy) {
 function dropEnemyTreasure(enemy) {
   if (!enemy || enemy.lootDropped) return;
   enemy.lootDropped = true;
+  // Little wild grazers carry nothing; what they're good for is the carcass.
+  if (typeof ecoSpecies === "function" && ecoSpecies(enemy)?.temperament === "wary" && ecoSpecies(enemy)?.role === "grazer") return;
   const gold = enemy.roomIndex >= 0 && state.run.rooms[enemy.roomIndex]?.type === "boss"
     ? rollDice("2d6").total
     : rollDice("1d4").total;
@@ -1777,11 +1823,15 @@ function dropEnemyTreasure(enemy) {
   } else if (randomInt(100) <= 35) {
     items.push({ id: "jade-bead", quantity: randomInt(3) });
   }
-  if (state.run.gourmetGuideOwned && enemy.edible === true) {
-    items.push({ id: "monster-meat", quantity: 1 });
-  }
+  // Meat now comes from butchering the carcass (see systems/ecology.js), which needs the
+  // Dungeon Gourmet Guide.
   const bonus = state.run.mapId === GTFL_MAP_ID ? bonusEnemyLoot(enemy) : { items: [], gold: 0 };
   items.push(...bonus.items);
+  if (enemy.stolen) {
+    bonus.gold += Math.ceil(enemy.stolen * 1.5);
+    addLog(`${enemy.name} drops the gold it stole from you, and its own hidden stash besides.`);
+    enemy.stolen = 0;
+  }
   state.run.treasures.push({
     id: `treasure-${enemy.id}`,
     x: enemy.x,
@@ -1804,6 +1854,7 @@ function collectTreasureAt(x, y, auto = false) {
   const collectedNames = [];
   const leftBehind = [];
   for (const treasure of treasures) {
+    if (!treasure.dropped && typeof ecologyTreasureTaken === "function") ecologyTreasureTaken(treasure);
     const goldCollected = addGoldWithinCapacity(treasure.gold);
     treasure.gold = roundGold(treasure.gold - goldCollected);
     const remainingItems = [];
@@ -1857,11 +1908,14 @@ function addGoldWithinCapacity(amount) {
   return added;
 }
 
-function isWalkable(x, y) {
+// `mover` (a creature, or the player) matters only for deep water, which swimmers cross.
+function isWalkable(x, y, mover = null) {
   if (x < 0 || x >= MAP_TILE_SIZE || y < 0 || y >= MAP_TILE_SIZE) return false;
   const index = tileIndex(x, y);
   const terrain = state.run.terrain[index];
-  return terrain === "door" ? state.run.openDoors.includes(index) : ["floor", "corridor"].includes(terrain);
+  const open = terrain === "door" ? state.run.openDoors.includes(index) : ["floor", "corridor"].includes(terrain);
+  if (open && typeof deepWaterAt === "function" && deepWaterAt(x, y)) return canSwim(mover);
+  return open;
 }
 
 function dungeonSigns() {
@@ -1883,10 +1937,10 @@ function dungeonSignAt(x, y) {
 function closedDoorOnDiagonal() {
   return false;
 }
-function canStepBetween(from, to) {
+function canStepBetween(from, to, mover = from) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || (!dx && !dy) || !isWalkable(to.x, to.y)) return false;
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || (!dx && !dy) || !isWalkable(to.x, to.y, mover)) return false;
   return !closedDoorOnDiagonal(from, to);
 }
 
@@ -1928,12 +1982,23 @@ function refreshCompanionFormation(dx = 0, dy = 0) {
 
 function finishPlayerTurn(elapsedMinutes = 10, movementMode = null) {
   state.run.steps += 1;
+  // Action Surge: this action doesn't hand the turn to the creatures.
+  if (state.run.location === "dungeon" && !state.run.lost && !state.run.won && consumeActionSurge()) {
+    addLog("You keep moving before anything else can.");
+    revealAroundPlayer();
+    render();
+    animateAction("turn");
+    return;
+  }
   if (state.run.location === "dungeon" && !state.run.lost && !state.run.won) {
     tickConditions();
     advanceSurvivalTime(false, elapsedMinutes);
     if (!state.run.lost) alliesTakeTurn();
-    state.run.dodging = movementMode !== "dash" && movementMode !== "disengage";
+    if (!state.run.lost) summonsTakeTurn();
+    state.run.dodging = currentStance() === "guard";
     if (!state.run.lost) enemiesTakeTurn();
+    if (!state.run.lost && typeof ecologyAdvance === "function") ecologyAdvance();
+    if (!state.run.lost) abilityTurnTick();
   }
   state.run.dodging = false;
   state.dashReady = false;
@@ -1958,7 +2023,7 @@ function animateAction(type) {
 }
 
 function alliesTakeTurn() {
-  const targets = enemiesAdjacent();
+  const targets = enemiesAdjacent().filter((enemy) => enemy.alerted && !enemy.asleep);
   if (!targets.length) return;
   for (const companion of state.run.party) {
     if (companion.hp <= 0) continue;
@@ -1998,8 +2063,9 @@ function movePlayer(dx, dy) {
   if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || (!dx && !dy)) return false;
   const previousFacing = state.run.player.facing || "south";
   state.run.player.facing = facingForDelta(dx, dy);
-  const movementMode = state.disengageReady ? "disengage" : state.dashReady ? "dash" : "walk";
-  const stride = state.dashReady ? 2 : 1;
+  const stance = currentStance();
+  const movementMode = stance;
+  const stride = stance === "run" ? 2 : 1;
   let moved = false;
   let enteredRoom = false;
   let encounteredHazard = false;
@@ -2017,7 +2083,11 @@ function movePlayer(dx, dy) {
         return false;
       }
     }
-    if (!canStepBetween({ x, y }, { x: nx, y: ny })) {
+    if (!canStepBetween({ x, y }, { x: nx, y: ny }, state.run.player)) {
+      if (deepWaterAt(nx, ny)) {
+        showToast("Deep water. You'd need to know how to swim it.");
+        break;
+      }
       if (state.run.terrain[tileIndex(nx, ny)] === "door" || closedDoorOnDiagonal({ x, y }, { x: nx, y: ny })) {
         stoppedAtClosedDoor = true;
         showToast("A closed doorway blocks the way.");
@@ -2032,6 +2102,14 @@ function movePlayer(dx, dy) {
       }
       break;
     }
+    const hidden = (state.run.lurkers || []).find((lurker) => lurker.x === nx && lurker.y === ny);
+    if (hidden) {
+      if (moved) break;
+      revealLurker(hidden, true);
+      addLog(`You walk right into a hidden ${hidden.name}!`);
+      finishPlayerTurn();
+      return false;
+    }
     const blocker = state.run.enemies.find((enemy) => enemy.alive && enemy.x === nx && enemy.y === ny);
     if (blocker) {
       if (moved) break;
@@ -2042,12 +2120,19 @@ function movePlayer(dx, dy) {
       companion.hp <= 0 && companion.x === nx && companion.y === ny
     );
     if (downedCompanion) break;
+    // Your nahual steps aside: you trade places.
+    const spirit = summonAt(nx, ny);
+    if (spirit) {
+      spirit.x = x;
+      spirit.y = y;
+    }
+    // A creature winding up a heavy blow is committed to it and won't swipe at you as you go.
     const leavingThreats = enemiesAdjacent().filter((enemy) =>
-      distanceInSquares(enemy, { x: nx, y: ny }) !== 1
+      distanceInSquares(enemy, { x: nx, y: ny }) !== 1 && !enemy.windup && !enemy.asleep && enemy.alerted
     );
-    if (!state.disengageReady) {
+    if (stance !== "disengage") {
       for (const enemy of leavingThreats) {
-        enemyAttack(enemy, true, movementMode === "walk");
+        enemyAttack(enemy, true, stance === "guard");
         if (state.run.lost) {
           state.dashReady = false;
           state.disengageReady = false;
@@ -2058,8 +2143,18 @@ function movePlayer(dx, dy) {
     }
     state.run.player.x = nx;
     state.run.player.y = ny;
+    state.playerMoveEffect = {
+      dx,
+      dy,
+      until: Date.now() + 220
+    };
+    window.clearTimeout(state.playerMoveTimer);
+    state.playerMoveTimer = window.setTimeout(() => {
+      state.playerMoveEffect = null;
+    }, 220);
     refreshCompanionFormation(dx, dy);
     moved = true;
+    if (typeof ecologyStepped === "function") ecologyStepped(nx, ny);
     const newRoomIndex = roomIndexAt(nx, ny);
     if (newRoomIndex >= 0 && newRoomIndex !== state.run.currentRoom) {
       enteredRoom = true;
@@ -2109,6 +2204,26 @@ function showStrikeEffect(actor, x, y, targetX, targetY, ids = {}) {
   }, 380);
 }
 
+function showSpellEffect(x, y, targetX, targetY, element = "", ids = {}) {
+  const effect = {
+    kind: "spell",
+    actor: "player",
+    x,
+    y,
+    targetX,
+    targetY,
+    element: element || "",
+    enemyId: ids.enemyId || "",
+    companionId: ids.companionId || "",
+    until: Date.now() + 620
+  };
+  state.combatEffects.push(effect);
+  window.setTimeout(() => {
+    state.combatEffects = state.combatEffects.filter((item) => item !== effect);
+    if (state.gameStarted && state.run?.location === "dungeon") renderMap();
+  }, 640);
+}
+
 function stopHeldMovement() {
   window.clearTimeout(heldMoveTimer);
   heldMoveTimer = 0;
@@ -2138,7 +2253,7 @@ function continueHeldMovement() {
   }
   const [dx, dy] = heldMove.button.dataset.move.split(",").map(Number);
   if (!movePlayer(dx, dy) || state.run.enemies.some((enemy) =>
-    enemy.alive && (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7)
+    creatureIsThreat(enemy) && (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7)
   )) {
     stopHeldMovement();
     return;
@@ -2155,7 +2270,7 @@ function beginHeldMovement(button, event) {
   button.setPointerCapture(event.pointerId);
   const [dx, dy] = button.dataset.move.split(",").map(Number);
   if (!movePlayer(dx, dy) || state.run.enemies.some((enemy) =>
-    enemy.alive && (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7)
+    creatureIsThreat(enemy) && (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7)
   )) {
     stopHeldMovement();
     return;
@@ -2195,46 +2310,96 @@ function flankingCompanion(enemy) {
   ) || null;
 }
 
-function attackEnemy(enemy, { ranged = false, disadvantage = false } = {}) {
+function attackEnemy(enemy, { ranged = false, disadvantage = false, cleave = false, flurry = false, technique = null, noFinish = false } = {}) {
   if (!enemy || !enemy.alive || state.run.lost || state.run.won) return;
+  const unaware = !enemy.alerted || Boolean(enemy.asleep) || Boolean(technique?.unseen);
+  provokeCreature(enemy);
+  makeNoise(enemy, ranged ? 3 : 4);
   state.run.player.facing = facingForDelta(enemy.x - state.run.player.x, enemy.y - state.run.player.y);
   showStrikeEffect("player", state.run.player.x, state.run.player.y, enemy.x, enemy.y, { enemyId: enemy.id });
   const stats = currentCharacterStats();
   const flanker = ranged ? null : flankingCompanion(enemy);
-  const attackRoll = rollD20({ advantage: Boolean(flanker), disadvantage });
-  const { die, rolls } = attackRoll;
+  const advantage = Boolean(flanker) || unaware || Boolean(technique?.advantage);
+  if (technique?.reckless) abilityState().effects.exposed = { turns: 1 };
+  let attackRoll = rollD20({ advantage, disadvantage });
   const studied = bestiaryBonus(enemy);
   stats.attackBonus += studied.attack;
   stats.damageBonus += studied.damage;
+  const enemyAc = creatureArmorClass(enemy);
+  const misses = (roll) => roll.die === 1 || (roll.die < criticalThreshold() && roll.die + stats.attackBonus < enemyAc);
+  if (misses(attackRoll) && knackRerollMiss()) {
+    addLog("Lucky Verse: you hum a line and try again.");
+    attackRoll = rollD20({ advantage, disadvantage });
+  }
+  const { die, rolls } = attackRoll;
   const total = die + stats.attackBonus;
-  const attackKind = ranged ? "ranged attack" : "attack";
+  const attackKind = technique ? technique.name : cleave ? "cleaving swing" : flurry ? "second strike" : ranged ? "ranged attack" : "attack";
   const bonusSign = stats.attackBonus < 0 ? "−" : "+";
+  const reason = flanker ? `; ${flanker.name} flanks` : unaware ? "; it hasn't noticed you" : "";
   const rollNote = attackRoll.mode === "normal"
     ? `(d20 ${die} ${bonusSign} ${Math.abs(stats.attackBonus)} = ${total})`
-    : `(${attackRoll.mode} d20 ${rolls.join("/")} → ${die} ${bonusSign} ${Math.abs(stats.attackBonus)} = ${total}${flanker ? `; ${flanker.name} flanks` : ""})`;
+    : `(${attackRoll.mode} d20 ${rolls.join("/")} → ${die} ${bonusSign} ${Math.abs(stats.attackBonus)} = ${total}${reason})`;
+  const knack = knackBonusDamage(enemy, { unaware, flanked: Boolean(flanker) });
+  const riders = (typeof playerDamageRider === "function" ? playerDamageRider(enemy) : 0) +
+    (technique && typeof techniqueBonusDamage === "function" ? techniqueBonusDamage(technique, enemy) : 0);
+  if (riders) {
+    knack.bonus += riders;
+    knack.notes.push(technique?.bonus ? technique.name : "marked");
+  }
+  const knackNote = knack.notes.length ? ` (${knack.notes.join(", ")} +${knack.bonus})` : "";
   let damageDealt = 0;
+  let strikeOutcome = "";
   if (die >= criticalThreshold()) {
     const dice = /^(\d+)d(\d+)$/i.exec(stats.damageDice);
-    const damage = Math.max(0, rollDice(`${Number(dice[1]) * 2}d${dice[2]}`).total + stats.damageBonus);
+    const struck = applyStrike(enemy, equippedStrike(), Math.max(0, rollDice(`${Number(dice[1]) * 2}d${dice[2]}`).total + stats.damageBonus + knack.bonus));
+    const damage = struck.damage;
+    strikeOutcome = struck.outcome;
     enemy.hp = Math.max(0, enemy.hp - damage);
     damageDealt = Math.min(enemy.hp + damage, damage);
-    addLog(`Critical hit! Your ${attackKind} strikes ${enemy.name} for ${damage} damage${rollNote}.`);
-  } else if (die === 1 || total < enemy.ac) {
-    addLog(`Your ${attackKind} misses ${enemy.name} ${rollNote} vs. AC ${enemy.ac}.`);
+    addLog(`Critical hit! Your ${attackKind} strikes ${enemy.name} for ${damage} damage${knackNote} ${rollNote}.`);
+    logStrike(struck);
+  } else if (die === 1 || total < enemyAc) {
+    addLog(`Your ${attackKind} misses ${enemy.name} ${rollNote} vs. AC ${enemyAc}.`);
     showCombatFeedback("miss", "Miss", { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
   } else {
-    const damage = Math.max(0, rollDice(stats.damageDice).total + stats.damageBonus);
+    const struck = applyStrike(enemy, equippedStrike(), Math.max(0, rollDice(stats.damageDice).total + stats.damageBonus + knack.bonus));
+    const damage = struck.damage;
+    strikeOutcome = struck.outcome;
     enemy.hp = Math.max(0, enemy.hp - damage);
     damageDealt = Math.min(enemy.hp + damage, damage);
-    addLog(`Your ${attackKind} hits ${enemy.name} for ${damage} damage ${rollNote}.`);
+    addLog(`Your ${attackKind} hits ${enemy.name} for ${damage} damage${knackNote} ${rollNote}.`);
+    logStrike(struck);
   }
   afterPlayerHit(enemy, damageDealt);
   if (enemy.hp <= 0) {
-    resolveEnemyDefeat(enemy);
+    const curse = enemy.curse;
+    if (curse?.turns > 0 && typeof creatureFallsToAbility === "function") creatureFallsToAbility(enemy);
+    else resolveEnemyDefeat(enemy);
   } else if (damageDealt > 0) {
-    showCombatFeedback(die >= criticalThreshold() ? "critical" : "hit", `−${damageDealt} HP`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
+    showCombatFeedback(die >= criticalThreshold() ? "critical" : "hit", `−${damageDealt} HP${strikeOutcome === "weak" ? ` · ${t("Weak spot!")}` : strikeOutcome === "resist" ? ` · ${t("Glances off")}` : ""}`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
+  }
+  if (technique && damageDealt > 0 && typeof techniqueOnHit === "function") techniqueOnHit(technique, enemy, damageDealt);
+  if (noFinish) return;
+  const calling = state.run.character.class;
+  if (!ranged && !cleave && !flurry && calling === "fighter" && enemy.hp <= 0) {
+    const next = enemiesAdjacent()[0];
+    if (next) {
+      addLog("Cleave: you carry the swing into the next foe.");
+      attackEnemy(next, { cleave: true });
+      return;
+    }
+  }
+  if (!ranged && !cleave && !flurry && calling === "monk" && damageDealt === 0 && enemy.alive && enemy.hp > 0) {
+    addLog("Flurry: you strike again.");
+    attackEnemy(enemy, { flurry: true });
+    return;
   }
   finishPlayerTurn();
+}
+
+// A creature's armor class, with what hunger does to it.
+function creatureArmorClass(enemy) {
+  return enemy.ac + (typeof ecologyAcModifier === "function" ? ecologyAcModifier(enemy) : 0);
 }
 
 function resolveEnemyDefeat(enemy) {
@@ -2243,9 +2408,11 @@ function resolveEnemyDefeat(enemy) {
   completeOptionalQuest(enemy);
   onCreatureDefeated(enemy);
   dropEnemyTreasure(enemy);
+  if (typeof ecologyCreatureDied === "function") ecologyCreatureDied(enemy);
   showCombatFeedback("defeat", `${enemy.name} defeated`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
   addExperience(enemy.xp);
   addLog(`${enemy.name} falls. You gain ${enemy.xp} experience.`);
+  knackAfterKill(enemy);
 }
 
 function attack() {
@@ -2257,7 +2424,7 @@ function attack() {
   chooseEnemyTarget("Choose a creature to attack", targets, (target) => {
     const ranged = distanceInSquares(target, state.run.player) > 1;
     attackEnemy(target, { ranged, disadvantage: ranged && enemiesAdjacent().length > 0 });
-  });
+  }, equippedStrike());
 }
 
 function spellTargets(range = 7) {
@@ -2272,76 +2439,25 @@ function spellTarget(range = 7) {
   return spellTargets(range)[0] || null;
 }
 
+// Spells and techniques live in systems/abilities.js; this name stays for older callers.
 function castSpell(spellId, chosenTarget = null) {
-  const spell = SPELLS[spellId];
-  const classId = state.run.character.class;
-  if (!spell || !hasSpellcasting(classId, state.run.level) || state.run.lost || state.run.won ||
-    !CLASS_SPELLS[classId]?.includes(spellId)) return;
-  if (!spell.free && state.run.spellSlots < 1) {
-    showToast("You have no spell power left. Rest at camp to recover it.");
-    return;
+  useAbility(spellId, chosenTarget);
+}
+
+// Shove a creature straight away from you, stopping at walls and other creatures. Traps it
+// lands on spring.
+function pushCreature(enemy, squares) {
+  const dx = Math.sign(enemy.x - state.run.player.x);
+  const dy = Math.sign(enemy.y - state.run.player.y);
+  let moved = 0;
+  for (let step = 0; step < squares && enemy.alive; step += 1) {
+    const next = { x: enemy.x + dx, y: enemy.y + dy };
+    if (!canStepBetween(enemy, next) || tileHasCreature(next.x, next.y, enemy)) break;
+    moveCreature(enemy, next, { forced: true });
+    moved += 1;
   }
-  sfx("spell");
-  if (spell.healing) {
-    if (!canHeal()) {
-      showToast("Eat until your food meter reaches 75% before healing.");
-      return;
-    }
-    if (state.run.hp >= state.run.maxHp) return;
-    state.run.spellSlots -= 1;
-    const ability = spellcastingAbility(classId);
-    const healingDice = spellDamageAtLevel(spell.healing, state.run.level);
-    const healing = Math.max(1, rollDice(healingDice).total + abilityModifier(state.run.character.scores[ability]));
-    const restored = Math.min(healing, state.run.maxHp - state.run.hp);
-    state.run.hp += restored;
-    addLog(`You cast ${spell.name} and recover ${restored} hit points.`);
-    showCombatFeedback("heal", `+${restored} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
-    finishPlayerTurn();
-    return;
-  }
-  const targets = spellTargets(spell.range);
-  if (!targets.length) {
-    showToast("No creature is in sight and within spell range.");
-    return;
-  }
-  if (!chosenTarget && targets.length > 1) {
-    chooseEnemyTarget(`Choose a target for ${spell.name}`, targets, (target) => castSpell(spellId, target));
-    return;
-  }
-  const target = chosenTarget || targets[0];
-  if (!targets.includes(target)) {
-    showToast("That creature is no longer a valid target.");
-    return;
-  }
-  if (!spell.free) state.run.spellSlots -= 1;
-  const ability = spellcastingAbility(classId);
-  const attackBonus = abilityModifier(state.run.character.scores[ability]) +
-    2 + Math.floor(Math.max(0, state.run.level - 1) / 4) +
-    (BACKGROUNDS[state.run.character.background]?.spellAttackBonus || 0) +
-    heroStatModifiers().attack + bestiaryBonus(target).attack;
-  const attackRoll = rollD20({ disadvantage: enemiesAdjacent().length > 0 });
-  const die = attackRoll.die;
-  const total = die + attackBonus;
-  let damage = 0;
-  if (die === 20) {
-    const damageDice = spellDamageAtLevel(spell.damage, state.run.level);
-    damage = rollDice(damageDice).total + rollDice(damageDice).total;
-  } else if (die !== 1 && total >= target.ac) {
-    damage = rollDice(spellDamageAtLevel(spell.damage, state.run.level)).total;
-  }
-  if (damage) {
-    target.hp = Math.max(0, target.hp - damage);
-    const rollText = attackRoll.mode === "normal" ? `d20 ${die}` : `${attackRoll.mode} d20 ${attackRoll.rolls.join("/")} → ${die}`;
-    addLog(`Your ${spell.name} hits ${target.name} for ${damage} damage (${rollText} + ${attackBonus} = ${total} vs. AC ${target.ac}).`);
-    showCombatFeedback(die === 20 ? "critical" : "hit", `−${damage} HP`, {
-      actor: "enemy", x: target.x, y: target.y, enemyId: target.id
-    });
-    if (target.hp <= 0) resolveEnemyDefeat(target);
-  } else {
-    const rollText = attackRoll.mode === "normal" ? `d20 ${die}` : `${attackRoll.mode} d20 ${attackRoll.rolls.join("/")} → ${die}`;
-    addLog(`Your ${spell.name} misses ${target.name} (${rollText} + ${attackBonus} = ${total} vs. AC ${target.ac}).`);
-  }
-  finishPlayerTurn();
+  if (moved) addLog(`${enemy.name} is hurled back ${moved} square${moved === 1 ? "" : "s"}.`);
+  return moved;
 }
 
 function distanceInSquares(a, b) {
@@ -2391,7 +2507,7 @@ function rangedTargets() {
   if (!weapon.ranged) return [];
   const player = state.run.player;
   return state.run.enemies
-    .filter((enemy) => enemy.alive &&
+    .filter((enemy) => enemy.alive && !enemy.friendly &&
       distanceInSquares(player, enemy) <= weapon.range && hasLineOfSight(player, enemy))
     .sort((a, b) => distanceInSquares(player, a) - distanceInSquares(player, b) ||
       a.name.localeCompare(b.name));
@@ -2403,18 +2519,39 @@ function attackTargets() {
   return [...adjacent, ...ranged];
 }
 
+// Movement stances. Guard is the default; Run and Disengage are toggles that stay on until
+// you switch them off (pressing the same one again returns to Guard). Every delve starts on Guard.
+//   Guard      move 1 square; attacks against you have disadvantage
+//   Run        move up to 2 squares; no guard; running is loud (creatures notice you 2 squares farther)
+//   Disengage  move 1 square; stepping away from creatures never provokes; quiet (noticed 1 square
+//              later, advantage on Stealth past sleepers); no guard
+const STANCES = {
+  guard: { name: "Guard", short: "Guard", help: "Guard: attacks against you have disadvantage." },
+  run: { name: "Run", short: "Run", help: "Run: move 2 squares at a time, but no guard and you're loud." },
+  disengage: { name: "Disengage", short: "Disengage", help: "Disengage: step away without opportunity attacks and move quietly, but no guard." }
+};
+
+function currentStance() {
+  const stance = state.run?.stance;
+  return STANCES[stance] ? stance : "guard";
+}
+
+function setStance(next) {
+  if (!state.run || state.run.location !== "dungeon" || state.run.lost || state.run.won || !STANCES[next]) return;
+  const stance = currentStance() === next ? "guard" : next;
+  state.run.stance = stance;
+  state.run.dodging = stance === "guard";
+  sfx("talk");
+  showToast(t(STANCES[stance].help), 2200);
+  render();
+}
+
 function dash() {
-  if (state.run.lost || state.run.won) return;
-  state.dashReady = !state.dashReady;
-  state.disengageReady = false;
-  renderActions();
+  setStance("run");
 }
 
 function disengage() {
-  if (state.run.lost || state.run.won) return;
-  state.disengageReady = !state.disengageReady;
-  state.dashReady = false;
-  renderActions();
+  setStance("disengage");
 }
 
 function skillBonus(skill) {
@@ -2434,7 +2571,11 @@ function savingThrowBonus(ability) {
   const characterClass = CLASSES[state.run.character?.class];
   const proficient = characterClass?.saves.includes(ability);
   const proficiency = proficient ? 2 + Math.floor(Math.max(0, state.run.level - 1) / 4) : 0;
-  return stats.modifiers[ability] + proficiency + progressionSaveBonus();
+  return stats.modifiers[ability] + proficiency + progressionSaveBonus() +
+    (ability === "dex" && typeof activeBuff === "function" && activeBuff("nimble") ? 2 : 0) +
+    (ability === "str" && typeof activeBuff === "function" && activeBuff("coiled") ? 2 : 0) +
+    (typeof hasCondition === "function" && hasCondition("susto") ? -2 : 0) +
+    (typeof hasCondition === "function" && hasCondition("ill-omened") ? -1 : 0);
 }
 
 function searchArea() {
@@ -2450,7 +2591,10 @@ function searchArea() {
     }
   }
   sfx("search");
-  addLog(found ? `You search carefully and reveal ${found} hidden hazard${found === 1 ? "" : "s"}.` : "You search the nearby stonework but find no hidden hazards.");
+  const creatures = searchForLurkers();
+  if (found || !creatures) {
+    addLog(found ? `You search carefully and reveal ${found} hidden hazard${found === 1 ? "" : "s"}.` : "You search the nearby stonework but find no hidden hazards.");
+  }
   finishPlayerTurn();
 }
 
@@ -2489,8 +2633,9 @@ function findEnemyStep(enemy) {
       const x = current.x + direction.x;
       const y = current.y + direction.y;
       const key = tileIndex(x, y);
-      if (visited.has(key) || !canStepBetween(current, { x, y })) continue;
+      if (visited.has(key) || !canStepBetween(current, { x, y }, enemy)) continue;
       if (state.run.enemies.some((other) => other.alive && other.id !== enemy.id && other.x === x && other.y === y)) continue;
+      if ((state.run.lurkers || []).some((other) => other.x === x && other.y === y)) continue;
       if (state.run.party.some((companion) => companion.x === x && companion.y === y)) continue;
       visited.add(key);
       queue.push({ x, y, first: current.first || { x, y } });
@@ -2500,26 +2645,38 @@ function findEnemyStep(enemy) {
 }
 
 function enemiesTakeTurn() {
-  for (const enemy of state.run.enemies) {
+  beginCreaturePhase();
+  abilityCreaturePhase();
+  if (typeof ensureDuendeFriend === "function") ensureDuendeFriend();
+  for (const enemy of [...state.run.enemies]) {
     if (!enemy.alive || state.run.lost || state.run.won) continue;
+    if (enemy.friendly) {
+      if (typeof duendeFriendAct === "function") duendeFriendAct(enemy);
+      continue;
+    }
     const distance = distanceInSquares(enemy, state.run.player);
-    if (distance <= 7 || enemy.roomIndex === state.run.currentRoom) enemy.alerted = true;
-    if (!enemy.alerted) continue;
+    if (!enemy.alerted && creatureNotices(enemy, distance)) enemy.alerted = true;
     if (enemySleeps(enemy)) continue;
+    if (!enemy.alerted) {
+      if (typeof ecologyIdle === "function" && ecologyIdle(enemy)) continue;
+      creatureIdle(enemy);
+      continue;
+    }
     if (enemySkipsTurn(enemy)) {
+      enemy.windup = null;
       addLog(`${enemy.name} reels and loses its turn.`);
       continue;
     }
+    if (creatureLosesTurnToAbility(enemy, distance)) continue;
+    if (creatureAct(enemy, distance)) continue;
+    if (creatureAttacksSummon(enemy, distance)) continue;
     if (distance === 1) {
       enemyAttack(enemy);
       continue;
     }
-    const next = findEnemyStep(enemy);
-    if (next) {
-      enemy.x = next.x;
-      enemy.y = next.y;
-    }
+    moveCreature(enemy, findEnemyStep(enemy));
   }
+  for (const enemy of state.run.enemies) if (enemy.alive) afterCreatureTurn(enemy);
 }
 
 function showCombatFeedback(kind, message, target = {}) {
@@ -2558,7 +2715,7 @@ function showCombatFeedback(kind, message, target = {}) {
   }
 }
 
-function enemyAttack(enemy, opportunity = false, automaticDodge = state.run.dodging) {
+function enemyAttack(enemy, opportunity = false, automaticDodge = state.run.dodging, { ranged = false } = {}) {
   const targets = partyMembers().filter((member) => member.hero ? state.run.hp > 0 : member.hp > 0);
   const target = targets[randomInt(targets.length) - 1];
   if (!target) return;
@@ -2568,14 +2725,23 @@ function enemyAttack(enemy, opportunity = false, automaticDodge = state.run.dodg
     companionId: target.hero ? "" : target.id
   });
   const dodging = target.hero && automaticDodge;
-  const rolls = dodging ? [randomInt(20), randomInt(20)] : [randomInt(20)];
-  const die = Math.min(...rolls);
-  const total = die + enemy.attackBonus;
+  const ambush = Boolean(enemy.ambush);
+  enemy.ambush = false;
+  // Mocking Note leaves a creature flinching; Reckless Swing leaves you open.
+  const distracted = Boolean(enemy.distracted);
+  enemy.distracted = false;
+  const favored = ambush || (target.hero && heroExposed());
+  const hindered = dodging || distracted;
+  const rolls = favored !== hindered ? [randomInt(20), randomInt(20)] : [randomInt(20)];
+  const die = favored && !hindered ? Math.max(...rolls) : Math.min(...rolls);
+  const total = die + enemy.attackBonus + (typeof ecologyAttackModifier === "function" ? ecologyAttackModifier(enemy) : 0);
   const armorClass = target.hero ? currentCharacterStats().ac : companionStats(target).ac;
   if (die === 20 || (die !== 1 && total >= armorClass)) {
     const roll = rollDice(enemy.damage);
-    const damage = die === 20 ? roll.total + roll.rolls.reduce((sum, value) => sum + value, 0) : roll.total;
+    let damage = (die === 20 ? roll.total + roll.rolls.reduce((sum, value) => sum + value, 0) : roll.total) +
+      (typeof ecologyDamageBonus === "function" ? ecologyDamageBonus(enemy) : 0);
     if (target.hero) {
+      damage = heroDamageAfterAbilities(damage);
       state.run.hp = Math.max(0, state.run.hp - damage);
       showCombatFeedback("player-hit", `−${damage} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
       checkDefeat();
@@ -2587,9 +2753,9 @@ function enemyAttack(enemy, opportunity = false, automaticDodge = state.run.dodg
         actor: "companion", companionId: target.id, x: target.x, y: target.y
       });
     }
-    addLog(`${enemy.name} hits ${target.hero ? "you" : target.name} for ${damage} damage${die === 20 ? " (critical)" : ""}${opportunity ? " with an opportunity attack" : dodging ? " despite your guard" : ""}.`);
+    addLog(`${enemy.name} ${ranged ? "strikes from afar and hits" : ambush ? "ambushes and hits" : "hits"} ${target.hero ? "you" : target.name} for ${damage} damage${die === 20 ? " (critical)" : ""}${opportunity ? " with an opportunity attack" : dodging && !ambush ? " despite your guard" : ""}.`);
   } else {
-    addLog(`${enemy.name} misses ${target.hero ? "you" : target.name}${opportunity ? " with an opportunity attack" : ""} (d20 ${rolls.join("/")}, total ${total} vs. AC ${armorClass}).`);
+    addLog(`${enemy.name} ${ranged ? "strikes from afar but misses" : ambush ? "lunges from hiding but misses" : "misses"} ${target.hero ? "you" : target.name}${opportunity ? " with an opportunity attack" : ""} (d20 ${rolls.join("/")}, total ${total} vs. AC ${armorClass}).`);
     showCombatFeedback("miss", "Missed", { actor: target.hero ? "player" : "companion", x: target.x, y: target.y, companionId: target.id });
   }
 }
@@ -2812,13 +2978,14 @@ function waitTurn() {
   if (state.messageBox || state.utilityDrawer || state.run.lost || state.run.won) return;
   state.dashReady = false;
   state.disengageReady = false;
-  addLog("You wait and listen to the tomb.");
+  addLog("You wait a turn.");
   finishPlayerTurn();
 }
 
 function checkDefeat() {
   if (state.run.hp > 0) return;
   if (state.run.lost) return;
+  if (seedKernelSaves()) return;
   state.run.lost = true;
   showCombatFeedback("player-death", "Your light goes out", { actor: "player", x: state.run.player.x, y: state.run.player.y });
   addLog("You fall in the dark. Your expedition ends here.");
@@ -2844,6 +3011,11 @@ function checkLevelUp() {
       if (companion.hp > 0) companion.hp = Math.min(companion.maxHp, companion.hp + companion.maxHp - previousMaxHp);
     }
     addLog(`The party reaches level ${state.run.level}. Your maximum hit points increase by ${playerIncrease}; companions gain hit points too.`);
+    for (const abilityId of classAbilityIds()) {
+      if (abilityDef(abilityId).level !== state.run.level) continue;
+      addLog(`New ability: ${abilityDef(abilityId).name}. Find it in the Combat actions and the ability guide.`);
+      showToast(t("New ability: {0}", { 0: t(abilityDef(abilityId).name) }));
+    }
     if (characterAsiLevels().has(state.run.level) && !state.run.asiLevelsChosen.includes(state.run.level)) {
       openLevelUpChoice();
       return;
@@ -2973,8 +3145,7 @@ function gearRewardStatus() {
   return {
     targets,
     cooldownRemaining,
-    storageError,
-    adAvailable: Boolean(window.CryptsRewardedAds?.isAvailable())
+    storageError
   };
 }
 
@@ -3059,6 +3230,10 @@ function moveTownPlayer(dx, dy) {
   const position = state.run.townPosition;
   const x = position.x + dx;
   const y = position.y + dy;
+  if (dx === 0 && dy === -1 && atXochipilliPyramidBase(position)) {
+    openXochipilliOffering();
+    return;
+  }
   const npc = townNpcAt(x, y);
   if (npc && townDistance(position, npc) === 1) {
     talkToTownNpc(npc.id);
@@ -3074,6 +3249,15 @@ function moveTownPlayer(dx, dy) {
   }
   // Diagonal steps follow the same rules as straight ones: only the destination matters.
   state.run.townPosition = { x, y };
+  state.playerMoveEffect = {
+    dx,
+    dy,
+    until: Date.now() + 220
+  };
+  window.clearTimeout(state.playerMoveTimer);
+  state.playerMoveTimer = window.setTimeout(() => {
+    state.playerMoveEffect = null;
+  }, 220);
   if (townMapAtCurrentLevel()[y][x] === "D") {
     enterDungeon();
     return;
@@ -3109,10 +3293,14 @@ function talkToTownNpc(id) {
     openVillager(id);
     return;
   }
+  if (id === "duende-friend") {
+    talkToDuende();
+    return;
+  }
   const conversations = {
     "gear-mender": {
-      copy: "Mahuiz deals in things that shouldn't be here: Spanish steel from the sea giants' floating houses, samurai arms carried across the western sea, and extravagant regalia. He shows his finest pieces only to delvers who have gone deep. He also offers a once-hourly rewarded blessing for your equipped weapon and armor.",
-      action: "Ad upgrade · Bless equipped gear",
+      copy: "Mahuiz deals in things that shouldn't be here: Spanish steel from the sea giants' floating houses, samurai arms carried across the western sea, and extravagant regalia. He shows his finest pieces only to delvers who have gone deep. He also offers a once-hourly blessing for your equipped weapon and armor.",
+      action: "Bless equipped gear",
       callback: claimTownGearReward
     },
     innkeeper: {
@@ -3198,11 +3386,8 @@ function talkToTownNpc(id) {
       const minutes = Math.ceil(rewardStatus.cooldownRemaining / 60000);
       conversationCopy += ` The next reward is available in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
     }
-    if (!rewardStatus.adAvailable) {
-      conversationCopy += " Rewarded ads are available only in the Android app.";
-    }
     if (rewardStatus.storageError) {
-      conversationCopy += " This device cannot verify the ad cooldown, so no reward can be claimed.";
+      conversationCopy += " This device cannot keep track of the blessing, so none can be given.";
     }
   }
   setDialogCopy("town-dialog-copy", conversationCopy);
@@ -3213,10 +3398,8 @@ function talkToTownNpc(id) {
   cosmeticShopButton.textContent = "Browse Mahuiz's wares";
   cosmeticShopButton.onclick = id === "gear-mender" ? () => openShop("mahuiz") : null;
   elements["town-dialog-action"].disabled = Boolean(rewardStatus &&
-    (!rewardStatus.targets.length || rewardStatus.cooldownRemaining > 0 || !rewardStatus.adAvailable || rewardStatus.storageError));
-  if (rewardStatus && !rewardStatus.adAvailable) {
-    elements["town-dialog-action"].textContent = "Available in Android app";
-  } else if (rewardStatus?.cooldownRemaining > 0) {
+    (!rewardStatus.targets.length || rewardStatus.cooldownRemaining > 0 || rewardStatus.storageError));
+  if (rewardStatus?.cooldownRemaining > 0) {
     const minutes = Math.ceil(rewardStatus.cooldownRemaining / 60000);
     elements["town-dialog-action"].textContent = `Ready in ${minutes} min`;
   } else if (rewardStatus && !rewardStatus.targets.length) {
@@ -3336,18 +3519,14 @@ function purchaseOrEquipCosmetic(cosmeticId) {
   renderCosmeticShop();
 }
 
-async function claimTownGearReward() {
+function claimTownGearReward() {
   if (state.run.location !== "city" || townDistance(state.run.townPosition, TOWN_NPCS.find((npc) => npc.id === "gear-mender")) > 1) {
     showToast("Walk beside Mahuiz in Chiltomatlan before claiming a gear blessing.");
     return;
   }
   const status = gearRewardStatus();
   if (status.storageError) {
-    showToast("The ad cooldown could not be checked. No gear blessing was applied.");
-    return;
-  }
-  if (!status.adAvailable) {
-    showToast("Rewarded ads are available in the Android app, not in this browser version.");
+    showToast("The blessing timer could not be checked. No gear blessing was applied.");
     return;
   }
   if (status.cooldownRemaining > 0) {
@@ -3358,41 +3537,16 @@ async function claimTownGearReward() {
     showToast("Your currently equipped weapon and armor have already been blessed.");
     return;
   }
-  const equipped = { weapon: state.run.character.equipment.weapon, armor: state.run.character.equipment.armor };
-  const button = elements["town-dialog-action"];
-  button.disabled = true;
-  button.textContent = "Loading rewarded ad…";
-  let rewardEarned = false;
-  try {
-    rewardEarned = await window.CryptsRewardedAds.showRewardedAd();
-  } catch (error) {
-    console.error("The rewarded gear ad could not be shown.", error);
-    showToast(`The rewarded ad could not be shown: ${escapeMessage(error)}`);
-  }
-  if (!rewardEarned) {
-    showToast("The ad was closed before its reward was earned; no gear upgrade was applied.");
-    if (elements["town-dialog"].open) {
-      button.disabled = false;
-      button.textContent = "Watch ad · Bless equipped gear";
-    }
-    return;
-  }
-  if (state.run.location !== "city" ||
-    state.run.character.equipment.weapon !== equipped.weapon ||
-    state.run.character.equipment.armor !== equipped.armor) {
-    showToast("Your equipped gear changed before the ad finished; no blessing was applied.");
-    return;
-  }
   let lastClaim;
   try {
     lastClaim = localStorage.getItem(GEAR_REWARD_COOLDOWN_KEY);
     const latestStatus = gearRewardStatus();
     if (latestStatus.storageError || latestStatus.cooldownRemaining > 0) {
-      throw new Error("The gear-reward cooldown changed while the ad was playing.");
+      throw new Error("The gear-reward cooldown changed.");
     }
     localStorage.setItem(GEAR_REWARD_COOLDOWN_KEY, String(Date.now()));
   } catch (error) {
-    console.error("Could not persist the rewarded-ad cooldown.", error);
+    console.error("Could not persist the gear-blessing cooldown.", error);
     showToast(`The gear blessing could not be saved: ${escapeMessage(error)}`);
     return;
   }
@@ -3473,77 +3627,90 @@ function openDungeonDoor(door) {
   return true;
 }
 
-function contextualInteraction() {
-  if (!state.run || state.messageBox || state.utilityDrawer || state.run.lost || state.run.won) return null;
-  if (state.run.location === "city") {
-    const position = state.run.townPosition;
-    if (isTownWellAt(position.x, position.y)) {
-      return { label: "Draw water · Ceiba Well", action: drawWaterAtTownWell };
+// Everything you could do right where you stand, most pressing first. The big button
+// shows one of them; when there are several, a switch beside it steps through the rest,
+// and each also has its own button in the Explore or Supplies tab (`group`).
+function contextualInteractions() {
+  if (!state.run || state.messageBox || state.utilityDrawer || state.run.lost || state.run.won) return [];
+  const townChoice = (() => {
+    if (state.run.location === "city") {
+      const position = state.run.townPosition;
+      if (isTownWellAt(position.x, position.y)) {
+        return { label: "Draw water · Ceiba Well", action: drawWaterAtTownWell };
+      }
+      syncVillagerPositions();
+      const npcs = TOWN_NPCS.filter((person) => townDistance(position, person) <= 1);
+      if (npcs.length) {
+        const label = npcs.length > 1
+          ? `Talk · choose (${npcs.length})`
+          : `Talk · ${npcs[0].name.split(",")[0]}`;
+        return {
+          label,
+          action: () => chooseFromOptions("Choose someone to speak with", npcs.map((npc) => ({
+            label: npc.name,
+            action: () => talkToTownNpc(npc.id)
+          })))
+        };
+      }
+      if (townMapAtCurrentLevel()[position.y]?.[position.x] === "D") {
+        return { label: "Enter the tomb", action: enterDungeon };
+      }
+      if (besideHouse(position)) {
+        return { label: houseState().owned ? "Go home" : "House for sale", action: openHouse };
+      }
+      if (besideXochipilliPyramid(position)) {
+        return { label: "Offer at Xochipilli's pyramid", action: openXochipilliOffering };
+      }
+      return { label: "Townsfolk · who's where", action: openVillagers };
     }
-    syncVillagerPositions();
-    const npcs = TOWN_NPCS.filter((person) => townDistance(position, person) <= 1);
-    if (npcs.length) {
-      const label = npcs.length > 1
-        ? `Talk · choose (${npcs.length})`
-        : `Talk · ${npcs[0].name.split(",")[0]}`;
-      return {
-        label,
-        action: () => chooseFromOptions("Choose someone to speak with", npcs.map((npc) => ({
-          label: npc.name,
-          action: () => talkToTownNpc(npc.id)
-        })))
-      };
-    }
-    if (townMapAtCurrentLevel()[position.y]?.[position.x] === "D") {
-      return { label: "Enter the tomb", action: enterDungeon };
-    }
-    if (besideHouse(position)) {
-      return { label: houseState().owned ? "Go home" : "House for sale", action: openHouse };
-    }
-    return { label: "Townsfolk · who's where", action: openVillagers };
-  }
-  if (state.run.location !== "dungeon") return null;
+    return null;
+  })();
+  if (state.run.location === "city") return townChoice ? [townChoice] : [];
+  if (state.run.location !== "dungeon") return [];
+  const list = [];
+  const add = (entry) => { if (entry && !list.some((other) => other.label === entry.label)) list.push(entry); };
   const enemies = attackTargets();
-  if (enemies.length) {
-    const label = enemies.length > 1
-      ? `Attack · choose target (${enemies.length})`
-      : `Attack · ${enemies[0].name}${distanceInSquares(enemies[0], state.run.player) === 1 &&
-        flankingCompanion(enemies[0]) ? " · Advantage" : ""}`;
-    return {
-      label,
-      action: attack
-    };
+  // Wildlife that isn't bothering you doesn't take over the big button: gathering, doors,
+  // and treasure come first, and hunting it is still one tap away.
+  const huntOnly = enemies.length && !enemies.some(creatureIsThreat);
+  const living = typeof ecologyInteractions === "function" ? ecologyInteractions() : [];
+  if (huntOnly) living.forEach(add);
+  if (enemies.length && !huntOnly) {
+    add({
+      label: enemies.length > 1
+        ? `Attack · choose target (${enemies.length})`
+        : `Attack · ${enemies[0].name}${distanceInSquares(enemies[0], state.run.player) === 1 &&
+          flankingCompanion(enemies[0]) ? " · Advantage" : ""}`,
+      action: attack, group: null
+    });
   }
   const stair = dungeonSignAt(state.run.player.x, state.run.player.y);
   if (stair && ["stairs-up", "stairs-down", "exit", "lift"].includes(stair.type)) {
     const label = stair.type === "lift" ? "Ride the lift to Chiltomatlan" : stair.role === "entrance" ? "Return to Chiltomatlan"
       : stair.type === "stairs-down" ? `Descend · floor ${stair.targetFloor}`
         : stair.type === "stairs-up" ? `Ascend · floor ${stair.targetFloor}` : "Leave the conquered tomb";
-    return { label, action: () => traverseDungeonStair(stair) };
+    add({ label, action: () => traverseDungeonStair(stair), group: "explore" });
   }
-  if (isAtDungeonEntrance()) {
-    return { label: "Return to Chiltomatlan", action: returnToChiltomatlan };
-  }
+  if (isAtDungeonEntrance()) add({ label: "Return to Chiltomatlan", action: returnToChiltomatlan, group: "explore" });
   const hazards = state.run.hazards.filter((entry) => !entry.triggered && entry.revealed &&
     distanceInSquares(entry, state.run.player) <= 1);
   if (hazards.length) {
-    return {
-      label: "Disarm revealed trap",
+    // The Explore tab already has its own Disarm button.
+    add({
+      label: "Disarm revealed trap", group: null,
       action: () => chooseFromOptions("Choose a trap to disarm", hazards.map((hazard) => ({
         label: hazard.name,
         action: () => disarmNearbyHazard(hazard)
       })))
-    };
+    });
   }
   const well = state.run.wells?.find((entry) => distanceInSquares(entry, state.run.player) === 0);
-  if (well) {
-    return { label: "Draw water · tomb well", action: () => drawWaterAtDungeonWell(well) };
-  }
+  if (well) add({ label: "Draw water · tomb well", action: () => drawWaterAtDungeonWell(well), group: "supplies" });
   const treasures = state.run.treasures.filter((item) => distanceInSquares(item, state.run.player) <= 1);
   const treasureTiles = [...new Map(treasures.map((treasure) => [tileIndex(treasure.x, treasure.y), treasure])).values()];
   if (treasureTiles.length) {
-    return {
-      label: "Collect nearby treasure",
+    add({
+      label: "Collect nearby treasure", group: "explore",
       action: () => chooseFromOptions("Choose treasure to collect", treasureTiles.map((treasure) => ({
         label: `${treasure.items.map((item) => itemDetails(item.id).name).join(", ") || "Supplies"}${treasure.gold ? ` · ${formatCurrency(treasure.gold)}` : ""}`,
         action: () => {
@@ -3551,35 +3718,57 @@ function contextualInteraction() {
           finishPlayerTurn();
         }
       })))
-    };
+    });
   }
-  const entrance = state.run.rooms.find((room) => room.type === "entrance");
+  living.forEach(add);
   const doorways = nearbyDungeonDoors();
-  const exit = state.run.rooms.find((room) => room.type === "exit");
-  const targetRoom = exit || entrance;
-  const targetPosition = targetRoom && {
-    x: targetRoom.anchorX ?? targetRoom.mapX + Math.floor(targetRoom.mapW / 2),
-    y: targetRoom.anchorY ?? targetRoom.mapY + Math.floor(targetRoom.mapH / 2)
-  };
   if (doorways.length) {
-    return {
+    add({
       label: doorways.length > 1 ? `Doorway · choose (${doorways.length})`
         : state.run.openDoors.includes(doorways[0].index) ? "Close nearby doorway"
           : dungeonSignAt(doorways[0].x, doorways[0].y)?.type === "locked"
             ? "Force open locked doorway" : "Open nearby doorway",
+      group: "explore",
       action: () => chooseFromOptions("Choose a doorway", doorways.map((door) => ({
         label: `${state.run.openDoors.includes(door.index) ? "Close" : "Open"} doorway · ${door.x + 1}, ${door.y + 1}`,
         action: () => interactWithDoor(door)
       })))
-    };
+    });
   }
-  if (targetPosition && distanceInSquares(targetPosition, state.run.player) === 1) {
-    return {
-      label: targetRoom.type === "exit" ? "Approach the exit" : "Return to entrance",
-      action: () => showToast("Move onto the stair or exit tile to use it.")
+  if (!list.length) {
+    const entrance = state.run.rooms.find((room) => room.type === "entrance");
+    const exit = state.run.rooms.find((room) => room.type === "exit");
+    const targetRoom = exit || entrance;
+    const targetPosition = targetRoom && {
+      x: targetRoom.anchorX ?? targetRoom.mapX + Math.floor(targetRoom.mapW / 2),
+      y: targetRoom.anchorY ?? targetRoom.mapY + Math.floor(targetRoom.mapH / 2)
     };
+    if (targetPosition && distanceInSquares(targetPosition, state.run.player) === 1) {
+      add({
+        label: targetRoom.type === "exit" ? "Approach the exit" : "Return to entrance", group: null,
+        action: () => showToast("Move onto the stair or exit tile to use it.")
+      });
+    }
   }
-  return null;
+  if (huntOnly) {
+    add({ label: enemies.length > 1 ? `Hunt · choose (${enemies.length})` : `Hunt · ${enemies[0].name}`, action: attack, group: null });
+  }
+  return list;
+}
+
+// The option the big button shows: the one you switched to, while it's still on offer.
+function contextualInteraction() {
+  const list = contextualInteractions();
+  if (!list.length) return null;
+  return list.find((entry) => entry.label === state.interactionPick) || list[0];
+}
+
+function cycleInteraction() {
+  const list = contextualInteractions();
+  if (list.length < 2) return;
+  const current = Math.max(0, list.findIndex((entry) => entry.label === contextualInteraction()?.label));
+  state.interactionPick = list[(current + 1) % list.length].label;
+  render();
 }
 
 function interact() {
@@ -3603,6 +3792,43 @@ function townBuildingBounds(code) {
     box.maxY = Math.max(box.maxY, y);
   }));
   return box;
+}
+
+function atXochipilliPyramidBase(position) {
+  const pyramid = townBuildingBounds("T");
+  if (!Number.isFinite(pyramid.minX)) return false;
+  return position.y === pyramid.maxY + 1 && position.x >= pyramid.minX && position.x <= pyramid.maxX;
+}
+
+function besideXochipilliPyramid(position) {
+  const pyramid = townBuildingBounds("T");
+  if (!Number.isFinite(pyramid.minX)) return false;
+  return position.x >= pyramid.minX - 1 && position.x <= pyramid.maxX + 1 &&
+    position.y >= pyramid.minY - 1 && position.y <= pyramid.maxY + 1;
+}
+
+function openXochipilliOffering() {
+  elements["xochipilli-offer-gold"].disabled = state.run.gold < 10 || activeBuff("xochipilli-friendship");
+  elements["xochipilli-offer-hp"].disabled = state.run.hp <= 1 || activeBuff("xochipilli-friendship");
+  if (!elements["xochipilli-dialog"].open) elements["xochipilli-dialog"].showModal();
+}
+
+function makeXochipilliOffering(cost) {
+  if (activeBuff("xochipilli-friendship")) {
+    showToast("Xochipilli's friendship still surrounds you.");
+    return;
+  }
+  if (cost === "gold") {
+    if (state.run.gold < 10) return;
+    state.run.gold = roundGold(state.run.gold - 10);
+  } else {
+    if (state.run.hp <= 1) return;
+    state.run.hp -= 1;
+  }
+  grantBuff("xochipilli-friendship");
+  elements["xochipilli-dialog"].close();
+  showToast("Xochipilli answers: wild animals will be kinder for 24 hours.");
+  render();
 }
 
 function townViewShape() {
@@ -3640,12 +3866,20 @@ function renderTownMap() {
   const fragment = document.createDocumentFragment();
   const townMap = townMapAtCurrentLevel();
   const player = state.run.townPosition;
-  const { cols, rows } = resizeTownMap();
+  const shape = resizeTownMap();
+  const { cols, rows } = shape;
   const centeredOrigin = (position, viewSize, mapSize) => mapSize > viewSize
     ? Math.max(0, Math.min(position - Math.floor(viewSize / 2), mapSize - viewSize))
     : Math.floor((mapSize - viewSize) / 2);
   const originX = centeredOrigin(player.x, cols, TOWN_LAYOUT.columns);
   const originY = centeredOrigin(player.y, rows, TOWN_LAYOUT.rows);
+  if (state.playerMoveEffect && state.playerMoveEffect.until > Date.now() && shape.tile) {
+    elements["town-map"].classList.add("map-follow-step");
+    elements["town-map"].style.setProperty("--map-step-x", `${state.playerMoveEffect.dx * shape.tile}px`);
+    elements["town-map"].style.setProperty("--map-step-y", `${state.playerMoveEffect.dy * shape.tile}px`);
+  } else {
+    elements["town-map"].classList.remove("map-follow-step");
+  }
   const nearNpc = TOWN_NPCS.find((npc) => townDistance(player, npc) <= 1);
   const onWell = townDistance(player, TOWN_WELL) === 0;
   const onTrail = townMap[player.y]?.[player.x] === "D";
@@ -3675,9 +3909,17 @@ function renderTownMap() {
       tile.className = `town-tile ${code === "#" ? "town-wall" : code === "I" ? "town-inn" : code === "M" ? "town-market" : code === "H" ? "town-house" : code === "D" ? "town-gate" : code === "W" ? "town-well" : code === "~" ? "town-canal" : code === "B" ? "town-bridge" : code === "V" ? "town-bridge-vertical" : code === "r" ? "town-route" : code === "p" ? "town-plaza" : building ? `town-building town-${building.id}` : "town-street"}`;
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
+      if (code === "~") {
+        // Canals: the water runs along the channel, and a stone bank edges each side that meets land.
+        const wet = (dx, dy) => ["~", "B", "V"].includes(townMap[y + dy]?.[x + dx]);
+        if ((wet(0, -1) || wet(0, 1)) && !(wet(-1, 0) || wet(1, 0))) tile.classList.add("is-vertical");
+        for (const [side, dx, dy] of [["n", 0, -1], ["s", 0, 1], ["w", -1, 0], ["e", 1, 0]]) {
+          if (!wet(dx, dy)) tile.classList.add(`bank-${side}`);
+        }
+      }
       if (code === "H") {
         const house = houseState();
-        tile.style.backgroundImage = `url("${houseArtUrl(house.owned ? house.style : "calli")}"), url("./resources/tiles/town-street.png?v=90")`;
+        tile.style.backgroundImage = `url("${houseArtUrl(house.owned ? house.style : "calli")}"), url("./resources/tiles/town-street.png?v=92")`;
         tile.classList.toggle("is-for-sale", !house.owned);
         const box = townBuildingBounds("H");
         if (!house.owned && x === box.maxX && y === box.minY) {
@@ -3690,7 +3932,7 @@ function renderTownMap() {
       if (building?.tilePrefix) {
         const tileX = x - building.x;
         const tileY = y - building.y;
-        tile.style.backgroundImage = `url("./resources/tiles/${building.tilePrefix}-${tileX}-${tileY}.png"), url("./resources/tiles/town-street.png?v=90")`;
+        tile.style.backgroundImage = `url("./resources/tiles/${building.tilePrefix}-${tileX}-${tileY}.png"), url("./resources/tiles/town-street.png?v=92")`;
       }
       if (!building?.tilePrefix && (code === "I" || code === "M" || code === "H")) {
         const box = townBuildingBounds(code);
@@ -3714,7 +3956,13 @@ function renderTownMap() {
       tile.title = label;
       if (isPlayer) {
         tile.classList.add("town-player");
-        tile.append(createCodexCharacterSprite(state.run.character, "town-player-sprite"));
+        const playerSprite = createCodexCharacterSprite(state.run.character, "town-player-sprite");
+        if (state.playerMoveEffect && state.playerMoveEffect.until > Date.now()) {
+          playerSprite.classList.add("player-step");
+          playerSprite.style.setProperty("--step-x", `${-state.playerMoveEffect.dx * 100}%`);
+          playerSprite.style.setProperty("--step-y", `${-state.playerMoveEffect.dy * 100}%`);
+        }
+        tile.append(playerSprite);
       } else if (npc) {
         tile.classList.add("town-person");
         if (npc.villager) {
@@ -3757,14 +4005,28 @@ function renderMap() {
   if (tilePixels) {
     mapStyle.setProperty("--map-width", `${viewCols * tilePixels}px`);
     mapStyle.setProperty("--map-height", `${viewRows * tilePixels}px`);
+    if (state.playerMoveEffect && state.playerMoveEffect.until > Date.now()) {
+      elements["dungeon-map"].classList.add("map-follow-step");
+      elements["dungeon-map"].style.setProperty("--map-step-x", `${state.playerMoveEffect.dx * tilePixels}px`);
+      elements["dungeon-map"].style.setProperty("--map-step-y", `${state.playerMoveEffect.dy * tilePixels}px`);
+    } else {
+      elements["dungeon-map"].classList.remove("map-follow-step");
+    }
   } else {
     mapStyle.removeProperty("--map-width");
     mapStyle.removeProperty("--map-height");
+    elements["dungeon-map"].classList.remove("map-follow-step");
   }
   elements["dungeon-map"].dataset.zoom = String(mapZoom);
   const fragment = document.createDocumentFragment();
   const enemiesAt = new Map(state.run.enemies.filter((enemy) => enemy.alive).map((enemy) => [tileIndex(enemy.x, enemy.y), enemy]));
   const companionsAt = new Map(state.run.party.map((companion) => [tileIndex(companion.x, companion.y), companion]));
+  const fieldsAt = new Map();
+  const summonsAt = new Map();
+  if (state.run.location === "dungeon") {
+    for (const field of battlefield().fields) for (const tile of field.tiles) fieldsAt.set(tileIndex(tile.x, tile.y), field);
+    for (const summon of battlefield().summons) if (summon.hp > 0) summonsAt.set(tileIndex(summon.x, summon.y), summon);
+  }
   const treasuresAt = new Map();
   for (const treasure of state.run.treasures) {
     const index = tileIndex(treasure.x, treasure.y);
@@ -3772,11 +4034,18 @@ function renderMap() {
     treasuresAt.get(index).push(treasure);
   }
   const wellsAt = new Map(state.run.wells.map((well) => [tileIndex(well.x, well.y), well]));
+  const featuresAt = new Map();
+  for (const feature of (typeof ensureEcology === "function" ? ensureEcology()?.features : null) || []) {
+    const key = tileIndex(feature.x, feature.y);
+    if (!featuresAt.has(key)) featuresAt.set(key, []);
+    featuresAt.get(key).push(feature);
+  }
   const enemiesInSight = new Set(state.run.enemies.filter((enemy) =>
     enemy.alive &&
     distanceInSquares(enemy, state.run.player) <= 7 &&
     hasLineOfSight(state.run.player, enemy)
   ).map((enemy) => tileIndex(enemy.x, enemy.y)));
+  const threatTiles = threatenedTiles();
   const hazardsAt = new Map(state.run.hazards.filter((hazard) => !hazard.triggered && hazard.revealed)
     .map((hazard) => [tileIndex(hazard.x, hazard.y), hazard]));
   for (let y = originY; y < originY + viewRows; y += 1) {
@@ -3786,10 +4055,16 @@ function renderMap() {
       const index = inBounds ? tileIndex(x, y) : -1;
       const type = inBounds ? state.run.terrain[index] : "unseen";
       const effect = state.combatEffects.find((entry) =>
-        entry.kind !== "strike" && entry.x === x && entry.y === y && entry.until > Date.now());
+        entry.kind !== "strike" && entry.kind !== "area" && entry.x === x && entry.y === y && entry.until > Date.now());
+      const areaFlash = state.combatEffects.find((entry) =>
+        entry.kind === "area" && entry.x === x && entry.y === y && entry.until > Date.now());
+      const spellEffect = state.combatEffects.find((entry) =>
+        entry.kind === "spell" && entry.x === x && entry.y === y && entry.until > Date.now());
       const strike = state.combatEffects.find((entry) =>
         entry.kind === "strike" && entry.x === x && entry.y === y && entry.until > Date.now());
-      const seen = inBounds && (state.run.seen[index] || Boolean(effect) || enemiesInSight.has(index));
+      const sensed = inBounds && ((enemiesAt.has(index) && knackRevealsCreature(enemiesAt.get(index))) ||
+        (treasuresAt.has(index) && treasuresAt.get(index).some(knackRevealsTreasure)) || starChartShows(x, y));
+      const seen = inBounds && (state.run.seen[index] || Boolean(effect) || enemiesInSight.has(index) || sensed);
       const visibleWall = state.run.mapId === GTFL_MAP_ID && type === "wall";
       const terrainVisible = seen || visibleWall;
       let tileLabel = !terrainVisible ? "Unexplored" : ({
@@ -3800,10 +4075,43 @@ function renderMap() {
         door: "Doorway"
       }[type] || "Stone ground");
       tile.className = `map-tile ${terrainVisible ? type : "unseen"}${!inBounds ? " map-edge" : ""}`;
+      if (inBounds && threatTiles.has(index)) tile.classList.add("threat-tile");
+      if (terrainVisible && type === "floor") {
+        const habitat = state.run.rooms[roomIndexAt(x, y)]?.habitat;
+        if (habitat) tile.classList.add(`habitat-${habitat}`);
+      }
+      if (terrainVisible && (type === "floor" || type === "corridor") && typeof groundClass === "function") {
+        const ground = groundClass(x, y);
+        if (ground) {
+          tile.classList.add(`ground-${ground}`);
+          tileLabel += ` · ${t(groundName(x, y))}`;
+        }
+      }
       if (terrainVisible && type === "door") {
         tile.classList.add(state.run.openDoors.includes(index) ? "door-open" : "door-closed");
       }
       if (state.lookTarget?.x === x && state.lookTarget?.y === y) tile.classList.add("look-selected");
+      const abilityField = terrainVisible && inBounds ? fieldsAt.get(index) : null;
+      if (abilityField) {
+        tile.classList.add("has-field");
+        tileLabel += ` · ${t(abilityDef(abilityField.ability)?.name || "")}`;
+        const mark = document.createElement("span");
+        mark.className = `field-mark field-${abilityField.kind}${abilityField.turns <= 1 ? " is-fading" : ""}`;
+        tile.append(mark);
+      }
+      if (areaFlash && terrainVisible) {
+        const burst = document.createElement("span");
+        burst.className = `area-burst area-${areaFlash.element || "power"}`;
+        tile.append(burst);
+      }
+      if (spellEffect && terrainVisible) {
+        const spell = document.createElement("span");
+        spell.className = `spell-effect spell-${spellEffect.element || "power"}`;
+        spell.style.setProperty("--spell-x", `${(spellEffect.targetX - spellEffect.x) * 100}%`);
+        spell.style.setProperty("--spell-y", `${(spellEffect.targetY - spellEffect.y) * 100}%`);
+        spell.style.setProperty("--spell-impact", "1");
+        tile.append(spell);
+      }
       if (terrainVisible && type === "wall") {
         tile.classList.add(`wall-variant-${Math.abs((x * 31 + y * 17) % 4)}`);
         if (DIRECTIONS.some((direction) => {
@@ -3819,8 +4127,40 @@ function renderMap() {
         layers.push({ name, sprite, effectClass, id, stackIndex });
       };
       if (seen) {
+        // The tomb's living things that aren't creatures: glowcaps, pools, nests, carcasses, shrines.
+        for (const feature of featuresAt.get(index) || []) {
+          tile.classList.add(`has-${feature.kind}`);
+          const art = createResourceSprite("tokens", `${ecologyFeatureToken(feature)}.png`, "tile-sprite");
+          if (ecologyFeatureDepleted(feature)) art.classList.add("is-depleted");
+          if (feature.kind === "carcass" && feature.meat > 0) {
+            const species = ECO?.species?.[feature.species];
+            feature.maxMeat = Number.isFinite(feature.maxMeat) && feature.maxMeat >= feature.meat
+              ? feature.maxMeat
+              : (species?.size || 1) * 2;
+            const fullness = Math.max(0, Math.min(1, feature.meat / feature.maxMeat));
+            art.style.setProperty("--carcass-fullness", String(fullness));
+            art.classList.add("carcass-yield-icon");
+            const yieldRing = document.createElement("span");
+            yieldRing.className = "carcass-yield-ring";
+            yieldRing.style.setProperty("--carcass-fullness", String(fullness));
+            yieldRing.style.setProperty("--carcass-angle", `${fullness * 360}deg`);
+            const yieldBar = document.createElement("span");
+            yieldBar.className = "carcass-yield-pie";
+            yieldBar.style.setProperty("--carcass-fullness", String(fullness));
+            yieldBar.style.setProperty("--carcass-fill", `${fullness * 100}%`);
+            yieldBar.style.setProperty("--carcass-angle", `${fullness * 360}deg`);
+            yieldBar.title = `${feature.meat}/${feature.maxMeat} meat remaining`;
+            const yieldWrap = document.createElement("span");
+            yieldWrap.className = "carcass-yield-wrap";
+            yieldWrap.append(art, yieldRing, yieldBar);
+            addLayer(ecologyFeatureLabel(feature), yieldWrap, "feature", feature.id);
+          } else {
+            addLayer(ecologyFeatureLabel(feature), art, "feature", feature.id);
+          }
+        }
         if (playerX === x && playerY === y) {
           const sprite = createCodexCharacterSprite(state.run.character, "tile-sprite", state.run.player.facing || "south");
+          if (state.playerCarcassHarvestUntil > Date.now()) sprite.classList.add("butcher-motion");
           if (effect?.actor === "player") sprite.classList.add(effect.kind === "player-death" ? "death-flash"
             : effect.kind === "heal" ? "heal-flash" : "hurt-flash");
           addLayer(`${state.run.character.name}, your adventurer`, sprite, "player");
@@ -3831,6 +4171,11 @@ function renderMap() {
           if (companion.hp <= 0) sprite.classList.add("companion-down");
           if (effect?.companionId === companion.id) sprite.classList.add(effect.kind === "heal" ? "heal-flash" : "hurt-flash");
           addLayer(`${companion.name}, your companion${companion.hp <= 0 ? " (unconscious)" : ""}`, sprite, "companion", companion.id);
+        }
+        if (summonsAt.has(index)) {
+          const summon = summonsAt.get(index);
+          const sprite = createResourceSprite("tokens", `${summon.kind}.png`, "tile-sprite");
+          addLayer(`${t("Your nahual")} · ${summon.hp}/${summon.maxHp} HP · ${t("{0} turns left", { 0: summon.turns })}`, sprite, "summon", summon.id);
         }
         if (campAt(x, y)) {
           tile.classList.add("has-camp");
@@ -3865,7 +4210,9 @@ function renderMap() {
           if (enemy.elite || enemy.guardian) {
             tile.classList.add(enemy.guardian ? "has-guardian" : "has-elite");
           }
-          addLayer(`${enemy.guardian ? "Guardian" : enemy.elite ? "Elite creature" : "Creature"}: ${enemy.name}`, enemySprite, "creature", enemy.id);
+          const mood = creatureStateLabel(enemy);
+          if (mood) tile.classList.add(`creature-${mood.replace(/\s+/g, "-")}`);
+          addLayer(`${enemy.guardian ? "Guardian" : enemy.elite ? "Elite creature" : "Creature"}: ${enemy.name}${mood ? ` (${mood})` : ""}`, enemySprite, "creature", enemy.id);
         }
         if (effect?.kind === "death" && effect.actor === "enemy" && !enemiesAt.has(index)) {
           const enemy = state.run.enemies.find((candidate) => candidate.id === effect.enemyId);
@@ -3914,6 +4261,31 @@ function renderMap() {
             item.classList.add("strike-lunge", `strike-${strike.actor}`);
             item.style.setProperty("--strike-x", `${Math.sign(strike.targetX - strike.x) * 36}%`);
             item.style.setProperty("--strike-y", `${Math.sign(strike.targetY - strike.y) * 36}%`);
+          }
+          const isPlayerMoving = layer.effectClass === "player" &&
+            state.playerMoveEffect && state.playerMoveEffect.until > Date.now();
+          if (isPlayerMoving) {
+            item.classList.add("player-step");
+            item.style.setProperty("--step-x", `${-state.playerMoveEffect.dx * 100}%`);
+            item.style.setProperty("--step-y", `${-state.playerMoveEffect.dy * 100}%`);
+          }
+          const creatureMove = layer.effectClass === "creature"
+            ? state.creatureMoveEffects[layer.id]
+            : null;
+          if (creatureMove && creatureMove.until > Date.now()) {
+            item.classList.add("creature-step");
+            item.style.setProperty("--step-x", `${-creatureMove.dx * 100}%`);
+            item.style.setProperty("--step-y", `${-creatureMove.dy * 100}%`);
+          }
+          if (layer.effectClass === "feature" && state.carcassHarvestEffects[layer.id]?.until > Date.now()) {
+            item.classList.add("carcass-harvest");
+            for (let particle = 0; particle < 7; particle += 1) {
+              const scrap = document.createElement("span");
+              scrap.className = "butcher-particle";
+              scrap.style.setProperty("--particle-angle", `${particle * 51}deg`);
+              scrap.style.setProperty("--particle-delay", `${particle * 12}ms`);
+              item.append(scrap);
+            }
           }
           item.append(layer.sprite);
           const hitLayer = ["hit", "heal"].includes(effect?.kind) && (
@@ -3997,12 +4369,21 @@ function inspectMapTile(tile) {
       const condition = enemy.hp / enemy.maxHp > 0.7 ? "It appears steady and uninjured."
         : enemy.hp / enemy.maxHp > 0.3 ? "It is visibly wounded."
           : "It is badly hurt and close to collapse.";
-      description = `${enemy.description} ${condition} Hostile; attack from an adjacent tile.`;
+      const strikeText = strikeKnowledgeText(enemy);
+      const hunger = typeof ecoHungerState === "function" ? ecoHungerState(enemy) : "";
+      const hungerText = { starving: "It's starving: desperate, and weaker for it.", hungry: "It looks hungry.", fed: "It looks well fed.", gorged: "It's gorged and sluggish." }[hunger] || "";
+      const calm = typeof ecologyIgnoresPlayer === "function" && !enemy.alerted && ecologyIgnoresPlayer(enemy);
+      description = `${enemy.description} ${condition}${hungerText ? ` ${hungerText}` : ""}${strikeText ? ` ${strikeText}` : ""} ${calm ? "It isn't interested in you right now; it fights back if you attack." : "Hostile; attack from an adjacent tile."}`;
       if (treasure) description += ` Treasure is also on this tile and will be collected when you can enter it: ${
         treasures.map((entry) => [
           entry.gold ? formatCurrency(entry.gold) : "",
           ...entry.items.map((item) => `${itemDetails(item.id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`)
         ].filter(Boolean).join(", ")).join("; ")}.`;
+    } else if (typeof ecologyFeaturesAt === "function" && ecologyFeaturesAt(x, y).length) {
+      const feature = ecologyFeaturesAt(x, y)[0];
+      title = ecologyFeatureLabel(feature);
+      description = ecologyFeatureDescription(feature);
+      if (treasure) description += " Loose treasure lies here too.";
     } else if (treasure) {
       title = treasure.items.length ? itemDetails(treasure.items[0].id).name : "Gold cache";
       const lootDescriptions = treasures.flatMap((cache) => cache.items.map((entry) => {
@@ -4045,7 +4426,7 @@ function inspectMapTile(tile) {
       description = sign.description || `An old tomb marking: ${sign.name}.`;
     } else if (tile.classList.contains("wall")) {
       title = "Stone wall";
-      description = "Ancient fitted stone blocks. It cannot be crossed.";
+      description = "Fitted stone blocks. You can't pass through.";
     } else if (tile.classList.contains("floor") || tile.classList.contains("corridor")) {
       title = tile.classList.contains("corridor") ? "Stone corridor" : "Stone floor";
       description = room
@@ -4110,7 +4491,15 @@ function renderActions() {
     "spell-spark-button": "keepsake",
     "spell-shard-button": "keepsake",
     "spell-heal-button": "potion",
-    "spell-button": "keepsake"
+    "spell-button": "keepsake",
+    "attack-quick": "weapon",
+    "potion-quick": "potion",
+    "eat-quick": "ration",
+    "drink-quick": "water",
+    "camp-quick": "kit",
+    "search-quick": "tool",
+    "knack-quick": "keepsake",
+    "knack-button": "keepsake"
   };
   const addButton = (label, action, shortcut, secondary = false, disabled = false, target = elements["action-buttons"], id = "") => {
     const button = document.createElement("button");
@@ -4131,10 +4520,12 @@ function renderActions() {
     const glyph = document.createElement("span");
     glyph.className = "action-glyph";
     glyph.setAttribute("aria-hidden", "true");
-    const sprite = icons[id] || (id.startsWith("spell-") ? icons["spell-button"] : null);
+    const abilityMatch = /^ability-(.+)-(button|quick)$/.exec(id);
+    const sprite = icons[id] || (id.startsWith("here-") ? "tool" : null) || (abilityMatch && abilityDef(abilityMatch[1]) ? abilityIcon(abilityDef(abilityMatch[1]))
+      : id.startsWith("spell-") ? icons["spell-button"] : null);
     if (sprite) {
       const icon = document.createElement("img");
-      icon.src = `./resources/items/${sprite}.png?v=77`;
+      icon.src = `./resources/items/${sprite}.png?v=${SPRITE_RESOURCE_VERSION}`;
       icon.alt = "";
       icon.draggable = false;
       glyph.append(icon);
@@ -4167,47 +4558,63 @@ function renderActions() {
   for (const group of groupedActions) group.replaceChildren();
   elements["return-after-delving"].classList.add("hidden");
   elements["return-after-delving"].removeAttribute("data-shortcut");
-  const combatActive = state.run.enemies.some((enemy) => enemy.alive &&
+  const combatActive = state.run.enemies.some((enemy) => creatureIsThreat(enemy) &&
     (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7));
   const passivePerception = 10 + skillBonus("perception");
+  const hunters = state.run.enemies.filter((enemy) => enemy.alive && enemy.alerted && !enemy.asleep &&
+    !enemy.fleeTurns && !enemy.sated && distanceInSquares(enemy, state.run.player) <= 8);
   elements["turn-status"].textContent = ended ? "Expedition ended"
-    : combatActive ? (enemiesAdjacent().some((enemy) => flankingCompanion(enemy))
-      ? "Flanked · Advantage on melee attacks" : "Engaged · flank with an ally for Advantage")
-      : `Explore · tap to move · Passive Perception ${passivePerception}`;
-  elements["action-mode"].textContent = state.dashReady ? "Dash armed"
-    : state.disengageReady ? "Disengage armed" : "Auto-guard active";
+    : enemiesAdjacent().some((enemy) => flankingCompanion(enemy)) ? "Flanked · Advantage on melee attacks"
+      : hunters.length === 1 ? t("{0} is after you", { 0: t(hunters[0].name) })
+        : hunters.length > 1 ? t("{0} creatures are after you", { 0: hunters.length })
+          : combatActive ? "Creatures nearby haven't noticed you"
+            : `Exploring · Passive Perception ${passivePerception}`;
+  elements["action-mode"].textContent = "";
+  renderStanceControl(hunters.length > 0);
   const interactionLabel = dungeonInteractionLabel();
   const atEntrance = isAtDungeonEntrance();
+  const interactions = contextualInteractions();
   addButton(interactionLabel, interact, "space enter e", false,
     ended || interactionLabel === "Nothing nearby", primaryActions, "interact-button");
+  primaryActions.lastElementChild?.classList.add("quick-main");
+  if (interactions.length > 1 && !ended) {
+    // Several things to do here: a switch beside the big button steps through them.
+    const main = primaryActions.lastElementChild;
+    const row = document.createElement("div");
+    row.className = "interact-row";
+    primaryActions.append(row);
+    row.append(main);
+    const current = Math.max(0, interactions.findIndex((entry) => entry.label === interactionLabel));
+    const next = interactions[(current + 1) % interactions.length];
+    addButton(`⇄ ${current + 1}/${interactions.length}`, cycleInteraction, "tab", true, false, row, "interact-switch");
+    const switcher = row.lastElementChild;
+    const tip = `${t("Next")}: ${t(next.label)} · Tab`;
+    switcher.title = tip;
+    switcher.dataset.tooltip = tip;
+    switcher.setAttribute("aria-label", tip);
+  }
+  // Every option also has its own button in Explore or Supplies.
+  interactions.forEach((entry, index) => {
+    if (!entry.group) return;
+    addButton(entry.label, entry.action, "", true, ended, elements[`action-${entry.group}`], `here-${index}-button`);
+    elements[`action-${entry.group}`].lastElementChild?.classList.add("here-action");
+  });
   addButton("Wait", waitTurn, "x .", true, ended, elements["action-explore"], "wait-button");
   if (validAttackTargets.length) {
     const attackLabel = validAttackTargets.length > 1
       ? `Attack · choose target (${validAttackTargets.length})`
-      : `Attack · ${validAttackTargets[0].name}`;
+      : `Attack · ${validAttackTargets[0].name}${strikeForecastLabel(validAttackTargets[0], equippedStrike())}`;
     addButton(attackLabel, attack, "r", true, ended, elements["action-combat"], "attack-button");
   }
-  if (hasSpellcasting(state.run.character.class, state.run.level)) {
-    (CLASS_SPELLS[state.run.character.class] || []).forEach((spellId, index) => {
-      const spell = SPELLS[spellId];
-      const spellTargetsInSight = spell.healing ? [] : spellTargets(spell.range);
-      const target = spellTargetsInSight[0] || null;
-      const disabled = ended || (spell.healing
-        ? state.run.spellSlots < 1 || !canHeal() || state.run.hp >= state.run.maxHp
-        : !target || (!spell.free && state.run.spellSlots < 1));
-      const spellName = t(spell.name);
-      const label = spell.healing
-        ? `${spellName} · ${state.run.spellSlots}`
-        : `${spellName}${spellTargetsInSight.length > 1 ? ` · choose (${spellTargetsInSight.length})`
-          : target ? ` · ${t(target.name)}` : ""}${spell.free ? "" : ` · ${state.run.spellSlots}`}`;
-      addButton(label, () => castSpell(spellId), ["1", "2", "3"][index], true, disabled,
-        elements["action-combat"], `spell-${spellId}-button`);
-    });
+  unlockedAbilityIds().forEach((abilityId, index) => {
+    addButton(abilityButtonLabel(abilityId), () => useAbility(abilityId), ABILITY_KEYS[index] || "", true,
+      ended || Boolean(abilityBlocker(abilityId)), elements["action-combat"], `ability-${abilityId}-button`);
+  });
+  const knackButton = knackAction();
+  if (knackButton) {
+    addButton(knackButton.label, knackButton.run, "q", true, ended || knackButton.disabled,
+      elements["action-combat"], "knack-button");
   }
-  addButton("Dash · next move", dash, "t", true,
-    ended, elements["action-combat"], "dash-button");
-  addButton("Disengage · next move", disengage, "y", true,
-    ended, elements["action-combat"], "disengage-button");
   addButton("Search", searchArea, "f", true, ended, elements["action-explore"], "search-button");
   addButton(nearbyHazard ? "Disarm trap" : "Disarm · search first", disarmNearbyHazard, "shift+f", true,
     ended || !nearbyHazard, elements["action-explore"], "disarm-button");
@@ -4221,7 +4628,7 @@ function renderActions() {
   const mealCount = Object.keys(FOOD_ITEMS).reduce((sum, id) => sum + inventoryQuantity(id), 0);
   addButton(meal ? `Eat · ${itemDetails(meal)?.name || "meal"}` : `Eat meal · ${mealCount}`, eatBestMeal, "m", true,
     ended || !meal, elements["action-supplies"], "eat-meal-button");
-  const nearbyThreat = state.run.enemies.some((enemy) => enemy.alive &&
+  const nearbyThreat = state.run.enemies.some((enemy) => creatureIsThreat(enemy) &&
     distanceInSquares(enemy, state.run.player) <= 7);
   const byCamp = atCamp();
   if (byCamp) {
@@ -4237,6 +4644,7 @@ function renderActions() {
   addButton("Forage · 1 hour", forageIngredients, "g", true,
     ended || getCarriedWeight() + GEAR_ITEMS["wild-ingredients"].weight > getCarryCapacity(state.run.character),
     elements["action-explore"], "forage-button");
+  renderQuickActions({ addButton, primaryActions, ended, combatActive, validAttackTargets, interactionLabel, nearbyThreat, byCamp });
   elements["return-after-delving"].classList.add("hidden");
   elements["return-after-delving"].removeAttribute("data-shortcut");
   if (state.run.won && !atEntrance) {
@@ -4267,19 +4675,133 @@ function renderActions() {
   }
 }
 
+// The stance switch above the movement pad: one press turns Run or Disengage on, a second
+// press (or pressing Guard) turns it off. It glows when you're unguarded with creatures after you.
+function renderStanceControl(threatened) {
+  const control = elements["stance-control"];
+  if (!control) return;
+  const stance = currentStance();
+  for (const button of control.querySelectorAll("[data-stance]")) {
+    const active = button.dataset.stance === stance;
+    button.setAttribute("aria-pressed", String(active));
+    button.title = t(STANCES[button.dataset.stance].help);
+    button.disabled = state.run.lost || state.run.won;
+  }
+  control.classList.toggle("is-exposed", stance !== "guard" && threatened);
+  control.dataset.stance = stance;
+}
+
+// Weak spot chips on the encounter card: what's known, and what's still to find out.
+function renderStrikeChips(container, enemy) {
+  const strikes = creatureStrikes(enemy);
+  if (!strikes.weak && !strikes.resist) {
+    container.hidden = true;
+    container.replaceChildren();
+    return;
+  }
+  const known = knownStrikes(enemy);
+  const yours = equippedStrike();
+  const chip = (className, text, title) => {
+    const element = document.createElement("span");
+    element.className = `strike-chip ${className}`;
+    element.textContent = text;
+    if (title) element.title = title;
+    return element;
+  };
+  const chips = [];
+  chips.push(known.weak
+    ? chip(`is-weak${strikes.weak === yours ? " is-yours" : ""}`, `${t("Weak")}: ${t(STRIKE_KINDS[strikes.weak].name)}`, t("Weak to {0}.").replace("{0}", t(STRIKE_KINDS[strikes.weak].plural)))
+    : chip("is-unknown", `${t("Weak spot")}: ?`, t("Its weak spot is still unknown: try another kind of strike.")));
+  if (known.resist) chips.push(chip(`is-resist${strikes.resist === yours ? " is-yours" : ""}`, `${t("Glances off")}: ${t(STRIKE_KINDS[strikes.resist].name)}`));
+  container.replaceChildren(...chips);
+  container.hidden = false;
+}
+
+// Up to four big buttons for what you most likely want to do right now. Everything else
+// stays one tap away in Combat, Explore, and Supplies.
+function renderQuickActions({ addButton, primaryActions, ended, combatActive, validAttackTargets, interactionLabel, nearbyThreat, byCamp }) {
+  const picks = [];
+  const pick = (entry) => { if (picks.length < 4 && entry) picks.push(entry); };
+  const interactIsAttack = /^Attack/.test(interactionLabel);
+  const hurt = state.run.hp <= state.run.maxHp / 2 || progress().conditions.length > 0;
+  if (combatActive && !ended) {
+    if (validAttackTargets.length && !interactIsAttack) {
+      pick({ label: validAttackTargets.length > 1 ? `Attack · choose target (${validAttackTargets.length})` : `Attack · ${validAttackTargets[0].name}`,
+        action: attack, key: "r", id: "attack-quick", tone: "combat" });
+    }
+    for (const abilityId of quickAbilityPicks({ hurt }).slice(0, 2)) {
+      const def = abilityDef(abilityId);
+      const targets = def.target === "enemy" || def.target === "adjacent" ? abilityTargets(def) : [];
+      pick({ label: abilityButtonLabel(abilityId), action: () => useAbility(abilityId), key: abilityKey(abilityId), id: `ability-${abilityId}-quick`, tone: "spell",
+        forecast: targets.length === 1 && def.strike ? strikeForecast(targets[0], def.strike) : "" });
+    }
+    const knack = knackAction();
+    if (knack && !knack.disabled) pick({ label: knack.label, action: knack.run, key: "q", id: "knack-quick", tone: "spell" });
+    if (hurt && inventoryQuantity("healing-potion") > 0) {
+      pick({ label: `Medicine · ${inventoryQuantity("healing-potion")}`, action: usePotion, key: "h", id: "potion-quick", tone: "supply" });
+    }
+  } else if (!ended) {
+    if (hurt && inventoryQuantity("healing-potion") > 0) {
+      pick({ label: `Medicine · ${inventoryQuantity("healing-potion")}`, action: usePotion, key: "h", id: "potion-quick", tone: "supply" });
+    }
+    const meal = bestMealToEat();
+    if (state.run.needs.food < 40 && meal) pick({ label: `Eat · ${itemDetails(meal)?.name || "meal"}`, action: eatBestMeal, key: "m", id: "eat-quick", tone: "supply" });
+    if (state.run.needs.water < 40 && inventoryQuantity("clean-water") > 0) {
+      pick({ label: `Drink water · ${inventoryQuantity("clean-water")}`, action: () => useInventoryItem("clean-water"), key: "u", id: "drink-quick", tone: "supply" });
+    }
+    if (byCamp && !nearbyThreat) pick({ label: "Rest at camp · 8 hours", action: restAtCamp, key: "b", id: "camp-quick", tone: "supply" });
+    pick({ label: "Search", action: searchArea, key: "f", id: "search-quick", tone: "explore" });
+  }
+  // A weak spot or a glancing blow you already know about shows as a badge on the button.
+  const attackForecast = validAttackTargets.length === 1 ? strikeForecast(validAttackTargets[0], equippedStrike()) : "";
+  const markForecast = (button, forecast) => {
+    if (!button) return;
+    if (forecast) {
+      button.dataset.forecast = forecast;
+      button.dataset.forecastLabel = forecast === "weak" ? t("Weak spot!") : t("Glances off");
+    } else {
+      delete button.dataset.forecast;
+      delete button.dataset.forecastLabel;
+    }
+  };
+  for (const entry of picks) {
+    addButton(entry.label, entry.action, entry.key, true, false, primaryActions, entry.id);
+    primaryActions.lastElementChild?.classList.add("quick-action", `quick-${entry.tone}`);
+    markForecast(primaryActions.lastElementChild, entry.id === "attack-quick" ? attackForecast : entry.forecast || "");
+  }
+  if (interactIsAttack) markForecast(primaryActions.querySelector("#interact-button"), attackForecast);
+  // When something is after you and you can hit it, attacking leads; the place-based
+  // interaction (stairs, doors, the way home) steps aside into the smaller buttons.
+  const attackButton = primaryActions.querySelector("#attack-quick");
+  const mainButton = primaryActions.querySelector(".quick-main");
+  if (attackButton && mainButton && enemiesAdjacent().some(creatureIsThreat)) {
+    const row = mainButton.closest(".interact-row");
+    if (row) row.classList.add("is-demoted");
+    mainButton.classList.remove("quick-main");
+    mainButton.classList.add("quick-action", "quick-explore");
+    attackButton.classList.remove("quick-action", "quick-combat");
+    attackButton.classList.add("quick-main", "quick-attack-main");
+    primaryActions.prepend(attackButton);
+  }
+  primaryActions.classList.toggle("has-quick", picks.length > 0);
+  primaryActions.dataset.count = String(picks.length + 1);
+}
+
 function renderRoom() {
   const room = getRoom();
-  elements["room-type"].textContent = describeRoomType(room.type);
+  const habitatName = typeof ecologyRoomLabel === "function" ? ecologyRoomLabel(room) : "";
+  elements["room-type"].textContent = habitatName ? t(habitatName).toUpperCase() : describeRoomType(room.type);
   elements["room-name"].textContent = t(room.name);
-  elements["room-description"].textContent = t(state.run.lost
-    ? "Your adventure has ended here. A new delve will generate a different floor plan."
+  const habitatText = typeof ecologyRoomText === "function" ? ecologyRoomText(room) : "";
+  elements["room-description"].textContent = state.run.lost
+    ? t("Your adventure has ended here. A new delve will generate a different floor plan.")
     : state.run.won
-      ? "You have found the way out. Start another delve whenever you like."
-      : room.text);
+      ? t("You have found the way out. Start another delve whenever you like.")
+      : `${t(room.text)}${habitatText ? ` ${t(habitatText)}` : ""}`;
 
   const status = elements["room-status"];
   status.className = "status-pill";
-  if (enemiesAdjacent().length) {
+  if (enemiesAdjacent().some(creatureIsThreat)) {
     status.textContent = "Threat nearby";
     status.classList.add("danger");
   } else if (state.run.won) {
@@ -4295,18 +4817,28 @@ function renderRoom() {
     status.textContent = "Exploring";
   }
 
-  const enemy = nearestEnemy();
+  // The encounter card shows what matters most: something after you, then a threat, then wildlife.
+  const nearby = state.run.enemies.filter((entry) => entry.alive && (entry.alerted ||
+    distanceInSquares(entry, state.run.player) <= (creatureIsThreat(entry) ? 7 : 2)));
+  nearby.sort((a, b) => Number(b.alerted) - Number(a.alerted) || Number(creatureIsThreat(b)) - Number(creatureIsThreat(a)) ||
+    distanceInSquares(a, state.run.player) - distanceInSquares(b, state.run.player));
+  const enemy = nearby[0] || null;
   const distance = enemy ? distanceInSquares(enemy, state.run.player) : Infinity;
-  const visibleEnemy = enemy && (enemy.alerted || distance <= 7);
+  const visibleEnemy = Boolean(enemy);
   elements.encounter.classList.toggle("hidden", !visibleEnemy);
   if (visibleEnemy) {
     elements["enemy-name"].textContent = enemy.title ? `${enemy.title} ${t(enemy.name.slice(enemy.title.length + 1))}` : t(enemy.name);
-    elements["enemy-rank"].textContent = enemy.greatGuardian ? "GREAT GUARDIAN" : enemy.guardian ? "GUARDIAN" : enemy.elite ? "ELITE" : t("HOSTILE");
+    const mood = creatureStateLabel(enemy);
+    elements["enemy-rank"].textContent = enemy.greatGuardian ? "GREAT GUARDIAN" : enemy.guardian ? "GUARDIAN"
+      : mood ? t(mood).toUpperCase() : enemy.elite ? "ELITE" : t("HOSTILE");
     elements.encounter.classList.toggle("is-elite", Boolean(enemy.elite));
     elements.encounter.classList.toggle("is-guardian", Boolean(enemy.guardian));
     const studied = bestiaryRank(enemy.templateId);
     const inflicts = enemy.inflicts ? ` Can leave you ${t(PROGRESSION.conditions[enemy.inflicts.condition].name).toLowerCase()}.` : "";
-    elements["enemy-description"].textContent = `${t(enemy.description || "Keep your guard up.")}${inflicts}${studied && studied.kills >= 5 ? ` ${studied.title}: ${studied.description}` : ""}`;
+    const habitNote = creatureHabitNote(enemy);
+    const habitText = !habitNote ? "" : knowsCreatureHabit(enemy) ? ` ${t(habitNote)}` : ` ${t("Its habits are still a mystery to you. Defeat one to learn them.")}`;
+    elements["enemy-description"].textContent = `${t(enemy.description || "Keep your guard up.")}${inflicts}${habitText}${studied && studied.kills >= 5 ? ` ${studied.title}: ${studied.description}` : ""}`;
+    renderStrikeChips(elements["enemy-strikes"], enemy);
     elements["enemy-health"].textContent = `${enemy.hp} / ${enemy.maxHp} HP`;
     elements["enemy-health-fill"].style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
     const flanker = flankingCompanion(enemy);
@@ -4504,7 +5036,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
   const nearbyHazard = inDungeon && state.run.hazards.some((hazard) =>
     !hazard.triggered && hazard.revealed && distanceInSquares(hazard, state.run.player) <= 1);
   const nearbyThreat = inDungeon && state.run.enemies.some((enemy) =>
-    enemy.alive && distanceInSquares(enemy, state.run.player) <= 7);
+    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= 7);
   const noHpNeeded = state.run.hp >= state.run.maxHp;
   const ailing = progress().conditions.length > 0;
   const canUsePotion = inventoryQuantity("healing-potion") > 0 && (!noHpNeeded || ailing);
@@ -4520,22 +5052,34 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
         : "You can strike adjacent foes in melee."} Roll a d20 + ${stats.attackBonus >= 0 ? "+" : ""}${stats.attackBonus}; a hit deals ${stats.damageDice}${stats.damageBonus >= 0 ? "+" : ""}${stats.damageBonus}. A natural 20 doubles the damage dice. Uses your turn.`
     },
     {
-      name: "Automatic guard",
-      status: inDungeon ? "Active by default" : "Dungeon defense",
-      state: inDungeon ? "available" : "context",
-      description: "Attacks against you have disadvantage by default. Moving with Dash or Disengage opts out of this guard for that turn."
+      name: "Weak spots",
+      status: `${t("Your weapon")}: ${t(STRIKE_KINDS[equippedStrike()].name)}`,
+      state: "available",
+      description: "Every weapon and spell strikes as an edge, a crushing blow, a point, sun-fire, or night-power. Most creatures are weak to one (half again as much damage) and a few armored ones shrug part of one off (three quarters). Find out by trying, or by studying a creature (three defeated). Once known, the creature card and the attack and spell buttons say \"weak spot\" or \"glances off\" before you commit, so it can pay to carry a second weapon."
     },
     {
-      name: "Dash",
-      status: inDungeon ? (state.dashReady ? "Armed" : "Available") : "Dungeon action",
-      state: inDungeon ? "available" : "context",
-      description: "Arm or cancel Dash without spending a turn. Your next move can cover up to 2 squares; movement still follows walkable paths."
+      name: "The living tomb",
+      status: inDungeon ? (typeof ecologyInteraction === "function" && ecologyInteraction() ? "Something to do here" : "Space or E when beside it") : "Dungeon action",
+      state: inDungeon && typeof ecologyInteraction === "function" && ecologyInteraction() ? "available" : "context",
+      description: "Each floor has a lay of the land: water runs down the passages and pools in the low chambers, damp ground grows glowcaps and moss, roosts sit high and feed the gardens next door, and hunters den near what they eat. Every creature has a place in the food chain, and the halls change while you're away: gardens spread or are grazed bare, kills are picked clean, newcomers move into empty chambers. A fed creature minds its own business; a hungry one is dangerous; a starving one is desperate but weak (−2 to attack, −1 AC); a badly hurt animal runs. Gather glowcaps and roots, fish the pools, catch chapulines and ant queens from their colonies, butcher fresh kills (some need knowing how), and take eggs from nests (the mother defends them). Ask a chaneque before taking from its garden, and feed an alux before robbing its storeroom. Leave copal, a marigold garland, or food at a shrine and the restless dead let you pass. Watching creatures fills in the journal and teaches new recipes."
+    },
+    {
+      name: "Guard",
+      status: inDungeon ? (currentStance() === "guard" ? "Current stance" : "Press to return to Guard") : "Movement stance",
+      state: inDungeon && currentStance() === "guard" ? "available" : "context",
+      description: "Your default stance. Move one square at a time, and attacks against you have disadvantage. Every delve starts on Guard."
+    },
+    {
+      name: "Run",
+      status: inDungeon ? (currentStance() === "run" ? "On · press again to stop" : "Off") : "Movement stance",
+      state: inDungeon && currentStance() === "run" ? "available" : "context",
+      description: "A toggle that stays on until you switch it off. Each move covers up to 2 squares, stopping at doors, traps, and new rooms. You have no guard, leaving a creature's side still provokes it, and running is loud: creatures notice you from 2 squares farther away."
     },
     {
       name: "Disengage",
-      status: inDungeon ? (state.disengageReady ? "Armed" : "Available") : "Dungeon action",
-      state: inDungeon ? "available" : "context",
-      description: "Arm or cancel Disengage without spending a turn. Your next move avoids opportunity attacks from creatures you leave behind."
+      status: inDungeon ? (currentStance() === "disengage" ? "On · press again to stop" : "Off") : "Movement stance",
+      state: inDungeon && currentStance() === "disengage" ? "available" : "context",
+      description: "A toggle that stays on until you switch it off. Step away from creatures without opportunity attacks, and move quietly: creatures notice you a square later and you sneak past sleepers with advantage. You have no guard while it's on."
     },
     {
       name: "Interact",
@@ -4566,7 +5110,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
       status: nearbyThreat ? "Too close to danger" : !inDungeon ? "Rest at the inn" : atCamp() ? "At your camp" : activeCamp() ? `Camp on floor ${activeCamp().floor}` : "No camp yet",
       state: nearbyThreat ? "locked" : "context",
       description: inDungeon
-        ? `Pitch a camp on a quiet chamber floor with a camp kit, or by spending an hour on a Survival check (DC ${CAMP_SURVIVAL_DC}). The camp stays until you pitch a new one. At your camp you can rest for 8 hours when no enemy is within 7 squares: the party eats carried meals and water, may cook ingredients, recovers spell slots, and heals when food needs are high enough. Cooking also needs your campfire. From Chiltomatlan you can walk straight back to your camp.`
+        ? `Pitch a camp on a quiet chamber floor with a camp kit, or by spending an hour on a Survival check (DC ${CAMP_SURVIVAL_DC}). The camp stays until you pitch a new one. At your camp you can rest for 8 hours when no enemy is within 7 squares: the party eats carried meals and water, may cook ingredients, recovers spell slots, and heals when food needs are high enough. The tomb doesn't stop while you sleep: a hungry creature or a wanderer may find your camp and cut the night short. Deeper floors and busy chambers (dens, nests, bone yards, shrines, pools) are riskier; quiet, empty rooms are safer. Fewer than 6 hours of sleep only partly heals you and doesn't recover spells, abilities, or ailments. Cooking also needs your campfire. From Chiltomatlan you can walk straight back to your camp.`
         : "At the Ceiba House, an 8-hour safe rest restores everyone's food and water, resets exhaustion, restores spell slots, and tends wounds without consuming carried meals or water."
     },
     {
@@ -4596,42 +5140,35 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
   }
 
   const spellStart = abilities.length;
-  if (spellReady) {
-    const abilityName = ABILITIES.find(([key]) => key === spellAbility)?.[1] || "Spellcasting ability";
-    const slotStatus = state.run.spellSlots > 0 ? `${state.run.spellSlots} spell slot${state.run.spellSlots === 1 ? "" : "s"} left` : "No spell slots";
-    for (const spellId of CLASS_SPELLS[character.class] || []) {
-      const spell = SPELLS[spellId];
-      if (spell.healing) {
-        const canCastHeal = state.run.spellSlots > 0 && canHeal() && !noHpNeeded;
-        abilities.push({
-          name: t(spell.name),
-          status: !inDungeon ? "Dungeon action" : state.run.spellSlots < 1 ? "No spell slots"
-            : !canHeal() ? "Needs food at 75%" : noHpNeeded ? "Already at full HP" : `${slotStatus} · self`,
-          state: canCastHeal ? "available" : "context",
-          description: `${t(spell.description)} Spend 1 spell slot and your turn to restore ${spellDamageAtLevel(spell.healing, state.run.level)} + your ${abilityName} modifier in hit points. Affects you only, requires food at 75% or higher, and cannot exceed your maximum HP.`
-        });
-        continue;
-      }
-      const target = inDungeon ? spellTarget(spell.range) : null;
-      const available = spell.free || state.run.spellSlots > 0;
-      abilities.push({
-        name: t(spell.name),
-        status: !inDungeon ? "Dungeon action" : !available ? "No spell slots"
-          : !target ? "Needs target in sight" : spell.free ? "At will · no slot" : slotStatus,
-        state: available && inDungeon && target ? "available" : "context",
-        description: `${t(spell.description)} Make a ${abilityName}-based spell attack against a creature within ${spell.range} squares and line of sight, dealing ${spellDamageAtLevel(spell.damage, state.run.level)} damage on a hit. ${spell.free ? "This spell uses no slot" : "Spend 1 spell slot"} and your turn.`
-      });
-    }
-  } else if (HALF_CASTER_CLASSES.has(character.class)) {
+  const unlocked = unlockedAbilityIds(character.class, state.run.level);
+  for (const abilityId of classAbilityIds(character.class)) {
+    const def = abilityDef(abilityId);
+    const open = unlocked.includes(abilityId);
+    const blocker = open ? abilityBlocker(abilityId) : "";
+    const kind = def.cost === "slot" ? t("Spell") : def.cost === "cooldown" ? t("Technique") : t("At will");
     abilities.push({
-      name: "Class spellcasting",
-      status: "Locked until level 2",
-      state: "locked",
-      description: "Paladins and Rangers learn their first spells at level 2."
+      name: t(def.name),
+      group: "spells",
+      key: open ? abilityKey(abilityId) : "",
+      icon: abilityIcon(def),
+      status: !open ? t("Unlocks at level {0}", { 0: def.level })
+        : blocker ? `${kind} · ${t(blocker)}` : def.cost === "free" ? kind : `${kind} · ${abilityCostLabel(abilityId)}`,
+      state: !open ? "locked" : blocker ? "context" : "available",
+      description: `${t(def.description)} ${abilityRulesText(abilityId)}`
     });
   }
-
   const spellEnd = abilities.length;
+  const knack = currentKnack();
+  if (knack) {
+    const action = knackAction();
+    abilities.push({
+      name: knack.name,
+      knack: true,
+      status: knack.action ? (!inDungeon ? "Dungeon action" : action?.disabled ? "Not ready" : "Ready") : "Calling knack · always on",
+      state: knack.action ? (inDungeon && action && !action.disabled ? "available" : "context") : "available",
+      description: knack.text
+    });
+  }
   const toolGuides = [
     ["torch", "Light a torch", "Spend one torch to reveal walkable areas within 8 squares and line of sight. It consumes a dungeon turn; searching for hazards remains a separate action."],
     ["crowbar", "Use the pry bar", "When adjacent to a revealed trap, roll Strength with advantage against its difficulty. Failure triggers it. Uses a dungeon turn."],
@@ -4650,8 +5187,9 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
   }
 
   elements["ability-guide-note"].textContent = spellReady
-    ? `${CLASSES[character.class].name} · ${state.run.spellSlots} / ${maxSpellSlots(character.class, state.run.level)} spell slots. Conditions and target availability update as you play.`
+    ? t("{0} · {1} / {2} spell slots. Conditions and target availability update as you play.", { 0: t(CLASSES[character.class].name), 1: state.run.spellSlots, 2: maxSpellSlots(character.class, state.run.level) })
     : `${CLASSES[character.class].name} · no spell slots available at this level. Ordinary actions and carried tools are listed here.`;
+  elements["ability-guide-note"].textContent += ` ${t("Keys: arrows or numpad move · Space or E interacts · X waits · R attacks · 1–7 abilities · Q knack · T run · Y disengage · F search · I pack · O equipment · K abilities · J journal · L look · Esc pauses.")}`;
   renderGroupedAbilities(abilities, [spellStart, spellEnd]);
 }
 
@@ -4764,6 +5302,115 @@ function listPageSize(kind) {
   return height <= 700 ? 3 : height <= 900 ? 4 : 6;
 }
 
+// The rarity outline an item gets: gear by its tier, treasure by what it's worth.
+function itemRarity(entry, item = itemDetails(entry.id)) {
+  const gearKind = entry.id.startsWith("weapon:") ? "weapon" : entry.id.startsWith("armor:") ? "armor" : null;
+  const gearKey = gearKind ? entry.id.slice(gearKind.length + 1) : null;
+  if (item.exotic || (gearKey && (WEAPONS[gearKey]?.exotic || ARMORS[gearKey]?.exotic))) return "exotic";
+  if (item.tier) return item.tier;
+  if (item.categoryId === "Treasure") {
+    const price = Number(item.price) || 0;
+    return price >= 120 ? "relic" : price >= 40 ? "masterwork" : price >= 10 ? "fine" : "common";
+  }
+  return "common";
+}
+
+// The pieces that describe one carried item: its icon, its words, and what you can do with it.
+function itemEntryParts(entry) {
+  const item = itemDetails(entry.id);
+  const row = document.createElement("li");
+  row.className = "inventory-row";
+  const icon = document.createElement("img");
+  icon.className = "inventory-item-icon";
+  icon.alt = "";
+  icon.draggable = false;
+  const gearKind = entry.id.startsWith("weapon:") ? "weapon" : entry.id.startsWith("armor:") ? "armor" : null;
+  const gearKey = gearKind ? entry.id.slice(gearKind.length + 1) : null;
+  row.classList.add(`rarity-${itemRarity(entry, item)}`);
+  if (item.slot === "wear" || (gearKind && gearKey !== "none")) icon.classList.add("is-codex-gear");
+  setItemArt(icon, entry.id);
+  const copy = document.createElement("span");
+  copy.className = "inventory-item-copy";
+  const label = document.createElement("strong");
+  const itemCount = entry.quantity > 1 ? ` ×${entry.quantity}` : "";
+  label.className = `inventory-item-name${item.tier ? ` tier-${item.tier}` : ""}`;
+  label.textContent = `${item.name}${itemCount}`;
+  if (item.tier) row.classList.add(`tier-row-${item.tier}`);
+  const itemMeta = document.createElement("span");
+  itemMeta.className = "inventory-item-meta";
+  const itemDetailsText = [item.category, `${formatWeight(item.weight * entry.quantity)} lb`];
+  const equipmentEnhancements = state.run.character.equipmentEnhancements || { weaponIds: [], armorIds: [] };
+  if (item.slot === "weapon" && equipmentEnhancements.weaponIds.includes(item.equipmentId)) {
+    itemDetailsText.push("Blessed · +1 attack");
+  } else if (item.slot === "armor" && equipmentEnhancements.armorIds.includes(item.equipmentId)) {
+    itemDetailsText.push("Blessed · +1 AC");
+  }
+  if (item.id === "healer-kit") {
+    itemDetailsText.push(`${entry.uses ?? entry.quantity * HEALER_KIT_USES} uses left`);
+  }
+  itemMeta.textContent = itemDetailsText.join(" · ");
+  const description = document.createElement("small");
+  description.textContent = item.description || (item.slot
+    ? "Changes your combat stats and how your adventurer looks."
+    : item.categoryId === "Treasure" || item.categoryId === "Keepsake"
+      ? "Keep as a story keepsake or sell it at the Chiltomatlan market."
+      : "Trade at the Chiltomatlan market.");
+  copy.append(label, itemMeta, description);
+  if (RELIC_RITES[entry.id]) {
+    const rite = document.createElement("small");
+    rite.className = "relic-rite";
+    rite.textContent = RELIC_RITES[entry.id].rite;
+    copy.append(rite);
+  }
+  const actions = document.createElement("span");
+  actions.className = "inventory-item-actions";
+  if (["healing-potion", "torch", "ocote", "maguey-salve", "picietl", "chili-smoke", "healer-kit", "crowbar", "hempen-rope", "cacao-drink", "ixpatli"].includes(entry.id) ||
+    FOOD_ITEMS[entry.id] || entry.id === "clean-water" || RELIC_RITES[entry.id]) {
+    const use = document.createElement("button");
+    use.type = "button";
+    use.className = "inventory-equip";
+    use.dataset.useItem = entry.id;
+    use.textContent = RELIC_RITES[entry.id] ? RELIC_RITES[entry.id].verb : FOOD_ITEMS[entry.id] ? (GEAR_ITEMS[entry.id]?.category === "Drink" ? "Drink" : "Eat")
+      : entry.id === "maguey-salve" ? "Apply"
+      : entry.id === "picietl" ? "Chew"
+      : entry.id === "chili-smoke" ? "Crack open"
+      : entry.id === "ocote" ? "Light"
+      : entry.id === "clean-water" || entry.id === "cacao-drink" ? "Drink"
+      : entry.id === "ixpatli" ? "Apply"
+      : entry.id === "healing-potion" ? "Use medicine"
+      : entry.id === "crowbar" ? "Pry open"
+        : entry.id === "hempen-rope" ? "Set rope" : item.slot ? "Use" : "Use item";
+    const blocked = itemUseBlocked(entry);
+    use.disabled = Boolean(blocked);
+    if (blocked) use.title = blocked;
+    actions.append(use);
+  }
+  if (item.slot) {
+    const equip = document.createElement("button");
+    equip.type = "button";
+    equip.className = "inventory-equip";
+    if (isEquipped(item.id) && item.slot !== "weapon") {
+      equip.dataset.unequipItem = item.id;
+      equip.textContent = item.slot === "wear" ? "Take off" : "Unequip";
+    } else {
+      equip.dataset.equipItem = item.id;
+      equip.textContent = isEquipped(item.id) ? "In use" : item.slot === "wear" ? "Wear" : "Equip";
+      equip.disabled = isEquipped(item.id) || !canEquipItem(item);
+    }
+    actions.append(equip);
+  }
+  const drop = document.createElement("button");
+  drop.type = "button";
+  drop.className = "inventory-equip inventory-drop";
+  drop.dataset.dropItem = entry.id;
+  drop.textContent = "Drop";
+  const equippedCopy = isEquipped(entry.id) && entry.quantity <= 1;
+  drop.disabled = equippedCopy || state.run.lost || state.run.won || !["dungeon", "city"].includes(state.run.location);
+  drop.title = equippedCopy ? "Unequip it first" : state.run.location === "dungeon" ? "Leave it on the floor here" : "Throw it away";
+  actions.append(drop);
+  return { item, row, icon, copy, actions };
+}
+
 function renderInventoryList(listElement, inventory) {
   listElement.replaceChildren();
   const pageKey = listElement.id === "equipment-list" ? "equipment" : "inventory";
@@ -4780,101 +5427,129 @@ function renderInventoryList(listElement, inventory) {
   }
   for (const entry of inventory.slice(state.listPages[pageKey] * pageSize,
     (state.listPages[pageKey] + 1) * pageSize)) {
-    const item = itemDetails(entry.id);
-    const row = document.createElement("li");
-    row.className = "inventory-row";
-    const icon = document.createElement("img");
-    icon.className = "inventory-item-icon";
-    icon.alt = "";
-    icon.draggable = false;
-    const gearKind = entry.id.startsWith("weapon:") ? "weapon" : entry.id.startsWith("armor:") ? "armor" : null;
-    const gearKey = gearKind ? entry.id.slice(gearKind.length + 1) : null;
-    row.classList.add(`rarity-${item.exotic || (gearKey && (WEAPONS[gearKey]?.exotic || ARMORS[gearKey]?.exotic)) ? "exotic" : item.tier || "common"}`);
-    if (item.slot === "wear" || (gearKind && gearKey !== "none")) icon.classList.add("is-codex-gear");
-    setItemArt(icon, entry.id);
-    const copy = document.createElement("span");
-    copy.className = "inventory-item-copy";
-    const label = document.createElement("strong");
-    const itemCount = entry.quantity > 1 ? ` ×${entry.quantity}` : "";
-    label.className = `inventory-item-name${item.tier ? ` tier-${item.tier}` : ""}`;
-    label.textContent = `${item.name}${itemCount}`;
-    if (item.tier) row.classList.add(`tier-row-${item.tier}`);
-    const itemMeta = document.createElement("span");
-    itemMeta.className = "inventory-item-meta";
-    const itemDetailsText = [item.category, `${formatWeight(item.weight * entry.quantity)} lb`];
-    const equipmentEnhancements = state.run.character.equipmentEnhancements || { weaponIds: [], armorIds: [] };
-    if (item.slot === "weapon" && equipmentEnhancements.weaponIds.includes(item.equipmentId)) {
-      itemDetailsText.push("Blessed · +1 attack");
-    } else if (item.slot === "armor" && equipmentEnhancements.armorIds.includes(item.equipmentId)) {
-      itemDetailsText.push("Blessed · +1 AC");
-    }
-    if (item.id === "healer-kit") {
-      itemDetailsText.push(`${entry.uses ?? entry.quantity * HEALER_KIT_USES} uses left`);
-    }
-    itemMeta.textContent = itemDetailsText.join(" · ");
-    const description = document.createElement("small");
-    description.textContent = item.description || (item.slot
-      ? "Changes your combat stats and how your adventurer looks."
-      : item.categoryId === "Treasure" || item.categoryId === "Keepsake"
-        ? "Keep as a story keepsake or sell it at the Chiltomatlan market."
-        : "Trade at the Chiltomatlan market.");
-    copy.append(label, itemMeta, description);
-    if (RELIC_RITES[entry.id]) {
-      const rite = document.createElement("small");
-      rite.className = "relic-rite";
-      rite.textContent = RELIC_RITES[entry.id].rite;
-      copy.append(rite);
-    }
-    const actions = document.createElement("span");
-    actions.className = "inventory-item-actions";
-    if (["healing-potion", "torch", "ocote", "maguey-salve", "picietl", "chili-smoke", "healer-kit", "crowbar", "hempen-rope", "cacao-drink", "ixpatli"].includes(entry.id) ||
-      FOOD_ITEMS[entry.id] || entry.id === "clean-water" || RELIC_RITES[entry.id]) {
-      const use = document.createElement("button");
-      use.type = "button";
-      use.className = "inventory-equip";
-      use.dataset.useItem = entry.id;
-      use.textContent = RELIC_RITES[entry.id] ? RELIC_RITES[entry.id].verb : FOOD_ITEMS[entry.id] ? (GEAR_ITEMS[entry.id]?.category === "Drink" ? "Drink" : "Eat")
-        : entry.id === "maguey-salve" ? "Apply"
-        : entry.id === "picietl" ? "Chew"
-        : entry.id === "chili-smoke" ? "Crack open"
-        : entry.id === "ocote" ? "Light"
-        : entry.id === "clean-water" || entry.id === "cacao-drink" ? "Drink"
-        : entry.id === "ixpatli" ? "Apply"
-        : entry.id === "healing-potion" ? "Use medicine"
-        : entry.id === "crowbar" ? "Pry open"
-          : entry.id === "hempen-rope" ? "Set rope" : item.slot ? "Use" : "Use item";
-      const blocked = itemUseBlocked(entry);
-      use.disabled = Boolean(blocked);
-      if (blocked) use.title = blocked;
-      actions.append(use);
-    }
-    if (item.slot) {
-      const equip = document.createElement("button");
-      equip.type = "button";
-      equip.className = "inventory-equip";
-      if (isEquipped(item.id) && item.slot !== "weapon") {
-        equip.dataset.unequipItem = item.id;
-        equip.textContent = item.slot === "wear" ? "Take off" : "Unequip";
-      } else {
-        equip.dataset.equipItem = item.id;
-        equip.textContent = isEquipped(item.id) ? "In use" : item.slot === "wear" ? "Wear" : "Equip";
-        equip.disabled = isEquipped(item.id) || !canEquipItem(item);
-      }
-      actions.append(equip);
-    }
-    const drop = document.createElement("button");
-    drop.type = "button";
-    drop.className = "inventory-equip inventory-drop";
-    drop.dataset.dropItem = entry.id;
-    drop.textContent = "Drop";
-    const equippedCopy = isEquipped(entry.id) && entry.quantity <= 1;
-    drop.disabled = equippedCopy || state.run.lost || state.run.won || !["dungeon", "city"].includes(state.run.location);
-    drop.title = equippedCopy ? "Unequip it first" : state.run.location === "dungeon" ? "Leave it on the floor here" : "Throw it away";
-    actions.append(drop);
+    const { row, icon, copy, actions } = itemEntryParts(entry);
     row.append(icon, copy);
     if (actions.childElementCount) row.append(actions);
     listElement.append(row);
   }
+}
+
+// The pack's tabs. Each item lands in exactly one besides "All".
+const PACK_CATEGORIES = [
+  { id: "all", label: "All" },
+  { id: "food", label: "Food" },
+  { id: "ingredients", label: "Ingredients" },
+  { id: "drink", label: "Drink" },
+  { id: "medicine", label: "Medicine" },
+  { id: "tools", label: "Tools" },
+  { id: "gear", label: "Gear" },
+  { id: "offerings", label: "Offerings" },
+  { id: "treasure", label: "Treasure" },
+  { id: "keepsakes", label: "Keepsakes" }
+];
+const PACK_OFFERINGS = new Set(["copal", "marigold-garland", "picietl"]);
+
+function packCategory(entry) {
+  const item = itemDetails(entry.id);
+  const id = entry.id;
+  if (item.slot || ["Weapon", "Armor", "Clothing"].includes(item.categoryId)) return "gear";
+  if (PACK_OFFERINGS.has(id)) return "offerings";
+  if ((typeof ECO !== "undefined" && ECO.ingredients?.[id]) || ["monster-meat", "wild-ingredients"].includes(id)) return "ingredients";
+  if (item.categoryId === "Drink" || id === "clean-water") return "drink";
+  if (item.categoryId === "Food" || FOOD_ITEMS[id]) return "food";
+  if (item.categoryId === "Potion" || id === "healer-kit") return "medicine";
+  if (["Tool", "Supply", "Kit"].includes(item.categoryId)) return "tools";
+  if (item.categoryId === "Treasure") return "treasure";
+  return "keepsakes";
+}
+
+function packGridPageSize() {
+  const height = window.innerHeight || 800;
+  return height <= 700 ? 12 : height <= 900 ? 16 : 24;
+}
+
+// The pack as a grid of boxes: icon, count, and a rarity outline. Tapping one opens its card.
+function renderInventoryGrid(listElement, inventory) {
+  listElement.replaceChildren();
+  listElement.classList.add("pack-grid");
+  const pageSize = packGridPageSize();
+  const pageCount = Math.max(1, Math.ceil(inventory.length / pageSize));
+  state.listPages.inventory = Math.max(0, Math.min(state.listPages.inventory, pageCount - 1));
+  updateListPager("inventory", inventory.length, pageSize);
+  if (!inventory.length) {
+    const empty = document.createElement("li");
+    empty.className = "inventory-empty";
+    empty.textContent = "Nothing here yet.";
+    listElement.append(empty);
+    return;
+  }
+  for (const entry of inventory.slice(state.listPages.inventory * pageSize, (state.listPages.inventory + 1) * pageSize)) {
+    const item = itemDetails(entry.id);
+    const cell = document.createElement("li");
+    cell.className = `pack-cell rarity-${itemRarity(entry, item)}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "pack-slot";
+    button.dataset.itemCard = entry.id;
+    button.title = item.name;
+    button.setAttribute("aria-label", `${item.name}${entry.quantity > 1 ? ` ×${entry.quantity}` : ""}`);
+    if (state.itemCard === entry.id) button.classList.add("is-open");
+    const icon = document.createElement("img");
+    icon.className = "pack-slot-icon";
+    icon.alt = "";
+    icon.draggable = false;
+    if (item.slot === "wear" || entry.id.startsWith("weapon:") || entry.id.startsWith("armor:")) icon.classList.add("is-codex-gear");
+    setItemArt(icon, entry.id);
+    button.append(icon);
+    if (entry.quantity > 1) {
+      const count = document.createElement("span");
+      count.className = "pack-slot-count";
+      count.textContent = `×${entry.quantity}`;
+      button.append(count);
+    }
+    if (isEquipped(entry.id)) {
+      const worn = document.createElement("span");
+      worn.className = "pack-slot-worn";
+      worn.textContent = "✓";
+      worn.title = t("In use");
+      button.append(worn);
+    }
+    cell.append(button);
+    listElement.append(cell);
+  }
+}
+
+// The card for one item: big icon, name, details, and its actions.
+function renderItemCard() {
+  const card = elements["item-card"];
+  if (!card) return;
+  const entry = state.itemCard && state.run?.inventory.find((candidate) => candidate.id === state.itemCard);
+  if (!entry) {
+    state.itemCard = null;
+    card.hidden = true;
+    card.replaceChildren();
+    return;
+  }
+  const { item, row, icon, copy, actions } = itemEntryParts(entry);
+  card.className = `item-card ${[...row.classList].filter((name) => name.startsWith("rarity-") || name.startsWith("tier-row-")).join(" ")}`;
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "item-card-close quiet-button";
+  close.dataset.closeItemCard = "";
+  close.setAttribute("aria-label", t("Close"));
+  close.textContent = "✕";
+  icon.className = `item-card-icon${icon.classList.contains("is-codex-gear") ? " is-codex-gear" : ""}`;
+  const rarity = document.createElement("span");
+  rarity.className = "item-card-rarity";
+  const rarityName = itemRarity(entry, item);
+  rarity.textContent = rarityName === "common" ? "" : t({ fine: "Fine", masterwork: "Masterwork", relic: "Relic", exotic: "Exotic" }[rarityName]);
+  const head = document.createElement("div");
+  head.className = "item-card-head";
+  head.append(icon, copy.querySelector(".inventory-item-name"), rarity, close);
+  copy.classList.add("item-card-copy");
+  card.replaceChildren(head, copy);
+  if (actions.childElementCount) card.append(actions);
+  card.hidden = false;
 }
 
 function updateListPager(key, total, pageSize) {
@@ -4945,17 +5620,25 @@ function renderInventory() {
   renderInventoryList(elements["equipment-list"], inventory.filter((entry) => itemDetails(entry.id).slot));
   // The pack lists everything you carry that isn't being worn or wielded right now.
   const pack = inventory.filter((entry) => !isEquipped(entry.id) || entry.quantity > 1);
-  const filtered = pack.filter((entry) => {
-    const item = itemDetails(entry.id);
-    if (state.inventoryFilter === "supplies") return ["Food", "Drink", "Potion", "Supply"].includes(item.categoryId);
-    if (state.inventoryFilter === "gear") return ["Kit", "Tool", "Clothing", "Weapon", "Armor"].includes(item.categoryId);
-    if (state.inventoryFilter === "valuables") return ["Treasure", "Keepsake"].includes(item.categoryId);
-    return true;
-  });
-  for (const button of elements["inventory-filters"].querySelectorAll("[data-inventory-filter]")) {
-    button.setAttribute("aria-pressed", String(button.dataset.inventoryFilter === state.inventoryFilter));
-  }
-  renderInventoryList(elements["inventory-list"], filtered);
+  if (!PACK_CATEGORIES.some((category) => category.id === state.inventoryFilter)) state.inventoryFilter = "all";
+  const counts = {};
+  for (const entry of pack) counts[packCategory(entry)] = (counts[packCategory(entry)] || 0) + 1;
+  const filtered = pack.filter((entry) => state.inventoryFilter === "all" || packCategory(entry) === state.inventoryFilter)
+    .sort((a, b) => PACK_CATEGORIES.findIndex((c) => c.id === packCategory(a)) - PACK_CATEGORIES.findIndex((c) => c.id === packCategory(b)) ||
+      itemDetails(a.id).name.localeCompare(itemDetails(b.id).name));
+  // Only the tabs with something in them (and All, and whichever is open).
+  const filters = elements["inventory-filters"];
+  filters.replaceChildren(...PACK_CATEGORIES.filter((category) => category.id === "all" || counts[category.id] || category.id === state.inventoryFilter)
+    .map((category) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.inventoryFilter = category.id;
+      button.setAttribute("aria-pressed", String(category.id === state.inventoryFilter));
+      button.textContent = category.id === "all" ? t(category.label) : `${t(category.label)} ${counts[category.id] || 0}`;
+      return button;
+    }));
+  renderInventoryGrid(elements["inventory-list"], filtered);
+  renderItemCard();
   renderEquipmentSheet();
 }
 
@@ -5183,6 +5866,8 @@ function render() {
   elements["store-screen"].classList.toggle("hidden", !inStore);
   elements["dungeon-screen"].classList.toggle("hidden", inCity || inStore);
   elements["map-heading"].textContent = t(inCity ? "Chiltomatlan" : getRoom().name);
+  const habitatEyebrow = !inCity && typeof ecologyRoomLabel === "function" ? ecologyRoomLabel(getRoom()) : "";
+  elements["map-eyebrow"].textContent = habitatEyebrow ? t(habitatEyebrow).toUpperCase() : t("UNDER THE JUNGLE");
   const templeDelve = state.run.mapId === GTFL_MAP_ID;
   elements["town-story"].textContent = "Chiltomatlan is your home base. Rest, trade, explore the tomb, and decide for yourself how far to go.";
   elements["quest-title"].textContent = templeDelve ? "Open Expedition" : "Your Expedition";
@@ -5290,7 +5975,8 @@ function validateSavedCharacter(character) {
     !GARMENT_STYLES.includes(character.appearance.garment) ||
     !CLOTHING_ADORNMENTS.includes(character.appearance.adornment) ||
     !HEADWEAR_STYLES.includes(character.appearance.headwear) ||
-    !FACE_PAINT_STYLES.includes(character.appearance.facePaint)) return false;
+    !FACE_PAINT_STYLES.includes(character.appearance.facePaint) ||
+    (look.face !== undefined && !FACE_STYLES.includes(look.face))) return false;
   const equipment = character.equipment;
   if (!WEAPONS[equipment.weapon] || !ARMORS[equipment.armor] ||
     !CLASSES[character.class].weapons.includes(gearBase(equipment.weapon)) ||
@@ -5537,6 +6223,7 @@ function parseSavedRun(saved, pack) {
       !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 1000) ||
     new Set(saved.unsecuredLoot.items.map((item) => item.id)).size !== saved.unsecuredLoot.items.length) return null;
   if (saved.dodging === undefined) saved.dodging = false;
+  if (!["guard", "run", "disengage"].includes(saved.stance)) saved.stance = "guard";
   if (typeof saved.dodging !== "boolean") return null;
   if (saved.needs === undefined) saved.needs = createNeeds();
   if (!saved.needs || typeof saved.needs !== "object") return null;
@@ -6249,6 +6936,10 @@ function connectEvents() {
   elements["journal-toggle"].addEventListener("click", () => toggleUtilityDrawer("journal"));
   elements["log-toggle"].addEventListener("click", () => toggleUtilityDrawer("log"));
   elements["look-toggle"].addEventListener("click", toggleLookMode);
+  elements["stance-control"].addEventListener("click", (event) => {
+    const button = event.target.closest("[data-stance]");
+    if (button && !button.disabled) setStance(button.dataset.stance);
+  });
   elements["close-side-drawer"].addEventListener("click", () => closeUtilityDrawer(true));
   elements["close-character-card"].addEventListener("click", closeCharacterCard);
   elements["close-character-card-top"].addEventListener("click", closeCharacterCard);
@@ -6546,6 +7237,9 @@ function connectEvents() {
   elements["town-dialog-close"].addEventListener("click", () => elements["town-dialog"].close());
   elements["town-dialog-x"].addEventListener("click", () => elements["town-dialog"].close());
   elements["target-choice-close"].addEventListener("click", () => elements["target-choice-dialog"].close());
+  elements["xochipilli-close"].addEventListener("click", () => elements["xochipilli-dialog"].close());
+  elements["xochipilli-offer-gold"].addEventListener("click", () => makeXochipilliOffering("gold"));
+  elements["xochipilli-offer-hp"].addEventListener("click", () => makeXochipilliOffering("hp"));
   elements["target-choice-dialog"].addEventListener("click", (event) => {
     if (event.target === elements["target-choice-dialog"]) elements["target-choice-dialog"].close();
   });
@@ -6574,8 +7268,20 @@ function connectEvents() {
     if (!pager) return;
     showDialogCopyPage(pager.dataset.copyPager, Number(pager.dataset.page) + Number(button.dataset.copyPage));
   });
-  for (const list of [elements["equipment-list"], elements["inventory-list"]]) {
+  for (const list of [elements["equipment-list"], elements["inventory-list"], elements["item-card"]]) {
     list.addEventListener("click", (event) => {
+      const slot = event.target.closest("[data-item-card]");
+      if (slot) {
+        state.itemCard = state.itemCard === slot.dataset.itemCard ? null : slot.dataset.itemCard;
+        renderInventory();
+        if (state.itemCard) elements["item-card"].scrollIntoView({ block: "nearest", behavior: "smooth" });
+        return;
+      }
+      if (event.target.closest("[data-close-item-card]")) {
+        state.itemCard = null;
+        renderInventory();
+        return;
+      }
       const use = event.target.closest("[data-use-item]");
       if (use) useInventoryItem(use.dataset.useItem);
       const button = event.target.closest("[data-equip-item]");
@@ -6591,6 +7297,7 @@ function connectEvents() {
     if (!button) return;
     state.inventoryFilter = button.dataset.inventoryFilter;
     state.listPages.inventory = 0;
+    state.itemCard = null;
     renderInventory();
   });
   elements["character-card-dialog"].addEventListener("click", (event) => {
@@ -6644,7 +7351,7 @@ function connectEvents() {
   });
   elements["dungeon-map"].addEventListener("pointerleave", (event) => {
     if (event.pointerType !== "mouse" || !state.run || state.run.location !== "dungeon") return;
-    const nearbyCombat = state.run.enemies.some((enemy) => enemy.alive &&
+    const nearbyCombat = state.run.enemies.some((enemy) => creatureIsThreat(enemy) &&
       (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7));
     elements["turn-status"].textContent = nearbyCombat
       ? "Combat · enemies respond after your action"
@@ -6868,6 +7575,11 @@ function connectEvents() {
       movePlayer(direction.x, direction.y);
     } else {
       const shortcut = `${event.shiftKey && event.key.length === 1 && /[a-z]/i.test(event.key) ? "shift+" : ""}${event.key.toLowerCase()}`;
+      if (shortcut === "t" || shortcut === "y") {
+        event.preventDefault();
+        setStance(shortcut === "t" ? "run" : "disengage");
+        return;
+      }
       const actionButton = [...document.querySelectorAll("#action-buttons [data-shortcut]")]
         .find((button) => button.dataset.shortcut.split(" ").includes(shortcut) && !button.disabled);
       if (actionButton) {

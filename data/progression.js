@@ -78,7 +78,8 @@
     hearty: { name: "Hearty", description: "+1 to attack rolls.", minutes: 480 },
     fiery: { name: "Fire in the belly", description: "+2 weapon damage.", minutes: 480 },
     steady: { name: "Steady", description: "+1 AC.", minutes: 480 },
-    "keen-eyed": { name: "Keen-eyed", description: "+2 Perception and Survival.", minutes: 480 }
+    "keen-eyed": { name: "Keen-eyed", description: "+2 Perception and Survival.", minutes: 480 },
+    "xochipilli-friendship": { name: "Xochipilli's Friendship", description: "Wild animals are friendlier toward you.", minutes: 1440 }
   };
   const recipes = {
     "cave-meat-pozole": {

@@ -45,7 +45,7 @@ function atCamp() {
 }
 
 function campDangerNearby() {
-  return state.run.enemies.some((enemy) => enemy.alive && distanceInSquares(enemy, state.run.player) <= CAMP_DANGER_RADIUS);
+  return state.run.enemies.some((enemy) => creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= CAMP_DANGER_RADIUS);
 }
 
 // Why a camp cannot go here, or "" when the spot is fine.
@@ -149,6 +149,7 @@ function enterAtCamp() {
   revealAroundPlayer();
   const hours = Math.max(1, camp.floor);
   advanceSurvivalTime(false, hours * 60);
+  if (typeof ecologyAdvance === "function") ecologyAdvance();
   addLog(`You follow your trail marks down to your camp in ${campDescription(camp)} (${hours} hour${hours === 1 ? "" : "s"}).`);
   upgradeGreatTempleContent();
   render();
@@ -158,7 +159,98 @@ function enterAtCamp() {
 function campInspectText(camp) {
   return [
     `Your camp${camp.kit ? ", with reed mats from a camp kit" : ", built from scavenged wood and stone"}.`,
-    "Rest for 8 hours or cook while standing on or beside it.",
+    "Rest for 8 hours or cook while standing on or beside it. Something may find you in the night; quiet, empty rooms are safer.",
     "It stays here until you pitch a new camp, and you can walk straight back to it from Chiltomatlan."
   ].join(" ");
+}
+
+// ---------- The night: time passes hour by hour, and something may come ----------
+
+// How likely something is to wander into camp over a full night's rest on this floor.
+function campNightRisk() {
+  const floor = state.run.dungeonFloor || 1;
+  const room = state.run.rooms?.[state.run.currentRoom];
+  const habitat = room?.habitat || "";
+  let risk = 0.08 + floor * 0.012;
+  if (["predator-den", "nesting-chamber", "bone-yard", "shrine", "flooded-chamber"].includes(habitat)) risk += 0.08;
+  else if (!habitat) risk -= 0.03;
+  if (typeof activeBuff === "function" && activeBuff("hushed")) risk *= 0.5;
+  return Math.max(0.03, Math.min(0.45, risk));
+}
+
+// Sleep in camp one hour at a time. The tomb's creatures go about their night (the ecology
+// runs every hour), and a hungry one that wanders within 5 squares, or a wanderer drawn by
+// the fire, cuts the night short. Returns how many hours you slept and what woke you.
+function restThroughTheNight() {
+  const perHour = 1 - Math.pow(1 - campNightRisk(), 1 / 8);
+  for (let hour = 1; hour <= 8; hour += 1) {
+    advanceSurvivalTime(true, 60);
+    if (typeof ecologyAdvance === "function") ecologyAdvance();
+    if (state.run.lost) return { slept: hour, visitor: null };
+    const player = state.run.player;
+    const near = state.run.enemies.find((enemy) => enemy.alive && !enemy.asleep && !enemy.guardian &&
+      creatureIsThreat(enemy) && distanceInSquares(enemy, player) <= 5);
+    if (near) return { slept: hour, visitor: near };
+    if (Math.random() < perHour) {
+      const wanderer = campWanderer();
+      if (wanderer) return { slept: hour, visitor: wanderer };
+    }
+  }
+  return { slept: 8, visitor: null };
+}
+
+// A creature of this depth, hungry and on the move, arriving a few squares from camp.
+function campWanderer() {
+  const player = state.run.player;
+  const neutral = new Set(["chaneque", "alux", "maquizcoatl", "chapolin", "cenote-stalker", "axolocatl", "cipactli"]);
+  const ids = greatTempleEncounterIds().filter((id) => !neutral.has(id) && !["camazotz", "tzitzimitl"].includes(id) &&
+    !(id === "caxtiltecatl" && inventoryQuantity("spanish-cross") > 0));
+  const template = state.pack.enemies.find((enemy) => enemy.id === ids[randomInt(ids.length) - 1]);
+  if (!template) return null;
+  const occupied = new Set(state.run.enemies.filter((enemy) => enemy.alive).map((enemy) => tileIndex(enemy.x, enemy.y)));
+  const spots = [];
+  for (let dy = -7; dy <= 7; dy += 1) {
+    for (let dx = -7; dx <= 7; dx += 1) {
+      const x = player.x + dx;
+      const y = player.y + dy;
+      const distance = Math.max(Math.abs(dx), Math.abs(dy));
+      if (distance < 4 || distance > 7 || !isWalkable(x, y) || occupied.has(tileIndex(x, y))) continue;
+      spots.push({ x, y });
+    }
+  }
+  if (!spots.length) return null;
+  const position = spots[randomInt(spots.length) - 1];
+  const enemy = createEnemy(template, position, roomIndexAt(position.x, position.y), state.run.enemies.length);
+  scaleGreatTempleEnemy(enemy);
+  decorateEnemy(enemy);
+  const placed = placeCreature(enemy, { occupied });
+  state.run.enemies.push(...placed);
+  for (const creature of placed) {
+    creature.alerted = true;
+    if (typeof ecoCreature === "function") ecoCreature(creature).sat = 20;
+  }
+  return placed[0] || null;
+}
+
+// What woke you. A sharp ear (passive Perception) has you up before it arrives; otherwise
+// it gets a blow in first.
+function wakeToVisitor(visitor) {
+  const passive = 10 + skillBonus("perception");
+  const stealth = 10 + (visitor.initiativeBonus || 0) +
+    (typeof creatureHabit === "function" && creatureHabit(visitor) === "ambusher" ? 3 : 0);
+  visitor.alerted = true;
+  visitor.asleep = 0;
+  const clock = `${String(state.run.gameHours % 24).padStart(2, "0")}:00`;
+  if (passive >= stealth) {
+    addLog(`Your sleep is cut short at ${clock}. ${visitor.name} is coming toward your camp, and you're up before it reaches you (passive Perception ${passive}).`);
+    return;
+  }
+  const occupied = new Set(state.run.enemies.filter((enemy) => enemy.alive && enemy !== visitor).map((enemy) => tileIndex(enemy.x, enemy.y)));
+  const spot = distanceInSquares(visitor, state.run.player) <= 1 ? visitor : freeTileNear(state.run.player, occupied, 1);
+  if (spot) {
+    visitor.x = spot.x;
+    visitor.y = spot.y;
+  }
+  addLog(`Your sleep is cut short at ${clock}. ${visitor.name} is on you before you're awake (passive Perception ${passive}).`);
+  if (distanceInSquares(visitor, state.run.player) <= 1) enemyAttack(visitor, false, false);
 }

@@ -25,7 +25,7 @@ const SHOP_VENDORS = {
     title: "Mahuiz's strange wares",
     keeper: "Mahuiz, trader in strange wares",
     portrait: "gear-mender.png",
-    tagline: "Steel from the sea giants' floating houses. Silk-laced armor from across the western sea. Don't ask how it got here.",
+    tagline: "Steel from the sea giants' floating houses. Silk-laced armor from across the western sea. Mahuiz won't say how it got here.",
     canSell: false,
     categories: [
       ["all", "All wares", "kit"], ["spanish", "Spanish steel", "icon:helmet:morion-helmet"],
@@ -111,7 +111,7 @@ function shopEntry(id, vendor, view) {
     carried, equipped: isEquipped(id),
     sellable: view === "sell" ? carried - (isEquipped(id) ? 1 : 0) : 0,
     locked: view === "buy" && progress().deepestFloor < unlockFloor, unlockFloor,
-    typeLabel: item.slot === "weapon" ? `Weapon · ${WEAPONS[item.equipmentId]?.dice || ""}${WEAPONS[item.equipmentId]?.ranged ? " · ranged" : ""}`
+    typeLabel: item.slot === "weapon" ? `Weapon · ${WEAPONS[item.equipmentId]?.dice || ""} · ${STRIKE_KINDS[weaponStrike(item.equipmentId)].name}${WEAPONS[item.equipmentId]?.ranged ? " · ranged" : ""}`
       : item.slot === "armor" ? "Armor" : item.category
   };
 }

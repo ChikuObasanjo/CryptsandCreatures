@@ -144,7 +144,7 @@
     "spondylus-shell": { name: "Spondylus shell", price: 35, weight: 0.5, minFloor: 1,
       description: "A spiny red oyster shell from the far coast, prized for offerings." },
     "ulama-ball": { name: "Rubber ballgame ball", price: 30, weight: 3, minFloor: 1,
-      description: "A heavy, bouncing ball of solid rubber from a forgotten ballcourt." },
+      description: "A heavy, bouncing ball of solid rubber from an abandoned ballcourt." },
     "copper-axe-money": { name: "Copper axe-money", price: 40, weight: 1, minFloor: 2,
       description: "Thin copper blades in the shape of axes, traded in bundles of twenty." },
     "gold-labret": { name: "Gold lip plug", price: 70, weight: 0.2, minFloor: 2,
@@ -156,11 +156,11 @@
     "quetzal-plumes": { name: "Bundle of quetzal plumes", price: 140, weight: 0.5, minFloor: 5,
       description: "Long, shimmering green tail feathers, more precious than gold." },
     "codex-fragment": { name: "Codex fragment", price: 120, weight: 0.3, minFloor: 5,
-      description: "A folded strip of deerskin painted with day-signs and a procession of gods. The procession climbs up out of a cave, not down into one." },
+      description: "A folded strip of deerskin painted with day-signs and a procession of gods climbing up out of a cave." },
     "gold-pendant": { name: "Cast gold pendant", price: 200, weight: 0.5, minFloor: 7,
       description: "A lost-wax gold pendant of Xolotl, the dog-headed god who carried bones up out of Mictlan so people could be made again. Bells hang from his chin." },
     "turquoise-mask": { name: "Turquoise mosaic mask", price: 320, weight: 1.5, minFloor: 9,
-      description: "A face of tiny turquoise tiles with shell eyes. It seems to watch you back, and its eyes are set to look down." }
+      description: "A face of tiny turquoise tiles with shell eyes, set to look downward." }
   };
   for (const [id, entry] of Object.entries(treasures)) {
     items.gear[id] = { name: entry.name, weight: entry.weight, price: entry.price, category: "Treasure", sprite: id, description: entry.description };

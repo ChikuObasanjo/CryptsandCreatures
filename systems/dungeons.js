@@ -79,7 +79,7 @@ function generateGtflDungeon() {
         : isTreasure
           ? "A carved vault lies among the old offerings. Search its passages, then choose how much farther to descend."
           : isBoss && depth === 13
-            ? "A starless presence waits in the deepest chamber. Tzitzimitl guards the final vault."
+            ? "Tzitzimitl guards the final vault in the deepest chamber."
             : template.text,
       x: cell.x,
       y: cell.y,
@@ -244,17 +244,21 @@ function generateGtflDungeonV3() {
   const fits = (rect) => rect.mapX >= 1 && rect.mapY >= 1 && rect.mapX + rect.mapW <= size - 1 && rect.mapY + rect.mapH <= size - 1 &&
     placed.every((other) => rect.mapX + rect.mapW + 2 <= other.mapX || other.mapX + other.mapW + 2 <= rect.mapX ||
       rect.mapY + rect.mapH + 2 <= other.mapY || other.mapY + other.mapH + 2 <= rect.mapY);
+  // The floor's terrain comes first: chambers take their shape from where they sit.
+  const land = typeof makeFloorTerrain === "function" ? makeFloorTerrain(depth) : null;
   // The boss gets a grand hall first so it always fits.
   const wanted = ["boss-hall", ...Array.from({ length: target - 1 }, () => V3_SHAPES[randomInt(V3_SHAPES.length) - 1])];
   for (const entry of wanted) {
-    const shape = entry === "boss-hall" ? (randomInt(2) === 1 ? "pillared" : "hall") : entry;
     for (let attempt = 0; attempt < 400; attempt += 1) {
+      const probe = { x: 2 + randomInt(size - 4) - 1, y: 2 + randomInt(size - 4) - 1 };
+      const shape = entry === "boss-hall" ? (randomInt(2) === 1 ? "pillared" : "hall")
+        : land ? biomeShapeFor(land, probe.x, probe.y) : entry;
       const dims = entry === "boss-hall" ? { w: 9 + 2 * (randomInt(2) - 1), h: 9 } : v3RoomSize(shape);
       const rect = {
         shape, boss: entry === "boss-hall",
         mapW: dims.w, mapH: dims.h,
-        mapX: 1 + randomInt(size - dims.w - 2) - 1,
-        mapY: 1 + randomInt(size - dims.h - 2) - 1,
+        mapX: Math.max(1, Math.min(size - dims.w - 1, probe.x - Math.floor(dims.w / 2))),
+        mapY: Math.max(1, Math.min(size - dims.h - 1, probe.y - Math.floor(dims.h / 2))),
         flipX: randomInt(2) === 1, flipY: randomInt(2) === 1
       };
       if (!fits(rect)) continue;
@@ -456,7 +460,7 @@ function generateGtflDungeonV3() {
         : isTreasure
           ? "A carved vault lies at the end of a quiet passage. Search it, then choose how much farther to descend."
           : isBoss && depth === DUNGEON_FLOOR_COUNT
-            ? "A starless presence waits in the deepest chamber. Tzitzimitl guards the final vault."
+            ? "Tzitzimitl guards the final vault in the deepest chamber."
             : template.text,
       x: Math.max(0, Math.min(ROOM_GRID_SIZE - 1, Math.floor(room.anchorX / 9))),
       y: Math.max(0, Math.min(ROOM_GRID_SIZE - 1, Math.floor(room.anchorY / 9))),
@@ -516,7 +520,9 @@ function generateGtflDungeonV3() {
   if (rooms.some((room) => terrain[tileIndex(room.anchorX, room.anchorY)] !== "floor")) {
     throw new Error("A tomb chamber is not centered on a walkable tile.");
   }
-  return { rooms, terrain, mapId: GTFL_MAP_ID, floorStairs, layoutVersion: 3 };
+  // Where the water runs and pools, how damp and warm each chamber is, and how sheltered.
+  const courses = land ? computeRoomEnvironments(rooms, land) : { streams: [], vents: [] };
+  return { rooms, terrain, mapId: GTFL_MAP_ID, floorStairs, layoutVersion: 3, courses };
 }
 
 function generateDungeon() {
@@ -699,36 +705,66 @@ function createGreatTempleEnemies(rooms, player) {
   ]);
   const enemies = [];
   const usedEncounterIds = new Set();
-  for (let roomIndex = 1; roomIndex < rooms.length; roomIndex += 1) {
-    const room = rooms[roomIndex];
-    const isBoss = room.type === "boss";
-    if (!isBoss && room.type !== "combat" && room.type !== "trap" && randomInt(100) > 44) continue;
-    const template = state.pack.enemies.find((enemy) => enemy.id === room.enemyId) ||
-      rollGreatTempleEncounter(usedEncounterIds);
-    usedEncounterIds.add(template.id);
-    const position = randomRoomFloor(rooms[roomIndex], occupied);
-    if (!position) continue;
+  const floor = state.run.dungeonFloor || 1;
+  const cap = typeof ecoFloorCap === "function" ? ecoFloorCap(floor) : 18;
+  const allowed = greatTempleEncounterIds(floor);
+  const add = (template, position, roomIndex, options = {}) => {
     occupied.add(tileIndex(position.x, position.y));
     const enemy = createEnemy(template, position, roomIndex, enemies.length);
-    if (isBoss) {
+    if (options.isBoss) {
       enemy.hp = Math.ceil(enemy.hp * 1.5);
       enemy.maxHp = enemy.hp;
     }
     scaleGreatTempleEnemy(enemy);
-    decorateEnemy(enemy, { isBoss });
-    enemies.push(enemy);
+    decorateEnemy(enemy, { isBoss: Boolean(options.isBoss) });
+    enemies.push(...placeCreature(enemy, { roomSpawn: roomIndex >= 0, occupied }));
+  };
+  // The boss chamber first: something old guards the way down.
+  rooms.forEach((room, roomIndex) => {
+    if (room.type !== "boss") return;
+    const template = state.pack.enemies.find((enemy) => enemy.id === room.enemyId) || rollGreatTempleEncounter(usedEncounterIds);
+    usedEncounterIds.add(template.id);
+    const position = randomRoomFloor(room, occupied);
+    if (position) add(template, position, roomIndex, { isBoss: true });
+  });
+  // Then each chamber's residents, as many as its habitat supports. Some years are lean.
+  const lean = Math.random() < 0.25;
+  const lush = !lean && Math.random() < 0.25;
+  const lived = shuffle(rooms.map((room, index) => ({ room, index }))
+    .filter(({ room, index }) => index > 0 && room.type !== "boss" && room.habitat && typeof habitatEncounter === "function"));
+  for (const { room, index } of lived) {
+    const habitat = window.CryptsEcology?.habitats?.[room.habitat];
+    const [low, high] = habitat?.population || [0, 1];
+    let count = low + randomInt(high - low + 1) - 1;
+    if (lush && Math.random() < 0.5) count += 1;
+    if (lean && count > 0 && Math.random() < 0.5) count -= 1;
+    for (let n = 0; n < count && enemies.length < cap; n += 1) {
+      const template = habitatEncounter(room, allowed, usedEncounterIds);
+      if (!template) break;
+      usedEncounterIds.add(template.id);
+      const swims = window.CryptsEcology?.species?.[template.id]?.aquatic;
+      const position = (swims && typeof ecoDeepTile === "function" && state.run.ecology ? ecoDeepTile(index, occupied) : null) ||
+        randomRoomFloor(room, occupied);
+      if (!position) continue;
+      add(template, position, index);
+    }
   }
-  const roamerCount = 2 + Math.floor(state.run.dungeonFloor / 3);
-  for (let index = 0; index < roamerCount; index += 1) {
+  // Bare chambers are mostly quiet; now and then something is passing through.
+  for (const [index, room] of rooms.entries()) {
+    if (index === 0 || room.habitat || room.type === "boss" || room.mainTreasure || enemies.length >= cap) continue;
+    if (Math.random() > 0.1) continue;
+    const position = randomRoomFloor(room, occupied);
+    if (position) add(rollGreatTempleEncounter(usedEncounterIds), position, index);
+  }
+  // A few wanderers on their own errands: scavengers following their noses, a hunter on its rounds.
+  const wanderers = ["xolo-hound", "duende", "jungle-jaguar", "huay-chivo", "tlacatecolotl", "caxtiltecatl"]
+    .filter((id) => allowed.includes(id));
+  const roamerCount = 1 + Math.floor(floor / 5);
+  for (let n = 0; n < roamerCount && wanderers.length && enemies.length < cap; n += 1) {
     const position = randomMapFloorSpread(occupied, enemies, 5, player, 8);
     if (!position) break;
-    occupied.add(tileIndex(position.x, position.y));
-    const template = rollGreatTempleEncounter(usedEncounterIds);
-    usedEncounterIds.add(template.id);
-    const enemy = createEnemy(template, position, -1, enemies.length);
-    scaleGreatTempleEnemy(enemy);
-    decorateEnemy(enemy);
-    enemies.push(enemy);
+    const id = wanderers[randomInt(wanderers.length) - 1];
+    add(state.pack.enemies.find((enemy) => enemy.id === id), position, -1);
   }
   return enemies;
 }
@@ -753,8 +789,23 @@ function addGreatTempleRoamers(player, count) {
     const enemy = createEnemy(template, position, -1, state.run.enemies.length);
     scaleGreatTempleEnemy(enemy);
     decorateEnemy(enemy);
-    state.run.enemies.push(enemy);
+    state.run.enemies.push(...placeCreature(enemy, { occupied }));
   }
+}
+
+// The creatures this depth of the tomb can hold.
+function greatTempleEncounterIds(floor = state.run.dungeonFloor || 1) {
+  const early = ["maztican-cave-locust", "axolocatl", "cenote-stalker", "tomb-bat", "duende", "yohualtepoztli", "xolo-hound", "colotl", "chaneque"];
+  const middle = [...early, "mictlaneca", "jungle-jaguar", "quinametli", "cihuateotl", "tlacatecolotl", "huay-chivo"];
+  const deep = [...middle, "caxtiltecatl", "feathered-serpent", "camazotz", "itzpapalotl", "cipactli"];
+  const ids = floor >= 9 ? deep : floor >= 5 ? middle : early;
+  // The newer kinds have their own depths: the omen serpent from the fortresses down, the
+  // deer serpent where there's big prey, the aluxes in the Lords' storerooms.
+  if (floor >= 3) ids.push("maquizcoatl");
+  if (floor >= 4) ids.push("mazacoatl");
+  if (floor >= 5) ids.push("alux");
+  if (floor >= 2 && !ids.includes("jungle-jaguar")) ids.push("jungle-jaguar");
+  return ids;
 }
 
 function rollGreatTempleEncounter(usedIds = new Set()) {
@@ -1008,9 +1059,11 @@ function revealAroundPlayer() {
   const { x, y } = state.run.player;
   const currentRoomIndex = roomIndexAt(x, y);
   if (currentRoomIndex >= 0) state.run.rooms[currentRoomIndex].visited = true;
-  for (let dy = -4; dy <= 4; dy += 1) {
-    for (let dx = -4; dx <= 4; dx += 1) {
-      if (dx * dx + dy * dy > 16) continue;
+  // Deepsight (summit cap tea) lets you see two squares farther in the dark.
+  const reach = typeof activeBuff === "function" && state.run.progress && activeBuff("deepsight") ? 6 : 4;
+  for (let dy = -reach; dy <= reach; dy += 1) {
+    for (let dx = -reach; dx <= reach; dx += 1) {
+      if (dx * dx + dy * dy > reach * reach) continue;
       const tx = x + dx;
       const ty = y + dy;
       if (tx >= 0 && tx < MAP_TILE_SIZE && ty >= 0 && ty < MAP_TILE_SIZE) state.run.seen[tileIndex(tx, ty)] = true;
@@ -1045,6 +1098,7 @@ function initializeDungeon() {
   state.run.player = player;
   state.run.currentRoom = 0;
   state.run.enemies = [];
+  state.run.lurkers = [];
   state.run.hazards = [];
   state.run.treasures = [];
   state.run.wells = [];
@@ -1056,6 +1110,16 @@ function initializeDungeon() {
   for (const stair of state.run.floorStairs) occupied.add(tileIndex(stair.x, stair.y));
   const mainTreasureRoom = state.run.rooms.find((room) => room.mainTreasure);
   if (mainTreasureRoom) occupied.add(tileIndex(mainTreasureRoom.anchorX, mainTreasureRoom.anchorY));
+  // Each chamber gets its place in the tomb's ecology first, so its creatures fit it, and the
+  // ground is laid (water, moss, roots, bones) before anything is placed on it.
+  state.run.ecology = null;
+  if (state.run.rooms.every((room) => room.env) && typeof assignHabitatsFromEnvironment === "function") {
+    assignHabitatsFromEnvironment(state.run.rooms);
+    state.run.ecology = { version: 0, ground: dressFloorGround(state.run.rooms, state.run.terrain, dungeon.courses || {}), features: [] };
+  } else if (typeof assignHabitats === "function") {
+    assignHabitats(state.run.rooms);
+  }
+  if (typeof clearBattlefield === "function") clearBattlefield();
   state.run.enemies = createEnemies(state.run.rooms, player);
   const bossRoomIndex = state.run.rooms.findIndex((room) => room.type === "boss");
   if (state.run.mapId === GTFL_MAP_ID && state.run.dungeonFloor === DUNGEON_FLOOR_COUNT) {
@@ -1081,7 +1145,8 @@ function initializeDungeon() {
     });
     state.run.rooms[bossRoomIndex].optionalQuest = true;
   }
-  for (const enemy of state.run.enemies) occupied.add(tileIndex(enemy.x, enemy.y));
+  for (const enemy of [...state.run.enemies, ...state.run.lurkers]) occupied.add(tileIndex(enemy.x, enemy.y));
+  for (const treasure of state.run.treasures) occupied.add(tileIndex(treasure.x, treasure.y));
   state.run.hazards = createHazards(state.run.rooms, occupied);
   state.run.mainTreasureClaimed = false;
   state.run.questComplete = false;
@@ -1098,10 +1163,12 @@ function initializeDungeon() {
   if (state.run.mapId === GTFL_MAP_ID) {
     createGreatTempleCaches(player, new Set(occupied));
     createGreatTempleRelics(player, new Set(occupied));
+    placeFavorItems(new Set(occupied));
     state.run.fixedMapContentVersion = 2;
   }
   state.run.wells = createDungeonWells();
   state.run.wellsInitialized = true;
+  if (typeof initializeEcology === "function") initializeEcology();
   refreshCompanionFormation();
   revealAroundPlayer();
   return startRoom;
@@ -1113,6 +1180,7 @@ function copyDungeonValue(value) {
 
 function saveDungeonFloorState() {
   const floor = state.run.dungeonFloor;
+  if (typeof ecologyLeaveFloor === "function") ecologyLeaveFloor();
   state.run.dungeonFloors ||= {};
   state.run.dungeonFloors[String(floor)] = {
     floor,
@@ -1124,6 +1192,7 @@ function saveDungeonFloorState() {
     player: { ...state.run.player },
     currentRoom: state.run.currentRoom,
     enemies: copyDungeonValue(state.run.enemies),
+    lurkers: copyDungeonValue(state.run.lurkers || []),
     hazards: copyDungeonValue(state.run.hazards),
     treasures: copyDungeonValue(state.run.treasures),
     wells: copyDungeonValue(state.run.wells),
@@ -1133,7 +1202,8 @@ function saveDungeonFloorState() {
     mainTreasureClaimed: state.run.mainTreasureClaimed,
     questComplete: state.run.questComplete,
     fixedMapContentVersion: state.run.fixedMapContentVersion || 0,
-    floorStairs: copyDungeonValue(state.run.floorStairs || [])
+    floorStairs: copyDungeonValue(state.run.floorStairs || []),
+    ecology: copyDungeonValue(state.run.ecology || null)
   };
 }
 
@@ -1153,7 +1223,12 @@ function restoreDungeonFloorState(snapshot, entryId) {
     "enemies", "hazards", "treasures", "wells", "wellsInitialized", "seen", "steps",
     "mainTreasureClaimed", "questComplete", "fixedMapContentVersion", "floorStairs"
   ]) state.run[key] = copyDungeonValue(snapshot[key]);
+  state.run.lurkers = copyDungeonValue(snapshot.lurkers || []);
+  state.run.ecology = copyDungeonValue(snapshot.ecology || null);
+  if (typeof ecologyReturnToFloor === "function") ecologyReturnToFloor();
+  if (typeof clearBattlefield === "function") clearBattlefield();
   state.run.player = { ...snapshot.player, x: destinationStair.x, y: destinationStair.y };
+  if (typeof clearArrivalTile === "function") clearArrivalTile();
   state.run.location = "dungeon";
   state.run.won = false;
   state.run.lost = false;

@@ -113,6 +113,7 @@ function syncVillagerPositions() {
     npc.x = slot ? slot.x : -9;
     npc.y = slot ? slot.y : -9;
   }
+  if (typeof syncDuendeInTown === "function") syncDuendeInTown();
 }
 
 function villagerCharacter(id) {
@@ -233,6 +234,7 @@ function renderVillagerDialog() {
         button(fresh ? `Ask about… · ${fresh} new` : "Ask about…",
           () => { view.mode = "ask"; view.speech = ""; view.question = null; renderVillagerDialog(); });
       }
+      if (typeof favorButtons === "function") favorButtons(id, button);
       button(record.giftDay === today ? "Give a gift · one a day" : "Give a gift",
         () => { view.mode = "gift"; view.speech = `What will you give ${villager.name}?`; renderVillagerDialog(); },
         true, record.giftDay === today);
@@ -473,6 +475,7 @@ function normalizeVillageSave(saved) {
       courting: Boolean(entry.courting),
       met: Boolean(entry.met ?? (Number.isInteger(entry.talkDay) && entry.talkDay >= 0)),
       story: Number.isInteger(entry.story) && entry.story >= 0 ? entry.story : 0,
+      favor: typeof normalizeFavorRecord === "function" ? normalizeFavorRecord(entry) : null,
       asked: Array.isArray(entry.asked)
         ? [...new Set(entry.asked.filter((question) => VILLAGE.villagers[id].questions?.some((known) => known.id === question)))]
         : []
