@@ -800,13 +800,7 @@ function descendByLift(floor) {
   state.dashReady = false;
   state.disengageReady = false;
   state.run.unsecuredLoot = { gold: 0, items: [] };
-  state.run.dungeonFloor = floor;
-  state.run.dungeonFloors = {};
-  initializeDungeon();
-  state.run.floorStairs.push({
-    id: "warden-lift", x: state.run.player.x, y: state.run.player.y,
-    type: "lift", role: "entrance", name: "Wardens' lift"
-  });
+  travelToFloor(floor, "warden-lift");
   state.run.location = "dungeon";
   state.run.hasEnteredDungeon = true;
   state.run.log.unshift(`The wardens lower you by rope to floor ${floor}. The lift waits here to carry you home.`);

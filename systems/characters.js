@@ -96,7 +96,10 @@ function deriveCharacter(character, level = 1) {
 
 function currentCharacterStats() {
   const character = state.run.character || makeLegacyCharacter();
-  const stats = deriveCharacter(withNeedsPenalty(character, state.run.needs), state.run.level);
+  const fungallyStunned = state.run.wisdomPenalty?.amount > 0
+    ? { ...character, scores: { ...character.scores, wis: Math.max(1, character.scores.wis - state.run.wisdomPenalty.amount) } }
+    : character;
+  const stats = deriveCharacter(withNeedsPenalty(fungallyStunned, state.run.needs), state.run.level);
   stats.maxHp = state.run.maxHp;
   const mods = heroStatModifiers();
   stats.attackBonus += mods.attack;
@@ -104,6 +107,7 @@ function currentCharacterStats() {
   stats.ac += mods.ac;
   return stats;
 }
+
 
 function withNeedsPenalty(character, needs) {
   const penalty = Math.min(4,

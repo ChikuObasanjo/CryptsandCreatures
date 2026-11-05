@@ -23,6 +23,8 @@
 
 const ECO = window.CryptsEcology;
 const ECO_VERSION = 2;
+const ECO_ENERGY_DECAY = 0.8;
+const ECO_MOUTH_FLUX = 120;
 const ECO_TICK_MINUTES = 10;
 const ECO_LIVE_TICK_LIMIT = 48;
 const ECO_HUNGRY = 55;
@@ -43,6 +45,22 @@ function ecoState() {
 
 function ecoFloorCap(floor = state.run?.dungeonFloor || 1) {
   return Math.min(22, 11 + Math.floor(floor * 0.8));
+}
+
+// The energy pool: what the floor's plants can still grow from. It fills at the floor's
+// share of the mouth's flux and spends ECO_PLANT_ENERGY on every unit of growth, so the
+// plants (and so the grazers, hunters, and scavengers above them) can only be as many as
+// the floor's flux can pay for. Deep floors are richer and so grow faster and fuller.
+function ecoPoolCap(eco) {
+  return (eco.floorFlux || 0) / 720 * 6 * ECO_POOL_HOURS;
+}
+
+function ecoPoolInflow(eco) {
+  return (eco.floorFlux || 0) / 720;
+}
+
+function ecoProductivity(floor = state.run?.dungeonFloor || 1) {
+  return 0.7 + 1.3 * ecoFloorShare(floor);
 }
 
 // ---------- Habitats ----------
@@ -143,9 +161,34 @@ function ecoDeepTile(roomIndex, taken) {
       if (groundAt(x, y) === "d" && !taken.has(tileIndex(x, y))) options.push({ x, y });
     }
   }
+
   return options.length ? options[randomInt(options.length) - 1] : null;
 }
 
+// A glowcap bed that has run to its limit with too few grazers to keep it down blooms:
+// spores fill the chamber. This is what overculling the grazers costs. A bloom needs a
+// full bed ringed by more full beds, and the fewer grazers there are on the floor, the
+// sooner it comes.
+function ecoFungalBloom(eco, patch) {
+  if ((patch.amount || 0) < ECO.resources.fungus.max || patch.bloomedThisStage) return;
+  const herbLoad = ecoHerbPressure();
+  const wait = herbLoad < 0.35 ? 12 : herbLoad < 0.7 ? 24 : 48;
+  if ((patch.fullTicks || 0) < wait) return;
+  const beds = new Set(eco.features.filter((feature) => feature.kind === "fungus" && feature.amount >= ECO.resources.fungus.max - 1)
+    .map((feature) => tileIndex(feature.x, feature.y)));
+  const around = MOVEMENT_DIRECTIONS.map((step) => ({ x: patch.x + step.x, y: patch.y + step.y }))
+    .filter((spot) => typeof isWalkable === "function" && isWalkable(spot.x, spot.y));
+  if (!around.length || around.filter((spot) => beds.has(tileIndex(spot.x, spot.y))).length < Math.ceil(around.length / 2)) return;
+  if (state.run.hazards.some((hazard) => hazard.kind === "fungal-spore" && hazard.x === patch.x && hazard.y === patch.y)) return;
+  const floor = state.run.dungeonFloor || 1;
+  state.run.hazards.push({
+    kind: "fungal-spore", name: "Fungal spore cloud", dc: 11 + Math.floor(floor / 2),
+    damage: floor >= 9 ? "2d6" : "1d6", damagePenalty: 2, ability: "Constitution",
+    x: patch.x, y: patch.y, roomIndex: patch.room, revealed: true, triggered: false
+  });
+  patch.bloomedThisStage = true;
+  ecoEvent(patch.room, "A ring of glowcaps blooms at once, filling the chamber with spores.", "bloom");
+}
 function ecoAddFeature(kind, spot, roomIndex, extra = {}) {
   const eco = ecoState();
   const resource = ECO.resources[kind] || {};
@@ -197,6 +240,8 @@ function initializeEcology() {
     ticks: 0, events: [], ground: typeof preset?.ground === "string" ? preset.ground : null
   };
   const eco = state.run.ecology;
+  eco.floorFlux = ECO_MOUTH_FLUX * ecoFloorShare(floor);
+  eco.energy = ecoPoolCap(eco) * 0.5;
   if (state.run.rooms.some((room) => room.habitat === undefined)) assignHabitats(state.run.rooms, floor);
   if (!eco.ground && typeof dressFloorGround === "function") {
     // An older floor: lay the ground now, but no deep water (things already stand there).
@@ -232,6 +277,16 @@ function initializeEcology() {
       }
     }
   });
+  // Everything grows too fast down here: the richer the floor, the more beds its gardens hold.
+  const gardens = state.run.rooms.map((room, index) => ({ room, index }))
+    .filter(({ room }) => ecoHabitat(room)?.resources?.fungus);
+  for (let n = Math.round(ecoFloorShare(floor) * 6); n > 0 && gardens.length; n -= 1) {
+    const { room, index } = gardens[randomInt(gardens.length) - 1];
+    const spot = ecoFreeTile(room, taken);
+    if (!spot) continue;
+    taken.add(tileIndex(spot.x, spot.y));
+    ecoAddFeature("fungus", spot, index);
+  }
   // Older saves: the little grasshoppers become a swarm on the nearest food.
   const loose = state.run.enemies.filter((enemy) => enemy.templateId === "chapolin");
   if (loose.length) {
@@ -244,6 +299,31 @@ function initializeEcology() {
   }
   for (const creature of [...state.run.enemies, ...(state.run.lurkers || [])]) ecoCreature(creature);
   ecoSetScenes();
+  ecoSeedBottomMouth();
+  ecoSeedAndEquilibrate();
+}
+
+// The mouth on floor 13 is where the tomb's energy comes up. The floors above get their
+// share of it by distance (ecoFloorShare); the feature marks the place on the bottom floor.
+function ecoSeedBottomMouth() {
+  if ((state.run.dungeonFloor || 1) !== DUNGEON_FLOOR_COUNT || state.run.ecology.features.some((feature) => feature.emitsEnergy)) return;
+  const rooms = state.run.rooms.map((room, index) => ({ room, index })).filter(({ room }) => room.type === "boss" || room.mainTreasure);
+  const chosen = rooms[randomInt(rooms.length) - 1];
+  if (!chosen) return;
+  const spot = ecoFreeTile(chosen.room, ecoOccupiedTiles());
+  if (!spot) return;
+  ecoAddFeature("mouth", spot, chosen.index, { emitsEnergy: true, flux: ECO_MOUTH_FLUX, hunger: 0 });
+}
+
+// A new floor starts as a plausible world, not a fresh one: it is filled from the plants up
+// by the energy it can carry (systems/energy.js), then lived in for a few hundred hours so
+// the herds, hunters, and gardens have already found each other.
+function ecoSeedAndEquilibrate() {
+  const eco = ecoState();
+  if (!eco || eco.equilibrated) return;
+  ecoPopulateFloor();
+  ecologySettle((120 + randomInt(181)) * ECO_CENSUS_EVERY);
+  eco.equilibrated = true;
 }
 
 function ecoNestOwner(roomIndex, habitat) {
@@ -363,6 +443,10 @@ function ecoHungerState(creature) {
 }
 
 // True when a creature isn't interested in you right now (it may still fight back).
+function ecoIsCrowded(creature) {
+  return Boolean(creature?.eco?.crowded);
+}
+
 function ecologyIgnoresPlayer(creature, distance = distanceInSquares(creature, state.run.player)) {
   if (creature?.friendly) return true;
   if (typeof isBeast === "function" && isBeast(creature) && typeof activeBuff === "function" && activeBuff("xochipilli-friendship")) return true;
@@ -370,6 +454,8 @@ function ecologyIgnoresPlayer(creature, distance = distanceInSquares(creature, s
   const species = ecoSpecies(creature);
   if (!species || !creature.eco || creature.provoked || creature.guardian) return false;
   if (ecoDefendsNest(creature)) return false;
+  // Grazers that have outgrown their floor's food stop shying from you.
+  if (ecoIsCrowded(creature) && ecoLayer(species) === "herb") return false;
   if (species.temperament === "wary") return true;
   // A chaneque's revenge is fright, not a fight; a robbed alux throws stones.
   if (species.temperament === "neutral") return species.offended === "stones" ? !creature.eco.offended : true;
@@ -395,7 +481,7 @@ function ecologyNoticeModifier(creature) {
 }
 
 function ecologyAttackModifier(creature) {
-  return ecoHungerState(creature) === "starving" ? -2 : 0;
+  return (ecoHungerState(creature) === "starving" ? -2 : 0) + (ecoIsCrowded(creature) ? 2 : 0);
 }
 
 function ecologyAcModifier(creature) {
@@ -403,7 +489,7 @@ function ecologyAcModifier(creature) {
 }
 
 function ecologyDamageBonus(creature) {
-  return ecoDefendsNest(creature) ? 2 : 0;
+  return (ecoDefendsNest(creature) ? 2 : 0) + (ecoIsCrowded(creature) ? 1 : 0);
 }
 
 function ecoDefendsNest(creature) {
@@ -475,8 +561,10 @@ function ecoCanHunt(hunter, prey, species) {
   if (hunter.templateId === "cenote-stalker" && !ecoAtWater(prey)) return false;
   // Insect-eaters take any insect; otherwise hunters take smaller prey (or an equal, if starving).
   if (preySpecies.is.includes("insects") && species.eats.includes("insects")) return true;
-  const starving = ecoHungerState(hunter) === "starving";
-  return preySpecies.size < species.size || (starving && preySpecies.size <= species.size);
+  const hunger = ecoHungerState(hunter);
+  if (preySpecies.size < species.size) return true;
+  if (species.role === "predator" && hunger === "hungry" && preySpecies.size <= species.size) return true;
+  return hunger === "starving" && preySpecies.size <= species.size + 1;
 }
 
 function ecoAtWater(spot) {
@@ -645,14 +733,16 @@ function ecoEatFeature(creature, species, feature) {
     ecoLog(creature, `${creature.name} snaps up ${feature.species === "chapolin" ? "grasshoppers" : colony.name.toLowerCase()} from the swarm.`);
     return;
   }
-  feature.amount -= 1;
+  const bite = ["fungus", "plants"].includes(feature.kind) ? Math.max(1, species.bite || 1) : 1;
+  const taken = Math.min(bite, Math.max(1, feature.amount));
+  feature.amount -= taken;
   if (feature.kind === "offering") {
     ecoFeed(creature, 50, 2);
     ecoWitness(creature, creature.templateId, "eats:tonalli");
     ecoLog(creature, `${creature.name} lingers over the offering bowl.`);
     return;
   }
-  ecoFeed(creature, portion, 2);
+  ecoFeed(creature, portion * Math.min(1, taken / bite), 2);
   ecoWitness(creature, creature.templateId, `eats:${resource.food}`);
   ecoLog(creature, feature.kind === "pool" ? `${creature.name} snaps a fish out of the pool.`
     : `${creature.name} feeds at the ${resource.name.toLowerCase()}.`);
@@ -903,7 +993,7 @@ function ecoLivingCreatures() {
 
 // Rooms beside a roost, farmed by ants, or full of black beetle earth grow faster.
 function ecoGrowthRate(feature, context) {
-  let rate = 1;
+  let rate = ["fungus", "plants"].includes(feature.kind) ? ecoProductivity() : 1;
   if (feature.kind === "fungus" && context.fertileRooms.has(feature.room)) rate *= 1.6;
   if (feature.kind === "fungus" && context.farmedRooms.has(feature.room)) rate *= 1.5;
   if (context.rich[feature.room]) rate *= 1 + Math.min(0.8, context.rich[feature.room] * 0.15);
@@ -924,6 +1014,11 @@ function ecoGrowthContext() {
 
 function ecologyWorldTick() {
   const eco = ecoState();
+  if (state.run.wisdomPenalty) {
+    state.run.wisdomPenalty.ecologyTicks -= 1;
+    if (state.run.wisdomPenalty.ecologyTicks <= 0) delete state.run.wisdomPenalty;
+  }
+  eco.energy = Math.min(ecoPoolCap(eco), (eco.energy || 0) + ecoPoolInflow(eco));
   eco.ticks = (eco.ticks || 0) + 1;
   for (const creature of ecoLivingCreatures()) {
     const species = ecoSpecies(creature);
@@ -944,10 +1039,12 @@ function ecologyWorldTick() {
   for (const feature of eco.features) {
     const resource = ECO.resources[feature.kind] || {};
     if (resource.max && feature.amount < resource.max && !feature.abandoned) {
+      if ((eco.energy || 0) < ECO_PLANT_ENERGY) continue;
       feature.timer += ecoGrowthRate(feature, context);
       if (feature.timer >= resource.regrowTicks) {
         feature.timer = 0;
         feature.amount += 1;
+        eco.energy = Math.max(0, eco.energy - ECO_PLANT_ENERGY);
       }
     }
     if (feature.kind === "carcass") ecoAgeCarcass(feature, 1);
@@ -996,6 +1093,7 @@ function ecoTidyBones(eco, ticks) {
     if (beetles && pile.age > 96 && !ecoHabitat(state.run.rooms[pile.room])?.resources?.bones) {
       eco.features = eco.features.filter((feature) => feature !== pile);
       eco.rich[pile.room] = (eco.rich[pile.room] || 0) + 1;
+      eco.energy = (eco.energy || 0) + 2;
       ecoEvent(pile.room, "Beetles turned the old bones here into black earth.", "bones");
     }
   }
@@ -1012,6 +1110,7 @@ function ecoMouthsFeed(eco) {
     eco.features = eco.features.filter((feature) => feature !== meal);
     mouth.hunger = Math.max(0, mouth.hunger - (meal.kind === "carcass" ? 45 : 20));
     eco.rich[mouth.room] = (eco.rich[mouth.room] || 0) + 2;
+    eco.energy = (eco.energy || 0) + 12;
     ecoLog(mouth, "The mouth in the rock opens and takes the dead back into the earth.");
     ecoEvent(mouth.room, "The earth's mouth took back the dead.", "mouth");
   }
@@ -1107,11 +1206,32 @@ function ecoCensus(eco) {
     if (creature.eco?.movedRecently > 0) creature.eco.movedRecently -= 1;
   }
   ecoLurkersFeed();
+  ecoCrowding(eco);
   ecoBreed(eco, cap);
+  ecoMigrate(eco);
   ecoNestsTick(eco);
   ecoGardensTick(eco);
   ecoOutbreak(eco);
   ecoReform(eco);
+}
+
+// When the grazers outnumber what the floor can feed (the hunters were culled, or the
+// plants outgrew the herds), they get bold: they stop shying from you, hit harder, and
+// strip the gardens. They calm down once the herd is back under the floor's fill.
+function ecoCrowding(eco) {
+  const pressure = ecoHerbPressure();
+  eco.pressure = pressure;
+  const crowded = eco.crowded ? pressure > ECO_CROWDED_CLEAR : pressure > ECO_CROWDED;
+  if (crowded !== Boolean(eco.crowded)) {
+    eco.crowded = crowded;
+    const herd = ecoLivingCreatures().find((creature) => ecoLayer(ecoSpecies(creature)) === "herb");
+    if (crowded && herd) ecoEvent(herd.eco?.home ?? 0, "The grazers have grown too many for the food here and are turning bold.", "crowded");
+  }
+  for (const creature of ecoLivingCreatures()) {
+    if (!creature.eco) continue;
+    const grazer = ecoLayer(ecoSpecies(creature)) === "herb" && ecoSpecies(creature)?.role !== "omnivore";
+    creature.eco.crowded = Boolean(eco.crowded && grazer);
+  }
 }
 
 // Hidden hunters (the ahuizotl under the water, the deer serpent coiled by a trail) eat
@@ -1163,34 +1283,17 @@ function ecoBreed(eco, cap) {
     eco.breed[id] = 0;
     const count = ecoLivingCount(id);
     if (count >= species.breeds.cap || ecoLivingCount() >= cap) continue;
+    // The floor has to be able to feed another one: a layer can't grow past what the layer
+    // below it carries.
+    const layer = ecoLayer(species);
+    if (layer) {
+      const use = ecoLayerUse();
+      const room = ecoLayerBudgets(state.run.dungeonFloor || 1, use)[layer] - use[layer];
+      if (room < ecoUpkeep(species)) continue;
+    }
     const parents = state.run.enemies.filter((enemy) => enemy.alive && enemy.templateId === id && !enemy.alerted &&
       ecoCreature(enemy).sat >= 60);
     if (!parents.length) {
-      // Wiped out here? A few come back in from the cracks and the floors around, to wherever
-      // this floor has the habitat they live in, so the food chain doesn't break for good.
-      if (count > 0 || !greatTempleEncounterIds().includes(id)) continue;
-      eco.absent ||= {};
-      eco.absent[id] = (eco.absent[id] || 0) + 1;
-      if (eco.absent[id] < 2) continue;
-      eco.absent[id] = 0;
-      const homes = state.run.rooms.map((room, index) => ({ room, index }))
-        .filter(({ room }) => ecoResidents(ecoHabitat(room))[id]);
-      if (!homes.length) continue;
-      const { room, index } = homes[randomInt(homes.length) - 1];
-      const taken = ecoOccupiedTiles();
-      const arrivals = species.size >= 3 ? 1 : 2;
-      let arrived = 0;
-      for (let n = 0; n < arrivals; n += 1) {
-        const spot = (species.aquatic && ecoDeepTile(index, taken)) || ecoFreeTile(room, taken);
-        if (!spot || ecoSeen(spot)) break;
-        taken.add(tileIndex(spot.x, spot.y));
-        const arrival = ecoNewCreature(id, spot, index);
-        if (arrival) {
-          state.run.enemies.push(arrival);
-          arrived += 1;
-        }
-      }
-      if (arrived) ecoEvent(index, `New ${ecoName(id)} moved in.`, "arrived");
       continue;
     }
     // Births only when there's food to spare for another mouth.
@@ -1254,49 +1357,44 @@ function ecoGardensTick(eco) {
       }
     } else {
       patch.fullTicks = 0;
+      patch.bloomedThisStage = false;
     }
     if (patch.amount <= 0) {
       patch.bareTicks = (patch.bareTicks || 0) + ECO_CENSUS_EVERY;
       const others = eco.features.filter((feature) => feature.kind === "fungus" && feature.room === patch.room).length;
-      if (patch.bareTicks >= 72 && others > 1) {
+      if (patch.bareTicks >= (window.CryptsEcoTuning?.bareTicks ?? 216) && others > 1) {
         eco.features = eco.features.filter((feature) => feature !== patch);
         ecoEvent(patch.room, "A glowcap bed was grazed down to bare rot.", "grazed");
       }
     } else {
       patch.bareTicks = 0;
     }
+    ecoFungalBloom(eco, patch);
   }
 }
 
-// Locusts: alone, the big grasshoppers are shy grazers. When a big chapolin swarm outgrows
-// its garden, the big ones crowd together and go: a band that strips the next garden bare.
+// A crowded herd that has eaten its garden bare bands up and goes looking for another.
+// Alone the big grazers are shy; in a band they strip whatever they reach and fall on food
+// left on the floor. (Crowding itself is ecoCrowding; this is what happens when the food runs out too.)
 function ecoOutbreak(eco) {
   const floor = state.run.dungeonFloor || 1;
-  if (floor < 2 || (eco.ticks - (eco.lastOutbreak ?? -9999)) < 432) return;
-  const swarm = eco.features.find((feature) => feature.kind === "colony" && feature.species === "chapolin" &&
-    feature.count >= ECO.colonies.chapolin.max * 0.8 && (feature.capacity || 0) < feature.count * 0.7);
-  if (!swarm || ecoLivingCount("maztican-cave-locust") >= 4 || ecoLivingCount() >= ecoFloorCap() - 2) return;
-  if (Math.random() > 0.35 || !greatTempleEncounterIds().includes("maztican-cave-locust")) return;
-  eco.lastOutbreak = eco.ticks;
-  const taken = ecoOccupiedTiles();
+  if (floor < 2 || !eco.crowded || eco.ticks - (eco.lastOutbreak ?? -9999) < 432) return;
+  const grazers = ecoLivingCreatures().filter((creature) => ECO.species[creature.templateId]?.role === "grazer" && !creature.band);
+  if (grazers.length < 3) return;
+  const food = eco.features.filter((feature) => ["fungus", "plants"].includes(feature.kind) && feature.amount > 1);
+  if (food.length > Math.ceil(grazers.length / 2)) return;
+  const leader = grazers[randomInt(grazers.length) - 1];
   const band = `band-${eco.nextId++}`;
   let made = 0;
-  for (let n = 0; n < 3; n += 1) {
-    const spot = freeTileNear(swarm, taken, 2);
-    if (!spot) break;
-    taken.add(tileIndex(spot.x, spot.y));
-    const locust = ecoNewCreature("maztican-cave-locust", spot, swarm.room);
-    if (!locust) break;
-    locust.band = band;
-    locust.eco.sat = 30;
-    state.run.enemies.push(locust);
+  for (const grazer of grazers.filter((creature) => creature.templateId === leader.templateId).slice(0, 6)) {
+    grazer.band = band;
+    grazer.eco.sat = Math.min(grazer.eco.sat, 45);
     made += 1;
   }
-  swarm.count -= made * 3;
-  if (made) {
-    ecoLog(swarm, "The big grasshoppers in the swarm have turned dark and are crowding together. They're about to move.");
-    ecoEvent(swarm.room, "The grasshoppers outgrew their garden, and a band of big ones set off.", "outbreak");
-  }
+  if (!made) return;
+  eco.lastOutbreak = eco.ticks;
+  ecoLog(leader, `The ${leader.name}s have eaten this garden bare and are moving on together.`);
+  ecoEvent(ecoCreature(leader).home, `A band of ${leader.name}s formed to look for food.`, "outbreak");
 }
 
 function ecoReform(eco) {
@@ -1328,17 +1426,21 @@ function ecologyCreaturesAct() {
 // Long absences are settled an hour at a time, without anyone moving.
 function ecologySettle(ticks) {
   const eco = ecoState();
-  const hours = Math.min(120, Math.floor(ticks / ECO_CENSUS_EVERY));
+  const hours = Math.floor(ticks / ECO_CENSUS_EVERY);
   for (let hour = 0; hour < hours; hour += 1) {
     eco.ticks = (eco.ticks || 0) + ECO_CENSUS_EVERY;
+    eco.energy = Math.min(ecoPoolCap(eco), (eco.energy || 0) + ecoPoolInflow(eco) * ECO_CENSUS_EVERY);
     const context = ecoGrowthContext();
     for (const feature of [...eco.features]) {
       const resource = ECO.resources[feature.kind] || {};
       if (resource.max && !feature.abandoned) {
+        if ((eco.energy || 0) < ECO_PLANT_ENERGY) continue;
         feature.timer += ECO_CENSUS_EVERY * ecoGrowthRate(feature, context);
         while (feature.timer >= resource.regrowTicks && feature.amount < resource.max) {
+          if ((eco.energy || 0) < ECO_PLANT_ENERGY) break;
           feature.timer -= resource.regrowTicks;
           feature.amount += 1;
+          eco.energy = Math.max(0, eco.energy - ECO_PLANT_ENERGY);
         }
         if (feature.amount >= resource.max) feature.timer = 0;
       }
@@ -1354,24 +1456,35 @@ function ecologySettle(ticks) {
         data.sat = Math.max(30, data.sat - species.appetite * ECO_CENSUS_EVERY);
         continue;
       }
-      const meal = eco.features.find((feature) => ecoFeatureFeeds(feature, species) &&
-        (feature.room === data.home || distanceInSquares(feature, creature) <= ECO_SEARCH_RADIUS));
-      const prey = !meal && species.role === "predator" ? state.run.enemies.find((other) => other.alive && other !== creature &&
+      // A creature eats when it has got hungry, and takes what its upkeep needs: a meal is worth
+      // about 30 satiety and a creature burns appetite per tick, so it needs a meal every
+      // 30/appetite ticks, and a bigger creature takes a bigger bite of the food each time.
+      const burned = species.appetite * ECO_CENSUS_EVERY * 0.6;
+      const needsMeal = data.sat - burned < ECO_HUNGRY + 10;
+      const meal = needsMeal ? eco.features.find((feature) => ecoFeatureFeeds(feature, species) &&
+        (feature.room === data.home || distanceInSquares(feature, creature) <= ECO_SEARCH_RADIUS)) : null;
+      const prey = needsMeal && !meal && (species.role === "predator" || species.role === "scavenger") ? state.run.enemies.find((other) => other.alive && other !== creature &&
         ecoCanHunt(creature, other, species) && distanceInSquares(other, creature) <= ECO_SEARCH_RADIUS) : null;
       if (meal && Math.random() < 0.7) {
-        if (meal.kind === "colony") meal.count = Math.max(0, meal.count - 2);
+        const bite = Math.max(1, species.bite || 1);
+        if (meal.kind === "colony") meal.count = Math.max(0, meal.count - 2 * bite);
         else if (meal.kind === "carcass") meal.meat = Math.max(0, (meal.meat || 0) - 1);
-        else meal.amount = Math.max(0, (meal.amount || 0) - 1);
-        data.sat = Math.min(85, data.sat + 30);
+        let share = 1;
+        if (meal.kind !== "colony" && meal.kind !== "carcass") {
+          const taken = Math.min(bite, meal.amount || 0);
+          meal.amount = Math.max(0, (meal.amount || 0) - taken);
+          share = taken / bite;
+        }
+        data.sat = Math.min(85, data.sat + 30 * share);
         data.hungerTicks = 0;
-      } else if (prey && Math.random() < 0.08) {
+      } else if (prey && Math.random() < (species.role === "predator" ? (window.CryptsEcoTuning?.huntChance ?? 0.22) : 0.03)) {
         // A hunt off-screen: sometimes it works.
         ecologyCreatureDied(prey, { eaten: true, killer: creature });
         ecoEvent(roomIndexAt(prey.x, prey.y), `A ${creature.name} killed a ${prey.name} here.`, "kill");
         data.sat = 90;
         data.hungerTicks = 0;
       } else {
-        data.sat = Math.max(0, data.sat - species.appetite * ECO_CENSUS_EVERY * 0.6);
+        data.sat = Math.max(0, data.sat - burned);
         data.hungerTicks = data.sat <= 0 ? (data.hungerTicks || 0) + ECO_CENSUS_EVERY : 0;
       }
       data.target = null;
@@ -1416,6 +1529,19 @@ function ecologyAdvance() {
   }
   if (eco.returnedAt !== undefined) ecoReportChanges(eco);
   ecologyObserveSurroundings();
+}
+
+// A delver who falls stays where they fell, and feeds the floor like anything else that dies:
+// meat for the scavengers and, while fresh, tonalli for the restless dead.
+function ecologyPlayerFell() {
+  const eco = ecoState();
+  const spot = state.run.player;
+  if (!eco || !spot || !Number.isFinite(spot.x)) return;
+  const room = roomIndexAt(spot.x, spot.y);
+  ecoAddFeature("carcass", { x: spot.x, y: spot.y }, room, {
+    species: "", meat: 4, tonalli: 4, age: 0, fresh: true, maxMeat: 4, edible: false, delver: true
+  });
+  ecoEvent(room, "A delver fell here.", "kill");
 }
 
 // ---------- Coming back to a floor ----------
@@ -1537,7 +1663,7 @@ function ecologyInteractions() {
   const house = ecoFeatureNear((feature) => feature.kind === "alux-house" && !feature.appeased);
   if (house && ecoOfferingItem(ECO.guardianOfferings.alux)) add("Leave food at the alux house", () => appeaseAlux(house), "explore");
   const carcass = ecoFeatureNear((feature) => feature.kind === "carcass" && (feature.edible || feature.drowned) && feature.meat > 0 && feature.fresh);
-  if (carcass && state.run.gourmetGuideOwned) add(`Butcher the ${ecoName(carcass.species)}`, () => butcherCarcass(carcass), "supplies");
+  if (carcass?.species && state.run.gourmetGuideOwned) add(`Butcher the ${ecoName(carcass.species)}`, () => butcherCarcass(carcass), "supplies");
   const mouth = ecoFeatureNear((feature) => feature.kind === "mouth" && (feature.hunger || 0) >= 20);
   if (mouth && ecoMeatItem()) add("Feed the earth's mouth", () => feedMouth(mouth), "explore");
   const nest = ecoFeatureNear((feature) => feature.kind === "nest" && feature.amount > 0);

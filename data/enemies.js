@@ -6,9 +6,25 @@ window.CryptsEnemies = {
     "jungle-jaguar", "feathered-serpent", "tomb-bat", "maztican-cave-locust",
     "mictlaneca", "quinametli", "caxtiltecatl", "axolocatl", "tzitzimitl", "cihuateotl",
     "xolo-hound", "colotl", "tlacatecolotl", "huay-chivo", "itzpapalotl", "cipactli", "chapolin",
-    "mazacoatl", "maquizcoatl", "chaneque", "alux", "duende-friend"
+    "mazacoatl", "maquizcoatl", "chaneque", "alux", "duende-friend",
+    "raptor1", "raptor2", "raptor3", "raptor4", "dungeonrabbit", "dungeonrabbit2",
+    "mapachin", "mapachin2", "mapachin3"
   ],
+  // A sprite id that reuses another sprite's art with a CSS filter, for variants with no art of their own.
+  spriteAliases: {
+    mapachin2: { base: "mapachin", filter: "hue-rotate(-14deg) saturate(0.85) brightness(0.9)" },
+    mapachin3: { base: "mapachin", filter: "grayscale(0.75) brightness(0.78) contrast(1.15)" }
+  },
   starter: [
+    { id: "cave-turkey", name: "Cave Turkey", description: "A blue-feathered turkey the height of a man's hip. It scratches glowcap beds for roots and snaps up grasshoppers, and it stays with its flock.", sprite: "raptor1", edible: true, hp: 9, ac: 12, attackBonus: 3, damage: "1d4+1", initiativeBonus: 3, xp: 20 },
+    { id: "giant-turkey", name: "Giant Turkey", description: "A green-feathered turkey as tall as a man, with a foot-claw it uses on anything that crowds its flock. The Mexica raised turkeys for meat; these are a larger line of them.", sprite: "raptor2", edible: true, hp: 16, ac: 13, attackBonus: 4, damage: "1d6+2", initiativeBonus: 3, xp: 45 },
+    { id: "turkey-raptor", name: "Turkey-Raptor", description: "A red-feathered runner with a long tail, a turkey's head, and clawed feet. It grazes, and it kicks hard enough to kill a jaguar cub.", sprite: "raptor3", edible: true, hp: 26, ac: 14, attackBonus: 5, damage: "1d8+3", initiativeBonus: 4, xp: 100 },
+    { id: "black-turkey-raptor", name: "Black Turkey-Raptor", description: "The largest bird of the deep floors, black-feathered with a blue neck. It grazes alone and holds a range of several chambers.", sprite: "raptor4", edible: true, hp: 38, ac: 15, attackBonus: 6, damage: "1d10+3", initiativeBonus: 4, xp: 200 },
+    { id: "dungeonrabbit", name: "Tomb Rabbit", description: "A pale rabbit the size of a calf, grazing the deep gardens. It bolts when it can and kicks with both hind feet when it is cornered.", sprite: "dungeonrabbit", edible: true, hp: 44, ac: 14, attackBonus: 7, damage: "2d6+3", initiativeBonus: 4, xp: 300 },
+    { id: "dungeonrabbit2", name: "Giant Tomb Rabbit", description: "A rabbit as large as a jaguar, found only where the mouth's warmth feeds the gardens. It strips a glowcap bed in a night.", sprite: "dungeonrabbit2", edible: true, hp: 60, ac: 15, attackBonus: 8, damage: "2d8+4", initiativeBonus: 4, xp: 450 },
+    { id: "mapachin", name: "Mapachin", description: "A raccoon of the tomb with clever hands. It follows hunters, waits over carcasses, and takes anything left unattended.", sprite: "mapachin", edible: true, hp: 8, ac: 13, attackBonus: 4, damage: "1d4+2", initiativeBonus: 3, xp: 35 },
+    { id: "hueymapachin", name: "Hueymapachin", description: "A mapachin grown to the size of a hound. Its hands open latches and pry at caches, and it takes sleeping or wounded prey as well as the dead.", sprite: "mapachin2", edible: true, hp: 18, ac: 14, attackBonus: 5, damage: "1d6+3", initiativeBonus: 3, xp: 80 },
+    { id: "elder-mapachin", name: "Elder Mapachin", description: "An old gray-masked raccoon the size of a bear cub. It drives smaller scavengers off a carcass and takes a hunter's kill from it.", sprite: "mapachin3", edible: true, hp: 32, ac: 15, attackBonus: 6, damage: "1d8+3", initiativeBonus: 3, xp: 160 },
     { id: "maztican-cave-locust", name: "Hueychapolin", description: "A grasshopper the size of a dog, grown fat on the tomb's mushrooms. Roasted, it tastes like chapulines. Everything down here grows too fast.", sprite: "maztican-cave-locust", edible: true, hp: 4, ac: 13, attackBonus: 3, damage: "1d4", initiativeBonus: 2, xp: 10 },
     { id: "mictlaneca", name: "Mictecatl", description: "A long-dead soldier of the old fortresses, still at its post with its spear leveled at the stair below. It faces down, and is slow to notice anyone coming from above.", sprite: "mictlaneca", hp: 8, ac: 8, attackBonus: 3, damage: "1d6+1", initiativeBonus: 0, xp: 25 },
     { id: "tomb-bat", name: "Tomb Bat", description: "A pale bat that roosts in the high chambers and bites anything that disturbs it.", sprite: "tomb-bat", hp: 5, ac: 13, attackBonus: 4, damage: "1d4+2", initiativeBonus: 3, xp: 15 },

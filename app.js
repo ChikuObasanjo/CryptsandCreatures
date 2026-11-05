@@ -934,13 +934,18 @@ function recoverInChiltomatlan() {
   state.run.location = "city";
   state.run.townPosition = { ...TOWN_SPAWN };
   state.run.hasEnteredDungeon = false;
-  state.run.dungeonFloor = 1;
-  state.run.dungeonFloors = {};
   state.run.dodging = false;
   state.dashReady = false;
   state.disengageReady = false;
   state.combatEffects = [];
-  initializeDungeon();
+  // The tomb is not made again. Your body stays where you fell and feeds what lives there, the
+  // passages are remade, and you wake at the surface; the ecology keeps its own time.
+  if (typeof ecologyPlayerFell === "function") ecologyPlayerFell();
+  renewTombPassages();
+  travelToFloor(1, "surface-entrance");
+  state.run.location = "city";
+  state.run.lost = false;
+  state.run.won = false;
   const recoveryText = canHeal()
     ? "You wake in Chiltomatlan with your wounds tended. The tomb's passages have shifted."
     : "The Chiltomatlan crew brings you back, but you remain unconscious. Eat until your food meter is at least 75% to recover hit points.";
@@ -2295,6 +2300,11 @@ function triggerHazard(x, y) {
   state.run.hp = Math.max(0, state.run.hp - damage);
   showCombatFeedback("player-hit", `−${damage} HP`, { actor: "player", x, y });
   addLog(`${hazard.name} catches you for ${damage} damage (${hazard.ability} save ${check} vs. ${hazard.dc}).`);
+  if (hazard.kind === "fungal-spore") {
+    const wisdomPenalty = Math.min(4, Math.max(1, Math.floor(hazard.damagePenalty || 2)));
+    state.run.wisdomPenalty = { amount: wisdomPenalty, ecologyTicks: 120 };
+    addLog(`Fungal spores cloud your mind for a while (Wisdom −${wisdomPenalty}).`);
+  }
   checkDefeat();
 }
 
@@ -3082,7 +3092,11 @@ function describeRoomType(type) {
 }
 
 function createSprite(name, className) {
-  return createResourceSprite("enemies", `${name}.png`, className);
+  // Some variants reuse another creature's art with a filter (see spriteAliases in data/enemies.js).
+  const alias = window.CryptsEnemies.spriteAliases?.[name];
+  const image = createResourceSprite("enemies", `${alias ? alias.base : name}.png`, className);
+  if (alias?.filter) image.style.filter = alias.filter;
+  return image;
 }
 
 function createResourceSprite(folder, filename, className) {

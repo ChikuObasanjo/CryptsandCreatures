@@ -17,6 +17,42 @@
 //   caster      keeps its distance and attacks from range
 //   charger     covers two squares a turn
 const CREATURE_HABITS = {
+  "cave-turkey": {
+    habit: "grazer",
+    note: "Habit: keeps to its flock and slips away from you. It fights only when cornered, and its flock-mates join in."
+  },
+  "giant-turkey": {
+    habit: "territorial",
+    note: "Habit: defends its own chamber against anything that crowds the flock, but lets you go once you leave it."
+  },
+  "turkey-raptor": {
+    habit: "charger",
+    note: "Habit: grazes until it is crowded or provoked, then charges, covering two squares a turn."
+  },
+  "black-turkey-raptor": {
+    habit: "territorial",
+    note: "Habit: holds a range of several chambers alone. It leaves you be until you enter its own chamber."
+  },
+  dungeonrabbit: {
+    habit: "charger",
+    note: "Habit: bolts when it can. Cornered, or when its warren is overcrowded, it charges two squares a turn."
+  },
+  dungeonrabbit2: {
+    habit: "charger",
+    note: "Habit: grazes openly and ignores you until it is cornered or overcrowded, then charges two squares a turn."
+  },
+  mapachin: {
+    habit: "skirmisher",
+    note: "Habit: waits over carcasses and takes food left unattended. It bites, then scampers a step away."
+  },
+  hueymapachin: {
+    habit: "skirmisher",
+    note: "Habit: pries at caches and follows hunters to their kills. It bites, then scampers a step away."
+  },
+  "elder-mapachin": {
+    habit: "territorial",
+    note: "Habit: defends a carcass or its den against anything that comes near, but lets you go once you leave."
+  },
   "maztican-cave-locust": {
     habit: "swarm",
     note: "Habit: alone, a shy grazer that hops away from you. When a big chapolin swarm runs out of food, the big ones band together and move on: a band hops erratically, strips gardens, and falls on food left on the floor."
@@ -89,7 +125,9 @@ const CREATURE_HABITS = {
 
 const BEAST_KINDS = new Set([
   "maztican-cave-locust", "tomb-bat", "jungle-jaguar", "cenote-stalker", "xolo-hound",
-  "colotl", "axolocatl", "cipactli", "feathered-serpent", "camazotz"
+  "colotl", "axolocatl", "cipactli", "feathered-serpent", "camazotz",
+  "cave-turkey", "giant-turkey", "turkey-raptor", "black-turkey-raptor", "dungeonrabbit", "dungeonrabbit2",
+  "mapachin", "hueymapachin", "elder-mapachin"
 ]);
 const DEAD_KINDS = new Set([
   "mictlaneca", "yohualtepoztli", "cihuateotl", "tzitzimitl", "itzpapalotl", "camazotz", "huay-chivo", "tlacatecolotl"

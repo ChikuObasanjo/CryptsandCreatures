@@ -707,7 +707,8 @@ function createGreatTempleEnemies(rooms, player) {
   const usedEncounterIds = new Set();
   const floor = state.run.dungeonFloor || 1;
   const cap = typeof ecoFloorCap === "function" ? ecoFloorCap(floor) : 18;
-  const allowed = greatTempleEncounterIds(floor);
+  const isFed = (id) => typeof ecoLayer === "function" && ecoLayer(window.CryptsEcology?.species?.[id]);
+  const allowed = greatTempleEncounterIds(floor).filter((id) => !isFed(id));
   const add = (template, position, roomIndex, options = {}) => {
     occupied.add(tileIndex(position.x, position.y));
     const enemy = createEnemy(template, position, roomIndex, enemies.length);
@@ -805,6 +806,12 @@ function greatTempleEncounterIds(floor = state.run.dungeonFloor || 1) {
   if (floor >= 4) ids.push("mazacoatl");
   if (floor >= 5) ids.push("alux");
   if (floor >= 2 && !ids.includes("jungle-jaguar")) ids.push("jungle-jaguar");
+  // Creatures the tomb's food feeds are decided by the floor's energy, not by this list: a
+  // floor holds whatever it can feed a breeding pair of (systems/energy.js).
+  if (typeof ecoFeedableSpecies === "function") {
+    const fed = (id) => window.CryptsEcology?.species?.[id] && typeof ecoLayer === "function" && ecoLayer(window.CryptsEcology.species[id]);
+    return [...ids.filter((id) => !fed(id)), ...ecoFeedableSpecies(floor)];
+  }
   return ids;
 }
 
@@ -833,6 +840,8 @@ function rollGreatTempleEncounter(usedIds = new Set()) {
 }
 
 function scaleGreatTempleEnemy(enemy) {
+  // Species with a rank (the grazer and scavenger chains) already get stronger by tier.
+  if (window.CryptsEcology?.species?.[enemy.templateId]?.rank) return;
   const floor = Math.max(1, state.run.dungeonFloor || 1);
   const hpScale = 1 + (floor - 1) * 0.09;
   enemy.hp = Math.ceil(enemy.hp * hpScale);
@@ -1081,6 +1090,26 @@ function revealAroundPlayer() {
 }
 
 function initializeDungeon() {
+  const activeFloor = Number.isInteger(state.run.dungeonFloor)
+    ? state.run.dungeonFloor
+    : 1;
+  state.run.dungeonFloors = {};
+
+  // The tomb is made from the mouth up: floor 13 first, then each floor above it, ending
+  // with the floor the player stands on.
+  for (let floor = DUNGEON_FLOOR_COUNT; floor >= 1; floor -= 1) {
+    if (floor === activeFloor) continue;
+    state.run.dungeonFloor = floor;
+    initializeDungeonFloor();
+    saveDungeonFloorState();
+  }
+
+  state.run.dungeonFloor = activeFloor;
+  initializeDungeonFloor();
+  return state.run.rooms[0];
+}
+
+function initializeDungeonFloor() {
   if (!Number.isInteger(state.run.dungeonFloor)) state.run.dungeonFloor = 1;
   const dungeon = generateDungeon();
   const startRoom = dungeon.rooms[0];
@@ -1184,6 +1213,7 @@ function saveDungeonFloorState() {
   state.run.dungeonFloors ||= {};
   state.run.dungeonFloors[String(floor)] = {
     floor,
+    leftMinute: state.run.gameMinutes || 0,
     dungeonLayoutVersion: state.run.dungeonLayoutVersion || 1,
     mapId: state.run.mapId,
     rooms: copyDungeonValue(state.run.rooms),
@@ -1208,6 +1238,7 @@ function saveDungeonFloorState() {
 }
 
 function restoreDungeonFloorState(snapshot, entryId) {
+  if (typeof driftFloorPassages === "function") driftFloorPassages(snapshot);
   const snapshotSigns = dungeonSignsForSnapshot(snapshot);
   const destinationStair = snapshot.floorStairs?.find((stair) => stair.id === entryId) ||
     snapshotSigns.find((stair) => stair.id === entryId) ||
@@ -1349,18 +1380,254 @@ function newRun(character) {
   render();
 }
 
+// The tomb is made once, on a new game. A delve starts at the floor 1 entrance of the tomb
+// as it now stands: the ecology has kept going, and after a death or a finished run the
+// passages have been remade (renewTombPassages).
 function beginNewDelve() {
   state.dashReady = false;
   state.disengageReady = false;
   state.run.unsecuredLoot = { gold: 0, items: [] };
-  state.run.dungeonFloor = 1;
-  state.run.dungeonFloors = {};
-  const room = initializeDungeon();
+  if (state.run.won) renewTombPassages();
+  const room = travelToFloor(1, "surface-entrance");
   state.run.location = "dungeon";
   state.run.hasEnteredDungeon = true;
   state.run.log.unshift(`You leave Chiltomatlan and enter ${room.name}.`);
   state.run.log = state.run.log.slice(0, 30);
   render();
+}
+
+// Moves the player to a floor of the existing tomb, arriving at the stair `entryId`.
+function travelToFloor(floor, entryId) {
+  if (state.run.dungeonFloor !== floor) {
+    saveDungeonFloorState();
+    const snapshot = state.run.dungeonFloors[String(floor)];
+    if (!snapshot) {
+      // A save from before the whole tomb was made at once: make this floor now.
+      state.run.dungeonFloor = floor;
+      initializeDungeonFloor();
+      if (!state.run.floorStairs.some((stair) => stair.id === entryId)) {
+        state.run.floorStairs.push({ id: entryId, x: state.run.player.x, y: state.run.player.y, type: "lift", role: "entrance", name: "Wardens' lift" });
+      }
+      return state.run.rooms[0];
+    }
+    if (!snapshot.floorStairs?.some((stair) => stair.id === entryId)) {
+      const start = snapshot.rooms[0];
+      snapshot.floorStairs = [...(snapshot.floorStairs || []), {
+        id: entryId, x: start.anchorX, y: start.anchorY, type: "lift", role: "entrance", name: "Wardens' lift"
+      }];
+    }
+    restoreDungeonFloorState(snapshot, entryId);
+    delete state.run.dungeonFloors[String(floor)];
+  } else if (state.run.player) {
+    const stair = state.run.floorStairs?.find((entry) => entry.id === entryId);
+    if (stair) state.run.player = { ...state.run.player, x: stair.x, y: stair.y };
+  }
+  return state.run.rooms[state.run.currentRoom] || state.run.rooms[0];
+}
+
+// ---------- Passages ----------
+
+const PASSAGE_WALKABLE = new Set(["floor", "corridor", "door"]);
+
+// Re-digs every passage between a floor's chambers. The chambers, stairs, and everything in
+// them stay where they are; only the corridors and doors between them are remade, so the
+// tomb is the same place with different ways through it. `data` is anything with the floor's
+// fields (state.run, or a saved floor).
+function regenerateFloorPassages(data) {
+  const size = MAP_TILE_SIZE;
+  const terrain = data.terrain;
+  const rooms = data.rooms;
+  const before = terrain.slice();
+  const roomFloor = new Int16Array(size * size).fill(-1);
+  rooms.forEach((room, index) => {
+    for (let y = room.mapY; y < room.mapY + room.mapH; y += 1) {
+      for (let x = room.mapX; x < room.mapX + room.mapW; x += 1) {
+        if (terrain[y * size + x] === "floor") roomFloor[y * size + x] = index;
+      }
+    }
+  });
+  const index = (x, y) => y * size + x;
+  const orthogonal = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const clear = () => {
+    for (let i = 0; i < terrain.length; i += 1) {
+      if (terrain[i] === "corridor") terrain[i] = "stone";
+      else if (terrain[i] === "door") terrain[i] = "wall";
+    }
+  };
+  const anchorDistance = (a, b) => Math.hypot(rooms[a].anchorX - rooms[b].anchorX, rooms[a].anchorY - rooms[b].anchorY);
+  const oldLinks = rooms.map((room) => [...(room.links || [])]);
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    clear();
+    // A spanning tree over chambers with jittered distances, so the routes differ, plus a few loops.
+    const jitter = rooms.map(() => rooms.map(() => 0.75 + Math.random() * 0.75));
+    const edges = [];
+    const inTree = new Set([0]);
+    while (inTree.size < rooms.length) {
+      let best = null;
+      for (const a of inTree) {
+        for (let b = 0; b < rooms.length; b += 1) {
+          if (inTree.has(b)) continue;
+          const distance = anchorDistance(a, b) * jitter[a][b];
+          if (!best || distance < best.distance) best = { a, b, distance };
+        }
+      }
+      inTree.add(best.b);
+      edges.push([best.a, best.b]);
+    }
+    const linked = (a, b) => edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+    rooms.forEach((room, a) => {
+      if (randomInt(100) > 38) return;
+      const candidates = rooms.map((other, b) => ({ b, distance: anchorDistance(a, b) }))
+        .filter(({ b, distance }) => b !== a && !linked(a, b) && distance < 20)
+        .sort((first, second) => first.distance - second.distance);
+      if (candidates[0]) edges.push([a, candidates[0].b]);
+    });
+
+    const doors = new Set();
+    const wallCrossable = (x, y) => {
+      const floorSides = orthogonal.filter(([dx, dy]) => roomFloor[index(x + dx, y + dy)] >= 0);
+      const openSides = orthogonal.filter(([dx, dy]) => {
+        const type = terrain[index(x + dx, y + dy)];
+        return type === "stone" || type === "corridor";
+      });
+      return floorSides.some(([dx, dy]) => openSides.some(([ox, oy]) => ox === -dx && oy === -dy));
+    };
+    const noise = new Float32Array(size * size).map(() => Math.random() * 1.6);
+    const dig = (fromIndex, toIndex) => {
+      const from = rooms[fromIndex];
+      const to = rooms[toIndex];
+      const startIndex = index(from.anchorX, from.anchorY);
+      const goalIndex = index(to.anchorX, to.anchorY);
+      const cost = new Float32Array(size * size).fill(Infinity);
+      const previous = new Int32Array(size * size).fill(-1);
+      cost[startIndex] = 0;
+      const open = [[0, startIndex]];
+      while (open.length) {
+        let bestIndex = 0;
+        for (let i = 1; i < open.length; i += 1) if (open[i][0] < open[bestIndex][0]) bestIndex = i;
+        const [, current] = open.splice(bestIndex, 1)[0];
+        if (current === goalIndex) break;
+        const cx = current % size;
+        const cy = Math.floor(current / size);
+        const currentWall = terrain[current] === "wall" && !doors.has(current);
+        for (const [dx, dy] of orthogonal) {
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 1 || ny < 1 || nx >= size - 1 || ny >= size - 1) continue;
+          const next = index(nx, ny);
+          const type = terrain[next];
+          let step;
+          if (doors.has(next)) step = 1;
+          else if (type === "wall") {
+            if (currentWall || !wallCrossable(nx, ny)) continue;
+            step = 9 + (orthogonal.some(([ax, ay]) => doors.has(index(nx + ax, ny + ay))) ? 30 : 0);
+          } else if (type === "floor") {
+            const owner = roomFloor[next];
+            step = owner === fromIndex || owner === toIndex ? 1 : 7;
+          } else if (type === "corridor") step = 1.2;
+          else step = 2.4 + noise[next];
+          if (currentWall && type === "wall") continue;
+          const total = cost[current] + step;
+          if (total < cost[next]) {
+            cost[next] = total;
+            previous[next] = current;
+            open.push([total + (Math.abs(nx - to.anchorX) + Math.abs(ny - to.anchorY)) * 1.2, next]);
+          }
+        }
+      }
+      if (previous[goalIndex] < 0) return false;
+      for (let i = goalIndex; i >= 0 && i !== startIndex; i = previous[i]) {
+        if (terrain[i] === "stone") terrain[i] = "corridor";
+        else if (terrain[i] === "wall") {
+          terrain[i] = "door";
+          doors.add(i);
+        }
+      }
+      return true;
+    };
+    if (!edges.every(([a, b]) => dig(a, b))) continue;
+    rooms.forEach((room) => { room.links = []; });
+    for (const [a, b] of edges) {
+      if (!rooms[a].links.includes(b)) rooms[a].links.push(b);
+      if (!rooms[b].links.includes(a)) rooms[b].links.push(a);
+    }
+    settleAfterPassageChange(data, before);
+    return true;
+  }
+  // Could not remake them: put the old ones back.
+  for (let i = 0; i < terrain.length; i += 1) terrain[i] = before[i];
+  rooms.forEach((room, i) => { room.links = oldLinks[i]; });
+  return false;
+}
+
+// Anything standing where a passage used to be is moved to the nearest open tile, the
+// player's map forgets the tiles that changed, and the doors all close.
+function settleAfterPassageChange(data, before) {
+  const size = MAP_TILE_SIZE;
+  const terrain = data.terrain;
+  const walkable = (x, y) => x >= 0 && y >= 0 && x < size && y < size && PASSAGE_WALKABLE.has(terrain[y * size + x]);
+  const taken = new Set();
+  const nearest = (spot) => {
+    if (walkable(spot.x, spot.y) && !taken.has(spot.y * size + spot.x)) return spot;
+    for (let radius = 1; radius <= 12; radius += 1) {
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+          const x = spot.x + dx;
+          const y = spot.y + dy;
+          if (walkable(x, y) && !taken.has(y * size + x)) return { x, y };
+        }
+      }
+    }
+    return null;
+  };
+  const place = (thing) => {
+    if (!thing || !Number.isFinite(thing.x)) return;
+    const idx = thing.y * size + thing.x;
+    if (before[idx] === terrain[idx] && walkable(thing.x, thing.y)) { taken.add(idx); return; }
+    const spot = nearest(thing);
+    if (!spot) return;
+    thing.x = spot.x;
+    thing.y = spot.y;
+    if (thing.post) thing.post = { x: spot.x, y: spot.y };
+    taken.add(spot.y * size + spot.x);
+  };
+  [...(data.enemies || []), ...(data.lurkers || []), ...(data.treasures || []), ...(data.hazards || []), ...(data.wells || [])].forEach(place);
+  if (data.player) place(data.player);
+  for (const stair of data.floorStairs || []) taken.add(stair.y * size + stair.x);
+  if (data.ecology?.features) {
+    data.ecology.features = data.ecology.features.filter((feature) => {
+      if (feature.kind !== "carcass" || walkable(feature.x, feature.y)) return true;
+      return false;
+    });
+  }
+  if (Array.isArray(data.seen)) {
+    for (let i = 0; i < terrain.length; i += 1) if (before[i] !== terrain[i]) data.seen[i] = false;
+  }
+  data.openDoors = [];
+}
+
+// Every floor of the tomb gets new passages: after you die, or finish a run.
+function renewTombPassages() {
+  regenerateFloorPassages(state.run);
+  for (const snapshot of Object.values(state.run.dungeonFloors || {})) regenerateFloorPassages(snapshot);
+}
+
+// While you are away the tomb shifts: the longer the absence, the likelier it is that a floor's
+// passages have changed by the time you come back. The living rock shifts most, the old
+// masonry least. A floor never shifts while you are on it.
+function driftFloorPassages(snapshot) {
+  const away = Math.max(0, (state.run.gameMinutes || 0) - (snapshot.leftMinute ?? state.run.gameMinutes ?? 0)) / 60;
+  if (away < 24 || !snapshot.rooms?.length) return false;
+  const band = typeof tombBand === "function" ? tombBand(snapshot.floor) : "fortress";
+  const rate = { rootbound: 1, fortress: 0.4, "living-rock": 1.6, mouth: 1.2 }[band] || 1;
+  if (Math.random() > Math.min(0.75, (away / 240) * rate)) return false;
+  if (!regenerateFloorPassages(snapshot)) return false;
+  snapshot.shifted = true;
+  state.run.log.unshift("Stone has shifted somewhere in the tomb while you were away. Passages you remember may not be there.");
+  state.run.log = state.run.log.slice(0, 30);
+  return true;
 }
 
 function upgradeGreatTempleContent() {
