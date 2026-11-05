@@ -852,8 +852,9 @@ function traverseDungeonStair(stair) {
     restoreDungeonFloorState(savedFloor, stair.id);
     delete state.run.dungeonFloors[String(targetFloor)];
   } else {
+    // A floor missing from an old save is made on its own (the rest of the tomb stays).
     state.run.dungeonFloor = targetFloor;
-    initializeDungeon();
+    initializeDungeonFloor();
     const arrivalStair = state.run.floorStairs.find((entry) => entry.id === stair.id);
     if (!arrivalStair) throw new Error(`Floor ${targetFloor} has no matching stair connection "${stair.id}".`);
     state.run.player = { ...state.run.player, x: arrivalStair.x, y: arrivalStair.y };
@@ -1110,21 +1111,9 @@ function campAndRest() {
     return;
   }
   const cookedMeals = [];
-  const availableMeals = () => Object.keys(FOOD_ITEMS)
-    .reduce((total, id) => total + inventoryQuantity(id), cookedMeals.length);
-  const ingredientCount = inventoryQuantity("wild-ingredients");
-  if (availableMeals() < members.length && ingredientCount > 0) {
-    const cookingBonus = bestPartySkillBonus("cooking");
-    let ingredientsUsed = 0;
-    while (availableMeals() < members.length && ingredientsUsed < ingredientCount) {
-      const check = randomInt(20) + cookingBonus;
-      const servings = Math.max(1, Math.min(4, 1 + Math.floor(Math.max(0, check - 10) / 5)));
-      if (!removeInventoryItem("wild-ingredients")) break;
-      ingredientsUsed += 1;
-      for (let serving = 0; serving < servings; serving += 1) cookedMeals.push("ration");
-      addLog(`Camp Cooking check ${check}: the party prepares ${servings} ${GEAR_ITEMS.ration.name}${servings === 1 ? "" : "s"}.`);
-    }
-  }
+  // Short of food, the camp cooks what raw ingredients there are (systems/cooking.js).
+  const mealsCarried = Object.keys(FOOD_ITEMS).reduce((total, id) => total + inventoryQuantity(id), 0);
+  if (mealsCarried < members.length && typeof campAutoCook === "function") campAutoCook(members.length - mealsCarried);
   let fed = 0;
   let hydrated = 0;
   for (const member of members) {
@@ -2584,6 +2573,7 @@ function savingThrowBonus(ability) {
   return stats.modifiers[ability] + proficiency + progressionSaveBonus() +
     (ability === "dex" && typeof activeBuff === "function" && activeBuff("nimble") ? 2 : 0) +
     (ability === "str" && typeof activeBuff === "function" && activeBuff("coiled") ? 2 : 0) +
+    (typeof activeBuff === "function" && activeBuff("well-fed") ? 1 : 0) +
     (typeof hasCondition === "function" && hasCondition("susto") ? -2 : 0) +
     (typeof hasCondition === "function" && hasCondition("ill-omened") ? -1 : 0);
 }
@@ -2861,7 +2851,12 @@ function useInventoryItem(itemId) {
     if (!removeInventoryItem(itemId)) return;
     sfx(GEAR_ITEMS[itemId]?.category === "Drink" ? "drink" : "eat");
     applyMeal(state.run.needs, itemId);
-    if (FOOD_ITEMS[itemId].buff) grantBuff(FOOD_ITEMS[itemId].buff);
+    if (FOOD_ITEMS[itemId].buff) grantBuff(FOOD_ITEMS[itemId].buff, FOOD_ITEMS[itemId].buffMinutes);
+    for (const extra of FOOD_ITEMS[itemId].moreBuffs || []) grantBuff(extra, FOOD_ITEMS[itemId].buffMinutes);
+    if (FOOD_ITEMS[itemId].sickly && Math.random() < 0.6) {
+      addLog("It wasn't cooked through. Your stomach turns.");
+      applyCondition("poison", "Undercooked food");
+    }
     if (FOOD_ITEMS[itemId].water) {
       state.run.needs.water = Math.min(100, state.run.needs.water + FOOD_ITEMS[itemId].water);
       state.run.needs.waterZeroHours = 0;
@@ -5075,7 +5070,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
       name: "The living tomb",
       status: inDungeon ? (typeof ecologyInteraction === "function" && ecologyInteraction() ? "Something to do here" : "Space or E when beside it") : "Dungeon action",
       state: inDungeon && typeof ecologyInteraction === "function" && ecologyInteraction() ? "available" : "context",
-      description: "Each floor has a lay of the land: water runs down the passages and pools in the low chambers, damp ground grows glowcaps and moss, roosts sit high and feed the gardens next door, and hunters den near what they eat. Every creature has a place in the food chain, and the halls change while you're away: gardens spread or are grazed bare, kills are picked clean, newcomers move into empty chambers. A fed creature minds its own business; a hungry one is dangerous; a starving one is desperate but weak (−2 to attack, −1 AC); a badly hurt animal runs. Gather glowcaps and roots, fish the pools, catch chapulines and ant queens from their colonies, butcher fresh kills (some need knowing how), and take eggs from nests (the mother defends them). Ask a chaneque before taking from its garden, and feed an alux before robbing its storeroom. Leave copal, a marigold garland, or food at a shrine and the restless dead let you pass. Watching creatures fills in the journal and teaches new recipes."
+      description: "Each floor has a lay of the land: water runs down the passages and pools in the low chambers, damp ground grows glowcaps and moss, roosts sit high and feed the gardens next door, and hunters den near what they eat. Every creature has a place in the food chain, and the halls change while you're away: gardens spread or are grazed bare, kills are picked clean, newcomers move into empty chambers. A fed creature minds its own business; a hungry one is dangerous; a starving one is desperate but weak (−2 to attack, −1 AC); a badly hurt animal runs. Gather glowcaps and roots, fish the pools, catch chapulines and ant queens from their colonies, butcher fresh kills (some need knowing how), and take eggs from nests (the mother defends them). Ask a chaneque before taking from its garden, and feed an alux before robbing its storeroom. Leave copal, a marigold garland, or food at a shrine and the restless dead let you pass. Watching creatures fills in the journal and teaches you what their meat and eggs can do in a dish."
     },
     {
       name: "Guard",
@@ -5124,8 +5119,14 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
       status: nearbyThreat ? "Too close to danger" : !inDungeon ? "Rest at the inn" : atCamp() ? "At your camp" : activeCamp() ? `Camp on floor ${activeCamp().floor}` : "No camp yet",
       state: nearbyThreat ? "locked" : "context",
       description: inDungeon
-        ? `Pitch a camp on a quiet chamber floor with a camp kit, or by spending an hour on a Survival check (DC ${CAMP_SURVIVAL_DC}). The camp stays until you pitch a new one. At your camp you can rest for 8 hours when no enemy is within 7 squares: the party eats carried meals and water, may cook ingredients, recovers spell slots, and heals when food needs are high enough. The tomb doesn't stop while you sleep: a hungry creature or a wanderer may find your camp and cut the night short. Deeper floors and busy chambers (dens, nests, bone yards, shrines, pools) are riskier; quiet, empty rooms are safer. Fewer than 6 hours of sleep only partly heals you and doesn't recover spells, abilities, or ailments. Cooking also needs your campfire. From Chiltomatlan you can walk straight back to your camp.`
+        ? `Pitch a camp on a quiet chamber floor with a camp kit, or by spending an hour on a Survival check (DC ${CAMP_SURVIVAL_DC}). The camp stays until you pitch a new one. At your camp you can rest for 8 hours when no enemy is within 7 squares: the party eats carried meals and water, cooks a pot of whatever raw ingredients there are if meals run short, recovers spell slots, and heals when food needs are high enough. The tomb doesn't stop while you sleep: a hungry creature or a wanderer may find your camp and cut the night short. Deeper floors and busy chambers (dens, nests, bone yards, shrines, pools) are riskier; quiet, empty rooms are safer. Fewer than 6 hours of sleep only partly heals you and doesn't recover spells, abilities, or ailments. Cooking also needs your campfire. From Chiltomatlan you can walk straight back to your camp.`
         : "At the Ceiba House, an 8-hour safe rest restores everyone's food and water, resets exhaustion, restores spell slots, and tends wounds without consuming carried meals or water."
+    },
+    {
+      name: "Cook",
+      status: typeof availableRecipes === "function" && availableRecipes().length ? `${availableRecipes().length} things you could cook with` : "Nothing to cook",
+      state: inDungeon && atCamp() && !nearbyThreat ? "available" : "context",
+      description: "There are no recipes to learn: put up to six portions of what you carry in the pot and choose how to cook them (roast over the coals, toast on the comal, simmer or steam with a clay pot, pit-roast at your camp, or grind it raw). The dish follows real cooking: tough cuts and beans want a long simmer or the pit, tender meat and insects want quick dry heat, fish and eggs want steam, and meat, fish, eggs, and beans have to be cooked through or they'll make you sick. A savory base with contrast (salt, something sour like tomatillo or pulque, chili, a little fat or sweetness, herbs) tastes better; maize, beans, and squash together make the milpa, the best meal there is; old pairings like chili and tomatillo, or chili, seeds, and cacao simmered with meat (a mole), make it better still. A Cooking check decides how well it turns out. Good dishes carry what their ingredients are good for (chili makes you fierce, glowcaps quiet, a whole meal of protein, maize, and greens leaves you well fed). Cook in town, or at your camp in the tomb."
     },
     {
       name: "Healing potion",
@@ -5855,6 +5856,8 @@ function renderStartScreen() {
 
 function render() {
   if (!state.run) return;
+  // Arriving somewhere new: cover the screen until its pictures are ready (systems/arrival.js).
+  if (typeof arrivalCheck === "function") arrivalCheck();
   renderPurses();
   document.body.classList.toggle("immersive-game", Boolean(state.gameStarted));
   document.body.classList.toggle("dungeon-game", state.gameStarted && state.run.location === "dungeon");
@@ -6178,6 +6181,9 @@ function migrateSavedCatalogIds(saved, pack) {
 
 function parseSavedRun(saved, pack) {
   if (!saved || typeof saved !== "object") return null;
+  // Dishes cooked from whatever was in the pot are items of their own; know them before
+  // anything checks the pack.
+  if (typeof registerSavedDishes === "function") registerSavedDishes(saved);
   migrateSavedCatalogIds(saved, pack);
   if (saved && Array.isArray(saved.terrain) &&
     saved.terrain.length === LEGACY_MAP_TILE_SIZE * LEGACY_MAP_TILE_SIZE &&

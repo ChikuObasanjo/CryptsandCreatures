@@ -4721,3 +4721,38 @@ body.dark-mode .item-card.rarity-exotic { --rarity: #c48ae0; }
   .death-flash { animation: none; opacity: 0; }
   .impact-number { animation: none; }
 }
+
+/* ---------- The cook's fire (systems/cooking.js) ---------- */
+.cook-dialog { width: min(640px, calc(100vw - 24px)); }
+.cook-panel { background: var(--card) var(--paper-texture); border: 2px solid var(--line); border-radius: var(--radius); }
+.cook-panel h2 { margin: 0; }
+.cook-section { display: grid; gap: 6px; }
+.cook-section h3, .cook-preview h3 { margin: 0; font: 700 13px/1.2 var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cook-preview h3 { font: 700 20px/1.2 var(--font-display); letter-spacing: 0; text-transform: none; color: var(--text); }
+.cook-pot, .cook-pantry { display: flex; flex-wrap: wrap; gap: 6px; }
+.cook-methods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.cook-method { text-align: left; }
+.cook-pantry { max-height: 168px; overflow-y: auto; }
+.cook-chip, .cook-method {
+  min-height: 40px; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: var(--radius);
+  background: var(--card-2); color: var(--text); font: 600 14px/1.2 var(--font-ui); cursor: pointer;
+}
+.cook-chip:disabled, .cook-method:disabled { opacity: 0.45; cursor: default; }
+.cook-chip.in-pot { background: var(--paper-deep); }
+.cook-method.selected { background: var(--text); color: var(--card); border-color: var(--text); }
+.cook-method-text, .cook-empty { margin: 0; color: var(--muted); font: 500 14px/1.45 var(--font-ui); }
+.cook-preview { display: grid; gap: 6px; padding: 12px; border: 1.5px dashed var(--line); border-radius: var(--radius); background: var(--card-2); }
+.cook-preview:empty { display: none; }
+.cook-forecast { margin: 0; font: 600 14px/1.4 var(--font-ui); }
+.cook-notes { margin: 0; padding-left: 18px; color: var(--text-2); font: 500 14px/1.45 var(--font-ui); }
+.cook-actions { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+
+/* ---------- Arriving somewhere new (systems/arrival.js) ---------- */
+.arrival-veil {
+  position: fixed; inset: 0; z-index: 900; display: grid; place-items: center;
+  background: #1a110c; opacity: 0; pointer-events: none;
+}
+.arrival-veil.shown { opacity: 1; pointer-events: auto; }
+.arrival-veil.lifting { transition: opacity 220ms ease-out; }
+.arrival-caption { margin: 0; color: #e9d7b0; font: 600 20px/1.2 var(--font-display); letter-spacing: 0.08em; }
+@media (prefers-reduced-motion: reduce) { .arrival-veil.lifting { transition: none; } }

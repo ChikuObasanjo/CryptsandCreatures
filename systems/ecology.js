@@ -23,7 +23,7 @@
 
 const ECO = window.CryptsEcology;
 const ECO_VERSION = 2;
-const ECO_ENERGY_DECAY = 0.8;
+const ECO_ENERGY_DECAY = 0.85;
 const ECO_MOUTH_FLUX = 120;
 const ECO_TICK_MINUTES = 10;
 const ECO_LIVE_TICK_LIMIT = 48;
@@ -33,7 +33,7 @@ const ECO_SPIRIT_SATED = 70;
 const ECO_SEARCH_RADIUS = 11;
 const ECO_COLONY_EVERY = 3;
 const ECO_CENSUS_EVERY = 6;
-const ECO_MEAT_ITEMS = new Set(["monster-meat", "blindfish", "colotl-tail", "caiman-tail", "turkey-leg", "smoked-fish", "chapulines", "mazacoatl-meat"]);
+const ECO_MEAT_ITEMS = new Set(["monster-meat", "fowl-meat", "rabbit-meat", "mapachin-meat", "blindfish", "colotl-tail", "caiman-tail", "turkey-leg", "smoked-fish", "chapulines", "mazacoatl-meat"]);
 
 function ecoSpecies(creature) {
   return ECO.species[creature?.templateId] || null;
@@ -43,8 +43,9 @@ function ecoState() {
   return state.run?.ecology || null;
 }
 
+// The most animals (of the kinds the food feeds) a floor keeps track of, to keep turns quick.
 function ecoFloorCap(floor = state.run?.dungeonFloor || 1) {
-  return Math.min(22, 11 + Math.floor(floor * 0.8));
+  return Math.min(24, 12 + floor);
 }
 
 // The energy pool: what the floor's plants can still grow from. It fills at the floor's
@@ -178,10 +179,17 @@ function ecoFungalBloom(eco, patch) {
     .map((feature) => tileIndex(feature.x, feature.y)));
   const around = MOVEMENT_DIRECTIONS.map((step) => ({ x: patch.x + step.x, y: patch.y + step.y }))
     .filter((spot) => typeof isWalkable === "function" && isWalkable(spot.x, spot.y));
-  if (!around.length || around.filter((spot) => beds.has(tileIndex(spot.x, spot.y))).length < Math.ceil(around.length / 2)) return;
+  // It takes a crowd of full beds (or a floor with almost nothing left grazing them).
+  const fullInRoom = eco.features.filter((feature) => feature.kind === "fungus" && feature.room === patch.room &&
+    feature.amount >= ECO.resources.fungus.max - 1).length;
+  const ringed = around.length && around.filter((spot) => beds.has(tileIndex(spot.x, spot.y))).length >= Math.ceil(around.length / 3);
+  if (!ringed && fullInRoom < 3 && herbLoad >= 0.35) return;
   if (state.run.hazards.some((hazard) => hazard.kind === "fungal-spore" && hazard.x === patch.x && hazard.y === patch.y)) return;
+  // A floor holds only so much spore at once; old clouds settle (ecoSporesSettle).
+  if (state.run.hazards.filter((hazard) => hazard.kind === "fungal-spore" && !hazard.triggered).length >= 6) return;
   const floor = state.run.dungeonFloor || 1;
   state.run.hazards.push({
+    tick: eco.ticks || 0,
     kind: "fungal-spore", name: "Fungal spore cloud", dc: 11 + Math.floor(floor / 2),
     damage: floor >= 9 ? "2d6" : "1d6", damagePenalty: 2, ability: "Constitution",
     x: patch.x, y: patch.y, roomIndex: patch.room, revealed: true, triggered: false
@@ -232,7 +240,7 @@ function ecoEvent(roomIndex, text, kind = "") {
 
 // Lays out the food, water, colonies, nests, and shrines, gives every creature an appetite,
 // and sets a few scenes already under way. New floors and older saves alike.
-function initializeEcology() {
+function initializeEcology({ life = true } = {}) {
   const floor = state.run.dungeonFloor || 1;
   const preset = state.run.ecology && typeof state.run.ecology === "object" ? state.run.ecology : null;
   state.run.ecology = {
@@ -298,8 +306,9 @@ function initializeEcology() {
     }
   }
   for (const creature of [...state.run.enemies, ...(state.run.lurkers || [])]) ecoCreature(creature);
-  ecoSetScenes();
   ecoSeedBottomMouth();
+  if (!life) return;
+  ecoSetScenes();
   ecoSeedAndEquilibrate();
 }
 
@@ -307,7 +316,8 @@ function initializeEcology() {
 // share of it by distance (ecoFloorShare); the feature marks the place on the bottom floor.
 function ecoSeedBottomMouth() {
   if ((state.run.dungeonFloor || 1) !== DUNGEON_FLOOR_COUNT || state.run.ecology.features.some((feature) => feature.emitsEnergy)) return;
-  const rooms = state.run.rooms.map((room, index) => ({ room, index })).filter(({ room }) => room.type === "boss" || room.mainTreasure);
+  const source = state.run.rooms.map((room, index) => ({ room, index })).filter(({ room }) => room.source);
+  const rooms = source.length ? source : state.run.rooms.map((room, index) => ({ room, index })).filter(({ room }) => room.type === "boss" || room.mainTreasure);
   const chosen = rooms[randomInt(rooms.length) - 1];
   if (!chosen) return;
   const spot = ecoFreeTile(chosen.room, ecoOccupiedTiles());
@@ -322,7 +332,14 @@ function ecoSeedAndEquilibrate() {
   const eco = ecoState();
   if (!eco || eco.equilibrated) return;
   ecoPopulateFloor();
+  ecoEquilibrateFloor();
+}
+
+function ecoEquilibrateFloor() {
+  const eco = ecoState();
+  if (!eco || eco.equilibrated) return;
   ecologySettle((120 + randomInt(181)) * ECO_CENSUS_EVERY);
+  ecoSetScenes();
   eco.equilibrated = true;
 }
 
@@ -556,15 +573,20 @@ function ecoCacheFood(cache, species) {
 function ecoCanHunt(hunter, prey, species) {
   if (prey === hunter || !prey.alive || prey.alerted || prey.guardian) return false;
   const preySpecies = ecoSpecies(prey);
-  if (!preySpecies || preySpecies.role === "guardian" || !preySpecies.is.some((kind) => species.eats.includes(kind))) return false;
+  if (!preySpecies || ["guardian", "spirit", "raider"].includes(preySpecies.role) || preySpecies.important ||
+    !preySpecies.is.some((kind) => species.eats.includes(kind))) return false;
+  // Not its own kind, and not another hunter unless it's starving.
+  if (prey.templateId === hunter.templateId) return false;
+  if (preySpecies.role === "predator" && ecoHungerState(hunter) !== "starving") return false;
   // The ahuizotl hunts from the water: it only takes what comes to the edge.
   if (hunter.templateId === "cenote-stalker" && !ecoAtWater(prey)) return false;
   // Insect-eaters take any insect; otherwise hunters take smaller prey (or an equal, if starving).
   if (preySpecies.is.includes("insects") && species.eats.includes("insects")) return true;
   const hunger = ecoHungerState(hunter);
   if (preySpecies.size < species.size) return true;
-  if (species.role === "predator" && hunger === "hungry" && preySpecies.size <= species.size) return true;
-  return hunger === "starving" && preySpecies.size <= species.size + 1;
+  // A hungry hunter takes on something a size bigger than itself; a starving one, two.
+  if (species.role === "predator" && hunger === "hungry" && preySpecies.size <= species.size + 1) return true;
+  return hunger === "starving" && preySpecies.size <= species.size + 2;
 }
 
 function ecoAtWater(spot) {
@@ -693,8 +715,8 @@ function ecoLog(spot, text) {
 
 // ---------- Eating ----------
 
-function ecoFeed(creature, amount, ticks = 2) {
-  creature.eco.sat = Math.min(100, creature.eco.sat + amount);
+function ecoFeed(creature, amount, ticks = 2, cap = 100) {
+  creature.eco.sat = Math.min(Math.max(cap, creature.eco.sat), creature.eco.sat + amount);
   creature.eco.feeding = ticks;
   creature.eco.target = null;
   const species = ecoSpecies(creature);
@@ -708,11 +730,11 @@ function ecoFeed(creature, amount, ticks = 2) {
 
 function ecoEatFeature(creature, species, feature) {
   const resource = ECO.resources[feature.kind] || {};
-  const portion = 30 + 12 * Math.max(1, Math.min(3, species.size));
   if (feature.kind === "carcass") {
     if (feature.meat > 0 && species.eats.includes("carrion")) {
-      feature.meat -= 1;
-      ecoFeed(creature, portion, 3);
+      const taken = Math.min(feature.meat, ecoBite(species));
+      feature.meat -= taken;
+      ecoFeed(creature, ecoMealSatiety(species, taken), 3);
       ecoWitness(creature, creature.templateId, "eats:carrion");
       ecoLog(creature, `${creature.name} tears into the ${feature.species ? `${ecoName(feature.species)} ` : ""}carcass.`);
       return;
@@ -725,15 +747,15 @@ function ecoEatFeature(creature, species, feature) {
   }
   if (feature.kind === "colony") {
     const colony = ECO.colonies[feature.species];
-    const taken = Math.min(feature.count, 2 + randomInt(3));
+    const taken = Math.min(feature.count, 2 * ecoBite(species));
     feature.count -= taken;
-    ecoFeed(creature, 15 * taken, 2);
+    ecoFeed(creature, ecoMealSatiety(species, taken / 2), 2);
     ecoWitness(creature, creature.templateId, `eats:${feature.species}`);
     ecoWitness(creature, feature.species, `huntedBy:${creature.templateId}`);
     ecoLog(creature, `${creature.name} snaps up ${feature.species === "chapolin" ? "grasshoppers" : colony.name.toLowerCase()} from the swarm.`);
     return;
   }
-  const bite = ["fungus", "plants"].includes(feature.kind) ? Math.max(1, species.bite || 1) : 1;
+  const bite = ecoBite(species);
   const taken = Math.min(bite, Math.max(1, feature.amount));
   feature.amount -= taken;
   if (feature.kind === "offering") {
@@ -742,7 +764,7 @@ function ecoEatFeature(creature, species, feature) {
     ecoLog(creature, `${creature.name} lingers over the offering bowl.`);
     return;
   }
-  ecoFeed(creature, portion * Math.min(1, taken / bite), 2);
+  ecoFeed(creature, ecoMealSatiety(species, taken), 2);
   ecoWitness(creature, creature.templateId, `eats:${resource.food}`);
   ecoLog(creature, feature.kind === "pool" ? `${creature.name} snaps a fish out of the pool.`
     : `${creature.name} feeds at the ${resource.name.toLowerCase()}.`);
@@ -786,13 +808,13 @@ function ecoHunt(creature, species, prey) {
   const carcass = ecoState().features.find((feature) => feature.kind === "carcass" && feature.x === prey.x && feature.y === prey.y && feature.fresh);
   if (carcass && carcass.meat > 0) carcass.meat -= 1;
   ecoEvent(roomIndexAt(prey.x, prey.y), `A ${creature.name} killed a ${prey.name} here.`, "kill");
-  ecoFeed(creature, 70, 3);
+  ecoFeed(creature, ecoKillSatiety(species, ecoSpecies(prey)), 3, ECO_GORGED_CAP);
   creature.eco.hunting = false;
 }
 
 // A creature died (to you, to something else, to hunger, or to a trap). It leaves a body
 // that feeds scavengers and, while fresh, the restless dead.
-function ecologyCreatureDied(creature, { eaten = false, killer = null } = {}) {
+function ecologyCreatureDied(creature, { eaten = false, killer = null, starved = false } = {}) {
   const eco = ecoState();
   if (!eco) return;
   creature.alive = false;
@@ -805,7 +827,8 @@ function ecologyCreatureDied(creature, { eaten = false, killer = null } = {}) {
     ecoLog(creature, "The alux crumbles to clay. It will be made again.");
     return;
   }
-  if (creature.templateId === "maquizcoatl" && !killer && !eaten) {
+  // Only your own hand on the omen serpent brings the omen (not hunger, not the tomb being made).
+  if (creature.templateId === "maquizcoatl" && !killer && !eaten && !starved && state.run.location === "dungeon") {
     if (typeof applyCondition === "function") applyCondition("ill-omened", "The omen serpent");
     addLog("You killed the omen serpent, a bad sign. For a while, creatures will notice you sooner.");
   }
@@ -1025,7 +1048,7 @@ function ecologyWorldTick() {
     if (!species) continue;
     const data = ecoCreature(creature);
     const asleep = creature.asleep && data.sleeping;
-    data.sat = Math.max(0, data.sat - species.appetite * (asleep ? 0.3 : 1));
+    data.sat = Math.max(0, data.sat - ecoBurn(species) * (asleep ? 0.3 : 1));
     data.hungerTicks = data.sat <= 0 ? (data.hungerTicks || 0) + 1 : 0;
     if (asleep && creature.asleep > 0 && creature.asleep < 900) {
       creature.asleep -= 1;
@@ -1184,13 +1207,16 @@ function ecoCensus(eco) {
   const cap = ecoFloorCap();
   for (const creature of ecoLivingCreatures()) {
     const species = ecoSpecies(creature);
-    if (!species || species.role === "spirit" || species.role === "guardian" || creature.guardian) continue;
+    // Spirits, guardians, and raiders (who live off what they steal in town) don't starve here.
+    if (!species || ["spirit", "guardian", "raider"].includes(species.role) || creature.guardian) continue;
     // Starvation: a creature that has gone without long enough dies, and feeds something else.
     if ((creature.eco?.hungerTicks || 0) >= 36) {
+      // Most animals out of food go looking on another floor before they drop.
+      if (Math.random() < 0.6 && !ecoSeen(creature) && ecoEmigrate(creature)) continue;
       ecoLog(creature, `${creature.name} staggers and collapses, starved.`);
       ecoEvent(roomIndexAt(creature.x, creature.y), `A ${creature.name} starved here.`, "starved");
       if ((state.run.lurkers || []).includes(creature)) state.run.lurkers = state.run.lurkers.filter((entry) => entry !== creature);
-      ecologyCreatureDied(creature);
+      ecologyCreatureDied(creature, { starved: true });
       continue;
     }
     // Hungry, and its chamber isn't its kind's habitat: move house, toward food.
@@ -1275,40 +1301,7 @@ function ecoFoodFor(species, eco) {
   return food;
 }
 
-function ecoBreed(eco, cap) {
-  for (const [id, species] of Object.entries(ECO.species)) {
-    if (!species.breeds || species.role === "colony") continue;
-    eco.breed[id] = (eco.breed[id] || 0) + ECO_CENSUS_EVERY;
-    if (eco.breed[id] < species.breeds.every) continue;
-    eco.breed[id] = 0;
-    const count = ecoLivingCount(id);
-    if (count >= species.breeds.cap || ecoLivingCount() >= cap) continue;
-    // The floor has to be able to feed another one: a layer can't grow past what the layer
-    // below it carries.
-    const layer = ecoLayer(species);
-    if (layer) {
-      const use = ecoLayerUse();
-      const room = ecoLayerBudgets(state.run.dungeonFloor || 1, use)[layer] - use[layer];
-      if (room < ecoUpkeep(species)) continue;
-    }
-    const parents = state.run.enemies.filter((enemy) => enemy.alive && enemy.templateId === id && !enemy.alerted &&
-      ecoCreature(enemy).sat >= 60);
-    if (!parents.length) {
-      continue;
-    }
-    // Births only when there's food to spare for another mouth.
-    if (ecoFoodFor(species, eco) < (count + 1) * 2) continue;
-    const parent = parents[randomInt(parents.length) - 1];
-    const taken = ecoOccupiedTiles();
-    const spot = freeTileNear(parent, taken, 2);
-    if (!spot || ecoSeen(spot)) continue;
-    const young = ecoNewCreature(id, spot, ecoCreature(parent).home);
-    if (!young) continue;
-    young.eco.sat = 50;
-    state.run.enemies.push(young);
-    ecoEvent(parent.eco.home, `Young ${ecoName(id)} were born here.`, "born");
-  }
-}
+// ecoBreed lives in systems/energy.js, with the rest of the energy rules.
 
 // Nests without a mother go cold, and are taken over by whatever needs one.
 function ecoNestsTick(eco) {
@@ -1337,8 +1330,16 @@ function ecoNestsTick(eco) {
   }
 }
 
+// Spore clouds settle out after a few days, unless the bed under them blooms again.
+function ecoSporesSettle(eco) {
+  const now = eco.ticks || 0;
+  state.run.hazards = (state.run.hazards || []).filter((hazard) => hazard.kind !== "fungal-spore" || hazard.triggered ||
+    now - (hazard.tick ?? now) < 432);
+}
+
 // Well-fed glowcap beds spread in damp ground; overgrazed ones die back to rot.
 function ecoGardensTick(eco) {
+  ecoSporesSettle(eco);
   const resource = ECO.resources.fungus;
   for (const patch of eco.features.filter((feature) => feature.kind === "fungus")) {
     const room = state.run.rooms[patch.room];
@@ -1358,6 +1359,11 @@ function ecoGardensTick(eco) {
     } else {
       patch.fullTicks = 0;
       patch.bloomedThisStage = false;
+    }
+    // Once its cloud has settled, a bed that is still full can bloom again.
+    if (patch.bloomedThisStage && !state.run.hazards.some((hazard) => hazard.kind === "fungal-spore" && hazard.x === patch.x && hazard.y === patch.y)) {
+      patch.bloomedThisStage = false;
+      patch.fullTicks = 0;
     }
     if (patch.amount <= 0) {
       patch.bareTicks = (patch.bareTicks || 0) + ECO_CENSUS_EVERY;
@@ -1452,36 +1458,45 @@ function ecologySettle(ticks) {
       const species = ecoSpecies(creature);
       if (!species) continue;
       const data = ecoCreature(creature);
-      if (species.role === "spirit" || species.role === "guardian") {
+      if (["spirit", "guardian", "raider"].includes(species.role)) {
         data.sat = Math.max(30, data.sat - species.appetite * ECO_CENSUS_EVERY);
         continue;
       }
       // A creature eats when it has got hungry, and takes what its upkeep needs: a meal is worth
       // about 30 satiety and a creature burns appetite per tick, so it needs a meal every
       // 30/appetite ticks, and a bigger creature takes a bigger bite of the food each time.
-      const burned = species.appetite * ECO_CENSUS_EVERY * 0.6;
+      const burned = ecoBurn(species) * ECO_CENSUS_EVERY;
       const needsMeal = data.sat - burned < ECO_HUNGRY + 10;
       const meal = needsMeal ? eco.features.find((feature) => ecoFeatureFeeds(feature, species) &&
         (feature.room === data.home || distanceInSquares(feature, creature) <= ECO_SEARCH_RADIUS)) : null;
-      const prey = needsMeal && !meal && (species.role === "predator" || species.role === "scavenger") ? state.run.enemies.find((other) => other.alive && other !== creature &&
-        ecoCanHunt(creature, other, species) && distanceInSquares(other, creature) <= ECO_SEARCH_RADIUS) : null;
-      if (meal && Math.random() < 0.7) {
-        const bite = Math.max(1, species.bite || 1);
-        if (meal.kind === "colony") meal.count = Math.max(0, meal.count - 2 * bite);
-        else if (meal.kind === "carcass") meal.meat = Math.max(0, (meal.meat || 0) - 1);
-        let share = 1;
-        if (meal.kind !== "colony" && meal.kind !== "carcass") {
+      // Off screen an hour is long enough for a hunter to range over much of the floor.
+      const range = species.role === "predator" ? ECO_SEARCH_RADIUS * 2.5 : ECO_SEARCH_RADIUS;
+      const prey = needsMeal && !meal && (species.role === "predator" || species.role === "scavenger") ? shuffle(state.run.enemies.filter((other) => other.alive && other !== creature &&
+        ecoCanHunt(creature, other, species) && distanceInSquares(other, creature) <= range))[0] || null : null;
+      if (meal) {
+        // An hour's eating: as many bites as it takes to be fed, from what is there.
+        const bite = ecoBite(species);
+        let units = 0;
+        if (meal.kind === "colony") {
+          const taken = Math.min(meal.count, 2 * bite);
+          meal.count = Math.max(0, meal.count - taken);
+          units = taken / 2;
+        } else if (meal.kind === "carcass") {
+          const taken = Math.min(meal.meat || 0, bite);
+          meal.meat = Math.max(0, (meal.meat || 0) - taken);
+          units = taken;
+        } else {
           const taken = Math.min(bite, meal.amount || 0);
           meal.amount = Math.max(0, (meal.amount || 0) - taken);
-          share = taken / bite;
+          units = taken;
         }
-        data.sat = Math.min(85, data.sat + 30 * share);
+        data.sat = Math.min(90, data.sat - burned + ecoMealSatiety(species, units));
         data.hungerTicks = 0;
-      } else if (prey && Math.random() < (species.role === "predator" ? (window.CryptsEcoTuning?.huntChance ?? 0.22) : 0.03)) {
+      } else if (prey && Math.random() < (species.role === "predator" ? (window.CryptsEcoTuning?.huntChance ?? 0.22) * ecoHuntOdds() : 0.03)) {
         // A hunt off-screen: sometimes it works.
         ecologyCreatureDied(prey, { eaten: true, killer: creature });
         ecoEvent(roomIndexAt(prey.x, prey.y), `A ${creature.name} killed a ${prey.name} here.`, "kill");
-        data.sat = 90;
+        data.sat = Math.min(ECO_GORGED_CAP, data.sat + ecoKillSatiety(species, ecoSpecies(prey)));
         data.hungerTicks = 0;
       } else {
         data.sat = Math.max(0, data.sat - burned);

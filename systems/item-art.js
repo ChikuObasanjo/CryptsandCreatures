@@ -15,6 +15,8 @@ function itemArtFile(itemId) {
   const separator = itemId.indexOf(":");
   const kind = separator >= 0 ? itemId.slice(0, separator) : null;
   const base = (separator >= 0 ? itemId.slice(separator + 1) : itemId).split("--")[0];
+  // A dish cooked from whatever was in the pot borrows a painting of its kind of dish.
+  if (base.startsWith("dish-")) return (typeof dishArtFile === "function" && dishArtFile(base)) || "soup";
   return kind === "weapon" || kind === "armor" || kind === "wear" ? `${kind}-${base}` : base;
 }
 

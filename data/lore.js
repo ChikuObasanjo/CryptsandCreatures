@@ -27,55 +27,55 @@
 (() => {
   // What you see on arriving at each floor: the first room's description.
   const floors = {
-    2: "Eagle-warrior spears lie where the Empire's expedition dropped them a century ago, every point aimed back up the stair. Whatever they met here, they were running from it.",
-    3: "The masonry changes here. These walls are older than any empire you have heard of, fitted without mortar, and every arrow slit in them faces down.",
-    4: "A frieze runs the length of the hall: lords in tall crowns stand around a great open mouth, catching the small figures that climb out of it in their nets.",
-    5: "The air is warm, and so is the stone. Pale roots grow up through the floor toward the stair.",
-    6: "Here the fortress lords slept and feasted. Their benches face a carved basin worn smooth by mouths. Whatever they drank from it came up from below.",
-    7: "Every lintel on this floor is carved with the same day-sign, repeated over and over.",
-    8: "Cradleboards, hundreds of them, stacked to the ceiling in the dark. Every one is empty. The dust on them is very old.",
-    9: "The fortress walls end here. Beyond them is living rock, damp and veined like the inside of a shell. The lords did not build this; they built on top of it.",
-    10: "Water runs uphill along a groove in the floor, toward the stairs and the surface far above.",
-    11: "Names have been scraped from every wall, carefully, by many hands over many years. In one corner a single glyph survived. It means Lord of All the World.",
-    12: "The last fortress is a single room around a single sleeper's stone. The lid has been pushed aside from within. The tracks in the dust lead down, not up.",
-    13: "You stand above the mouth itself. Light comes up from below, the color of dawn, though no sun has ever shone down here. A dark shape lies across the opening like a stone across a well."
+    2: "The eagle warriors' spears lie where the Empire's expedition left them a hundred years ago. Every point looks back up the stair, the way they came. Whatever they met here, they were running from it.",
+    3: "The stonework changes here. These walls are older than any empire you know of. The stones were fitted without mortar, and every arrow slit looks down.",
+    4: "A painted frieze runs the length of the hall. Lords in tall crowns stand in a ring around a great open mouth, catching the small figures that climb out of it in their nets.",
+    5: "The air is warm and the stone is warm. Pale roots break up through the floor and climb toward the stair.",
+    6: "The fortress lords slept and feasted here. Their benches face a carved basin rubbed smooth by mouths. What they drank from it came up from below.",
+    7: "Every lintel on this floor is carved with one day-sign, again and again.",
+    8: "Cradleboards by the hundred, stacked to the ceiling in the dark. All of them are empty. The dust on them is very old.",
+    9: "The fortress walls stop here. Past them is living rock, wet and veined like the inside of a conch shell. The lords didn't build this. They built on top of it.",
+    10: "Water runs uphill in a channel cut into the floor, toward the stairs and the world far above.",
+    11: "The names have been scraped off every wall, slowly and carefully, by many hands over many years. One glyph was missed, in a corner. It reads Lord of All the World.",
+    12: "The last fortress is one room around one sleeper's stone. The lid was pushed aside from inside. The footprints in the dust go down, not up.",
+    13: "You stand over the mouth. Light like dawn rises from below, though no sun has ever shone here. A dark shape lies across the opening like a stone laid over a spring."
   };
 
   // The broken seal at the entrance.
-  const entrance = "The old imperial seal lies broken at this threshold. Its glyphs do not say keep out; read the right way up, they say stay below. The surface entrance is the one safe route back to Chiltomatlan.";
+  const entrance = "The old Empire's seal lies broken across this doorway. Its writing doesn't say \"do not enter.\" Read the right way up, it says \"stay below.\" This is the only safe road back to Chiltomatlan.";
 
   // More rooms, each kept to the depths where it belongs.
   const rooms = [
     { id: "expedition-camp", type: "quiet", minFloor: 1, maxFloor: 3, name: "The Expedition's Last Camp",
-      text: "Cold firepits and a heap of broken eagle-warrior shields. Someone scratched a tally of days into the wall and stopped at nineteen. The shields were all dropped facing the stairs down." },
+      text: "Dead firepits, and broken eagle-warrior shields thrown in a heap. Someone scratched a count of days into the wall and stopped at nineteen. Every shield was dropped facing the stair down." },
     { id: "net-frieze", type: "quiet", minFloor: 3, maxFloor: 6, name: "The Hall of Nets",
-      text: "Painted lords lower nets into a pit of light. In the nets are tiny figures: deer, ears of maize, a jaguar kit, a swaddled child. The lords are smiling." },
+      text: "Painted lords let their nets down into a pit of light. Small things are caught in them: a deer, ears of maize, a jaguar cub, a child in its wrappings. The lords are smiling." },
     { id: "downward-ramparts", type: "quiet", minFloor: 3, maxFloor: 7, name: "The Downward Ramparts",
-      text: "A defended stair, every parapet and murder-hole facing down the steps. Whoever built this feared nothing from the surface." },
+      text: "A stair built to be held. Every parapet and every loophole faces down the steps. Whoever built it was not afraid of anything coming from above." },
     { id: "feast-hall", type: "quiet", minFloor: 5, maxFloor: 8, name: "The Hall of Long Feasts",
-      text: "Long benches, cups of carved jade, and a basin at the center worn smooth by lips. The basin is dry now. It still smells faintly of rain." },
+      text: "Long benches, carved jade cups, and in the middle a basin rubbed smooth by lips. It is dry now. It still smells a little of rain." },
     { id: "unending-count", type: "quiet", minFloor: 6, maxFloor: 9, name: "The Unending Count",
-      text: "Four Movement, Four Movement, Four Movement: the day on which a sun is fated to end, carved around every doorway. The builders seem to have hoped that writing it often enough would wear it away." },
+      text: "Four Movement, Four Movement, Four Movement, around every doorway. It is the day a sun is fated to end. The builders seem to have hoped that if they wrote it enough times, it would wear out." },
     { id: "borrowed-light", type: "quiet", minFloor: 8, maxFloor: 12, name: "The Hall of Borrowed Light",
-      text: "Polished obsidian mirrors line the walls, angled up the shaft to catch what little sun once reached this deep. Every one of them is cracked from behind." },
+      text: "Polished obsidian mirrors cover the walls, tilted up the shaft to catch what little sun once came this far down. Each one is cracked from behind." },
     { id: "breathing-gallery", type: "quiet", minFloor: 9, maxFloor: 12, name: "The Breathing Gallery",
-      text: "These walls are living rock, warm to the touch. Very slowly, they rise and fall." },
+      text: "The walls are living rock, warm under your hand. Slowly, slowly, they rise and fall." },
     { id: "rising-channel", type: "quiet", minFloor: 9, maxFloor: 12, name: "The Rising Channel",
-      text: "A carved channel carries water uphill past your feet. Frogs no bigger than a fingernail ride it toward the surface." },
+      text: "A carved channel carries water uphill past your feet. Frogs the size of a fingernail ride it up toward the world above." },
     { id: "scraped-names", type: "quiet", minFloor: 10, maxFloor: 12, name: "The Hall of Scraped Names",
-      text: "Cartouches line the walls, each one scraped smooth and then polished flat by people who wanted these names never spoken again." },
+      text: "The walls are lined with name-cartouches. Each was scraped off, then polished flat, by people who never wanted these names said again." },
     { id: "catching-pit", type: "trap", minFloor: 3, maxFloor: 8, name: "The Catching Pit",
-      text: "The floor is a stone lattice over a long drop, built to catch things climbing up from below." },
+      text: "The floor is a stone grate over a long drop, made to catch whatever climbs up from below." },
     { id: "seed-vault", type: "trap", minFloor: 6, maxFloor: 12, name: "The Seed Vault",
-      text: "Clay jars of seed fill the walls, every one sprouted, pale roots splitting the clay. Watch your footing; the floor is no longer level." },
+      text: "Clay jars of seed fill the walls. Every seed has sprouted, and pale roots have split the jars. The floor has buckled; watch your footing." },
     { id: "downward-watch", type: "combat", minFloor: 2, maxFloor: 8, name: "The Downward Watch",
-      text: "Old sentries still stand at their posts, spears leveled at the stair below. Some of them turn, slowly, to look up at you." },
+      text: "Old sentries still keep their posts, spears pointed at the stair below. A few of them turn, slowly, and look up at you." },
     { id: "warm-den", type: "combat", minFloor: 7, maxFloor: 12, name: "The Warm Den",
-      text: "A nest of soft roots and old feathers. The young in it are newly born; the creatures guarding them are very old." },
+      text: "A nest of soft roots and old feathers. The young in it were just born. The ones guarding them are very old." },
     { id: "tribute-store", type: "treasure", minFloor: 4, maxFloor: 10, name: "The Tribute of Every Land",
-      text: "Tribute from every corner of the world, heaped and forgotten: shells from both seas, feathers, gold, and stone from places no map in Chiltomatlan names." },
+      text: "Tribute from the four quarters of the world lies in heaps, forgotten: shells from both seas, feathers, gold, and stone from places no map in Chiltomatlan names." },
     { id: "lords-antechamber", type: "boss", minFloor: 8, maxFloor: 12, name: "The Lord's Antechamber",
-      text: "A great guardian stands before a sealed door carved with a man whose face has been chiseled away. You can hear slow breathing on the other side." }
+      text: "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly." }
   ];
 
   // Things found in the tomb that are worth more as stories than as gold.

@@ -85,6 +85,14 @@ const CREATURE_HABITS = {
     habit: "caster",
     note: "Habit: leaves you be unless you rob what it guards without a gift. Then it throws stones from up to 5 squares away."
   },
+  tlacoocelotl: {
+    habit: "skirmisher",
+    note: "Habit: darts in, bites, and springs back a step. It only comes for you when it's hungry."
+  },
+  "black-jaguar": {
+    habit: "ambusher",
+    note: "Habit: waits unseen in the deep dark and strikes first. Fed, it lets you pass; hungry, it takes whatever it can reach."
+  },
   "jungle-jaguar": {
     habit: "ambusher",
     note: "Habit: waits unseen and strikes first. A sharp eye or a careful search finds it before it finds you."
@@ -127,7 +135,7 @@ const BEAST_KINDS = new Set([
   "maztican-cave-locust", "tomb-bat", "jungle-jaguar", "cenote-stalker", "xolo-hound",
   "colotl", "axolocatl", "cipactli", "feathered-serpent", "camazotz",
   "cave-turkey", "giant-turkey", "turkey-raptor", "black-turkey-raptor", "dungeonrabbit", "dungeonrabbit2",
-  "mapachin", "hueymapachin", "elder-mapachin"
+  "mapachin", "hueymapachin", "elder-mapachin", "tlacoocelotl", "black-jaguar"
 ]);
 const DEAD_KINDS = new Set([
   "mictlaneca", "yohualtepoztli", "cihuateotl", "tzitzimitl", "itzpapalotl", "camazotz", "huay-chivo", "tlacatecolotl"

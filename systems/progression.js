@@ -234,13 +234,14 @@ function activeBuff(id) {
   return state.run?.progress?.buffs?.some((buff) => buff.id === id && buff.until > state.run.gameMinutes) || false;
 }
 
-function grantBuff(id) {
+function grantBuff(id, minutes = null) {
   const buff = PROGRESSION.buffs[id];
   if (!buff) return;
+  const length = Number.isFinite(minutes) && minutes > 0 ? minutes : buff.minutes;
   const list = progress().buffs.filter((entry) => entry.id !== id && entry.until > state.run.gameMinutes);
-  list.push({ id, until: state.run.gameMinutes + buff.minutes });
+  list.push({ id, until: state.run.gameMinutes + length });
   progress().buffs = list;
-  addLog(`${t(buff.name)}: ${t(buff.description)} (${Math.floor(buff.minutes / 60)} hours).`);
+  addLog(`${t(buff.name)}: ${t(buff.description)} (${Math.floor(length / 60)} hours).`);
 }
 
 function hasCondition(id) {
@@ -456,61 +457,9 @@ function onCreatureDefeated(enemy) {
 
 // ---------- Recipes ----------
 
-// A recipe that needs a naturalist's knowledge (you have to have seen the creature, or
-// gathered the thing) stays unknown until you have.
-function recipeKnown(recipe) {
-  return !recipe.requires || (typeof naturalistKnows === "function" && naturalistKnows(recipe.requires));
-}
-
-function availableRecipes() {
-  return Object.entries(PROGRESSION.recipes).filter(([, recipe]) => recipeKnown(recipe) &&
-    Object.entries(recipe.ingredients).every(([id, quantity]) => inventoryQuantity(id) >= quantity));
-}
-
-function cookingBlocked() {
-  return state.run.location === "dungeon" && (!atCamp() || state.run.enemies.some((enemy) =>
-    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= 7));
-}
-
-function openCookMenu() {
-  if (state.run.lost || state.run.won) return;
-  if (cookingBlocked()) {
-    showToast(atCamp() || state.run.location !== "dungeon" ? "Too close to danger to cook. Find a quiet room first." : "Cooking needs your campfire. Return to your camp or make one here.");
-    return;
-  }
-  const options = availableRecipes();
-  if (!options.length) {
-    const hints = Object.values(PROGRESSION.recipes).filter(recipeKnown).map((recipe) =>
-      `${t(recipe.name)}: ${Object.keys(recipe.ingredients).map((id) => itemDetails(id).name).join(" + ")}`);
-    showRpgMessage("Camp recipes", `You don't have the ingredients for a dish yet. ${hints.join(". ")}.`);
-    return;
-  }
-  chooseFromOptions("Cook a dish · 30 minutes", options.map(([id, recipe]) => ({
-    label: `${t(recipe.name)} · ${Object.keys(recipe.ingredients).map((ingredient) => itemDetails(ingredient).name).join(" + ")}`,
-    action: () => cookRecipe(id)
-  })));
-}
-
-function cookRecipe(id) {
-  const recipe = PROGRESSION.recipes[id];
-  if (!recipe || cookingBlocked()) return;
-  if (!Object.entries(recipe.ingredients).every(([ingredient, quantity]) => inventoryQuantity(ingredient) >= quantity)) return;
-  for (const [ingredient, quantity] of Object.entries(recipe.ingredients)) removeInventoryItem(ingredient, quantity);
-  const check = randomInt(20) + bestPartySkillBonus("cooking");
-  const servings = check >= 12 ? 2 : 1;
-  let made = 0;
-  for (let serving = 0; serving < servings; serving += 1) if (addInventoryItem(id)) made += 1;
-  progress().dishesCooked += 1;
-  addLog(`You cook ${made || 1} serving${made === 1 ? "" : "s"} of ${t(recipe.name)} (Cooking ${check}).`);
-  if (!made) addLog("Your pack is too full, so you eat the dish on the spot.");
-  if (!made) {
-    applyMeal(state.run.needs, id);
-    grantBuff(recipe.buff);
-  }
-  advanceBounties((bounty) => bounty.kind === "cook");
-  if (state.run.location === "dungeon") finishPlayerTurn(30);
-  else render();
-}
+// Cooking is in systems/cooking.js: you cook from whatever is in the pack, not from fixed
+// recipes. The old recipe dishes (PROGRESSION.recipes) stay registered as foods so saves
+// that carry them still load.
 
 // ---------- Bounties and renown ----------
 

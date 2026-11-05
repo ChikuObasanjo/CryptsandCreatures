@@ -8,12 +8,14 @@ window.CryptsEnemies = {
     "xolo-hound", "colotl", "tlacatecolotl", "huay-chivo", "itzpapalotl", "cipactli", "chapolin",
     "mazacoatl", "maquizcoatl", "chaneque", "alux", "duende-friend",
     "raptor1", "raptor2", "raptor3", "raptor4", "dungeonrabbit", "dungeonrabbit2",
-    "mapachin", "mapachin2", "mapachin3"
+    "mapachin", "mapachin2", "mapachin3", "ocelot", "black-jaguar"
   ],
   // A sprite id that reuses another sprite's art with a CSS filter, for variants with no art of their own.
   spriteAliases: {
     mapachin2: { base: "mapachin", filter: "hue-rotate(-14deg) saturate(0.85) brightness(0.9)" },
-    mapachin3: { base: "mapachin", filter: "grayscale(0.75) brightness(0.78) contrast(1.15)" }
+    mapachin3: { base: "mapachin", filter: "grayscale(0.75) brightness(0.78) contrast(1.15)" },
+    ocelot: { base: "jungle-jaguar", filter: "sepia(0.35) saturate(0.8) brightness(1.12)" },
+    "black-jaguar": { base: "jungle-jaguar", filter: "grayscale(0.6) brightness(0.42) contrast(1.35)" }
   },
   starter: [
     { id: "cave-turkey", name: "Cave Turkey", description: "A blue-feathered turkey the height of a man's hip. It scratches glowcap beds for roots and snaps up grasshoppers, and it stays with its flock.", sprite: "raptor1", edible: true, hp: 9, ac: 12, attackBonus: 3, damage: "1d4+1", initiativeBonus: 3, xp: 20 },
@@ -29,7 +31,9 @@ window.CryptsEnemies = {
     { id: "mictlaneca", name: "Mictecatl", description: "A long-dead soldier of the old fortresses, still at its post with its spear leveled at the stair below. It faces down, and is slow to notice anyone coming from above.", sprite: "mictlaneca", hp: 8, ac: 8, attackBonus: 3, damage: "1d6+1", initiativeBonus: 0, xp: 25 },
     { id: "tomb-bat", name: "Tomb Bat", description: "A pale bat that roosts in the high chambers and bites anything that disturbs it.", sprite: "tomb-bat", hp: 5, ac: 13, attackBonus: 4, damage: "1d4+2", initiativeBonus: 3, xp: 15 },
     { id: "duende", name: "Duende", description: "A small house spirit from Spanish folk tales. It hides in walls and steals food, offerings, and gold.", sprite: "duende", hp: 7, ac: 13, attackBonus: 4, damage: "1d6+1", initiativeBonus: 2, xp: 25 },
-    { id: "jungle-jaguar", name: "Jungle Jaguar", description: "A jaguar that hunts the tomb's halls. It moves without a sound.", sprite: "jungle-jaguar", edible: true, hp: 15, ac: 14, attackBonus: 5, damage: "1d8+3", initiativeBonus: 3, xp: 75 },
+    { id: "tlacoocelotl", name: "Tlacoocelotl", description: "An ocelot, the 'half-jaguar', spotted and no bigger than a dog. It hunts grasshoppers, young birds, and mapachines along the upper floors' root galleries.", sprite: "ocelot", edible: true, hp: 9, ac: 14, attackBonus: 4, damage: "1d6+2", initiativeBonus: 3, xp: 35 },
+    { id: "jungle-jaguar", name: "Jungle Jaguar", description: "A jaguar that hunts the tomb's halls and the turkey flocks of the fortress floors. It moves without a sound.", sprite: "jungle-jaguar", edible: true, hp: 24, ac: 14, attackBonus: 6, damage: "1d8+4", initiativeBonus: 3, xp: 110 },
+    { id: "black-jaguar", name: "Black Jaguar", description: "A jaguar black as the inside of the mountain, big enough to take a tomb rabbit. The old people called the jaguar of the caves Tepeyollotl, the heart of the mountain; its roar is the echo, and its turning in its sleep is the earthquake.", sprite: "black-jaguar", edible: true, hp: 56, ac: 16, attackBonus: 8, damage: "2d8+5", initiativeBonus: 4, xp: 450 },
     { id: "cihuateotl", name: "Cihuateotl", description: "The spirit of a woman who died in childbirth, honored as a fallen warrior. She walks the crossroads at dusk and has no patience for the living. Down here, she stands over the cradles.", sprite: "cihuateotl", hp: 22, ac: 15, attackBonus: 6, damage: "1d8+3", initiativeBonus: 2, xp: 200 },
     { id: "quinametli", name: "Quinametli", description: "A giant left over from the first sun, the world the gods unmade before this one. Its kind are proud and very hard to kill. The lords of the last age set them to hauling their stones.", sprite: "quinametli", hp: 11, ac: 14, attackBonus: 3, damage: "1d6+1", initiativeBonus: 0, xp: 25 },
     { id: "caxtiltecatl", name: "Caxtiltecatl", description: "A sea giant from the floating houses, sealed in iron and come ashore to raid. Its steel sword does not chip. The sea giants came looking for a spring that makes the old young again, and some of them followed the road to this tomb.", gear: "Foreign iron chain mail and a steel sword", sprite: "caxtiltecatl", hp: 18, ac: 16, attackBonus: 5, damage: "1d8+3", initiativeBonus: 1, xp: 125 },

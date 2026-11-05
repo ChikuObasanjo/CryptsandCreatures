@@ -91,7 +91,7 @@ function generateGtflDungeon() {
       anchorY,
       mapLayout: GTFL_MAP_ID,
       mainTreasure: isTreasure,
-      optionalQuest: isBoss && depth === DUNGEON_FLOOR_COUNT,
+      optionalQuest: isBoss && depth === DUNGEON_FLOOR_COUNT && (!planned.length || plan?.role === "mouth"),
       cleared: isStart,
       visited: isStart,
       enemy: null,
@@ -246,8 +246,25 @@ function generateGtflDungeonV3() {
       rect.mapY + rect.mapH + 2 <= other.mapY || other.mapY + other.mapH + 2 <= rect.mapY);
   // The floor's terrain comes first: chambers take their shape from where they sit.
   const land = typeof makeFloorTerrain === "function" ? makeFloorTerrain(depth) : null;
-  // The boss gets a grand hall first so it always fits.
-  const wanted = ["boss-hall", ...Array.from({ length: target - 1 }, () => V3_SHAPES[randomInt(V3_SHAPES.length) - 1])];
+  // The chambers the tomb's plan puts on this floor come first, at their planned places
+  // (systems/tomb-plan.js): the mouth, a lore chamber, the stairwells, the seal. A floor from
+  // before the plan gets a guardian's hall first instead, so it always fits.
+  const planned = typeof tombPlannedChambers === "function" ? tombPlannedChambers(depth) : [];
+  for (const spot of planned) {
+    const rect = {
+      shape: spot.shape, boss: spot.role === "mouth" || Boolean(spot.keeper), planned: spot,
+      mapW: spot.w, mapH: spot.h,
+      mapX: Math.max(1, Math.min(size - spot.w - 1, spot.x - Math.floor(spot.w / 2))),
+      mapY: Math.max(1, Math.min(size - spot.h - 1, spot.y - Math.floor(spot.h / 2))),
+      flipX: false, flipY: false
+    };
+    if (!fits(rect)) throw new Error("A planned tomb chamber does not fit.");
+    rect.anchorX = spot.x;
+    rect.anchorY = spot.y;
+    placed.push(rect);
+  }
+  const wanted = [...(planned.length ? [] : ["boss-hall"]),
+    ...Array.from({ length: Math.max(0, target - planned.length - (planned.length ? 0 : 1)) }, () => V3_SHAPES[randomInt(V3_SHAPES.length) - 1])];
   for (const entry of wanted) {
     for (let attempt = 0; attempt < 400; attempt += 1) {
       const probe = { x: 2 + randomInt(size - 4) - 1, y: 2 + randomInt(size - 4) - 1 };
@@ -412,6 +429,7 @@ function generateGtflDungeonV3() {
     if (!adjacency[b].includes(a)) adjacency[b].push(a);
   }
   const bossIndex = placed.findIndex((room) => room.boss);
+  const plannedIndex = (role, n = null) => placed.findIndex((room) => room.planned?.role === role && (n === null || room.planned.n === n));
   const hops = (origin) => {
     const distance = placed.map(() => Infinity);
     distance[origin] = 0;
@@ -426,15 +444,23 @@ function generateGtflDungeonV3() {
     }
     return distance;
   };
-  const fromBoss = hops(bossIndex);
-  const startIndex = placed.map((room, index) => ({ index, score: fromBoss[index] * 10 + centerDistance(room, placed[bossIndex]) }))
-    .filter(({ index }) => index !== bossIndex && placed[index].shape !== "pillared")
-    .sort((first, second) => second.score - first.score)[0].index;
+  let startIndex;
+  if (planned.length) {
+    // You arrive by the seal on floor 1 and by the first stairwell down from above elsewhere.
+    startIndex = depth === 1 ? plannedIndex("entrance") : plannedIndex("up", 1);
+    if (startIndex < 0) startIndex = plannedIndex("up");
+    if (startIndex < 0) throw new Error("The planned floor has no way in.");
+  } else {
+    const fromBoss = hops(bossIndex);
+    startIndex = placed.map((room, index) => ({ index, score: fromBoss[index] * 10 + centerDistance(room, placed[bossIndex]) }))
+      .filter(({ index }) => index !== bossIndex && placed[index].shape !== "pillared")
+      .sort((first, second) => second.score - first.score)[0].index;
+  }
   const fromStart = hops(startIndex);
+  const free = (index) => index !== startIndex && index !== bossIndex && !placed[index].planned;
   const deadEnds = placed.map((room, index) => index)
-    .filter((index) => index !== startIndex && index !== bossIndex && adjacency[index].length === 1);
-  const treasurePool = (deadEnds.length ? deadEnds : placed.map((room, index) => index)
-    .filter((index) => index !== startIndex && index !== bossIndex))
+    .filter((index) => free(index) && adjacency[index].length === 1);
+  const treasurePool = (deadEnds.length ? deadEnds : placed.map((room, index) => index).filter(free))
     .sort((first, second) => fromStart[second] - fromStart[first]);
   const treasureIndex = treasurePool[randomInt(Math.min(2, treasurePool.length)) - 1];
 
@@ -446,14 +472,24 @@ function generateGtflDungeonV3() {
     const isStart = oldIndex === startIndex;
     const isBoss = oldIndex === bossIndex;
     const isTreasure = oldIndex === treasureIndex;
+    const plan = room.planned || null;
+    const loreRoom = plan?.role === "lore" ? plan.lore : null;
     const type = isStart && depth === 1 ? "entrance" : isBoss ? "boss" : isTreasure ? "treasure"
+      : plan ? (loreRoom && ["quiet", "trap", "treasure"].includes(loreRoom.type) ? loreRoom.type : "quiet")
       : room.shape === "pillared" ? (randomInt(2) === 1 ? "combat" : "quiet")
       : room.shape === "cell" ? (randomInt(3) === 1 ? "trap" : "quiet")
       : roomTypes[randomInt(roomTypes.length) - 1];
     const template = chooseRoom(type, randomInt(99));
     return {
       ...template,
-      text: isStart && depth === 1
+      ...(loreRoom ? { name: loreRoom.name } : {}),
+      ...(plan ? { planned: plan.role, planId: plan.id } : {}),
+      ...(plan?.role === "lore" ? { lore: plan.loreId || true, keeper: plan.keeper || null } : {}),
+      ...(plan?.keeper ? { enemyId: plan.keeper } : {}),
+      ...(plan?.role === "mouth" ? { name: "The Mouth", source: true } : {}),
+      text: loreRoom ? loreRoom.text
+        : plan?.role === "mouth" ? "The road ends here, at the mouth. Light like dawn and a warm breath come up out of it; everything that lives in the tomb lives on this. A dark shape lies across the opening like a stone laid over a spring."
+        : isStart && depth === 1
         ? (window.CryptsLore?.entrance || "The old imperial seal lies broken at this threshold. The surface entrance is the one safe route back to Chiltomatlan.")
         : isStart && window.CryptsLore?.floors[depth] && !isBoss
           ? window.CryptsLore.floors[depth]
@@ -469,7 +505,7 @@ function generateGtflDungeonV3() {
       shape: room.shape,
       mapLayout: GTFL_MAP_ID,
       mainTreasure: isTreasure,
-      optionalQuest: isBoss && depth === DUNGEON_FLOOR_COUNT,
+      optionalQuest: isBoss && depth === DUNGEON_FLOOR_COUNT && (!planned.length || plan?.role === "mouth"),
       cleared: isStart,
       visited: isStart,
       enemy: null,
@@ -493,7 +529,25 @@ function generateGtflDungeonV3() {
   };
   const floorStairs = [];
   const stairRooms = [];
-  if (depth === 1) {
+  if (planned.length) {
+    // The stairwells are the plan's: each shaft is at the same place on both of its floors.
+    for (const room of rooms) {
+      const spot = room.planned && placed.find((entry) => entry.planned?.id === room.planId)?.planned;
+      if (!spot) continue;
+      if (spot.role === "entrance") {
+        floorStairs.push({ id: "surface-entrance", x: room.anchorX, y: room.anchorY, type: "stairs-up", role: "entrance", name: "Surface entrance" });
+      } else if (spot.role === "up") {
+        floorStairs.push({ id: `connection-${depth - 1}-${spot.n}`, x: room.anchorX, y: room.anchorY, type: "stairs-up", targetFloor: depth - 1, name: "Stairs up" });
+      } else if (spot.role === "down") {
+        floorStairs.push({ id: `connection-${depth}-${spot.n}`, x: room.anchorX, y: room.anchorY, type: "stairs-down", targetFloor: depth + 1, name: "Stairs down" });
+      } else if (spot.role === "mouth") {
+        const exit = [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0]]
+          .map(([dx, dy]) => ({ x: room.anchorX + dx, y: room.anchorY + dy }))
+          .find(({ x, y }) => terrain[tileIndex(x, y)] === "floor");
+        floorStairs.push({ id: "surface-exit", x: exit.x, y: exit.y, type: "exit", role: "exit", name: "Tomb exit" });
+      }
+    }
+  } else if (depth === 1) {
     floorStairs.push({ id: "surface-entrance", x: rooms[0].anchorX, y: rooms[0].anchorY, type: "stairs-up", role: "entrance", name: "Surface entrance" });
   } else {
     for (let index = 1; index <= 2; index += 1) {
@@ -503,7 +557,9 @@ function generateGtflDungeonV3() {
       floorStairs.push({ id: `connection-${depth - 1}-${index}`, x: room.anchorX, y: room.anchorY, type: "stairs-up", targetFloor: depth - 1, name: "Stairs up" });
     }
   }
-  if (depth < DUNGEON_FLOOR_COUNT) {
+  if (planned.length) {
+    // (placed above)
+  } else if (depth < DUNGEON_FLOOR_COUNT) {
     for (let index = 1; index <= 2; index += 1) {
       const room = pickSpread(stairRooms);
       if (!room) throw new Error("Could not place two descending stairs on this dungeon floor.");
@@ -701,14 +757,20 @@ function createGreatTempleEnemies(rooms, player) {
     tileIndex(player.x, player.y),
     tileIndex(rooms.find((room) => room.mainTreasure).anchorX, rooms.find((room) => room.mainTreasure).anchorY),
     ...state.run.floorStairs.map((stair) => tileIndex(stair.x, stair.y)),
-    ...state.run.treasures.map((treasure) => tileIndex(treasure.x, treasure.y))
+    ...state.run.treasures.map((treasure) => tileIndex(treasure.x, treasure.y)),
+    ...(state.run.ecology && typeof ecoOccupiedTiles === "function" ? ecoOccupiedTiles() : [])
   ]);
   const enemies = [];
   const usedEncounterIds = new Set();
   const floor = state.run.dungeonFloor || 1;
-  const cap = typeof ecoFloorCap === "function" ? ecoFloorCap(floor) : 18;
+  // The floor's own life is already there; the cap counts it too (a little headroom for the
+  // guardians and the dead, who don't eat what the animals eat).
+  const already = (state.run.enemies || []).filter((enemy) => enemy.alive !== false).length;
+  const cap = Math.max(6, (typeof ecoFloorCap === "function" ? ecoFloorCap(floor) : 18) + 8 - already);
   const isFed = (id) => typeof ecoLayer === "function" && ecoLayer(window.CryptsEcology?.species?.[id]);
-  const allowed = greatTempleEncounterIds(floor).filter((id) => !isFed(id));
+  // The great guardians are only where the plan put them (the boss chambers below).
+  const important = (id) => window.CryptsEcology?.species?.[id]?.important || id === "tzitzimitl";
+  const allowed = greatTempleEncounterIds(floor).filter((id) => !isFed(id) && !important(id));
   const add = (template, position, roomIndex, options = {}) => {
     occupied.add(tileIndex(position.x, position.y));
     const enemy = createEnemy(template, position, roomIndex, enemies.length);
@@ -752,10 +814,13 @@ function createGreatTempleEnemies(rooms, player) {
   }
   // Bare chambers are mostly quiet; now and then something is passing through.
   for (const [index, room] of rooms.entries()) {
-    if (index === 0 || room.habitat || room.type === "boss" || room.mainTreasure || enemies.length >= cap) continue;
+    if (index === 0 || room.habitat || room.lore || room.planned || room.type === "boss" || room.mainTreasure || enemies.length >= cap) continue;
     if (Math.random() > 0.1) continue;
+    // Only what the food doesn't decide: the dead, raiders, house spirits.
+    const passing = allowed.filter((id) => !["chaneque", "alux"].includes(id))
+      .map((id) => state.pack.enemies.find((enemy) => enemy.id === id)).filter(Boolean);
     const position = randomRoomFloor(room, occupied);
-    if (position) add(rollGreatTempleEncounter(usedEncounterIds), position, index);
+    if (position && passing.length) add(passing[randomInt(passing.length) - 1], position, index);
   }
   // A few wanderers on their own errands: scavengers following their noses, a hunter on its rounds.
   const wanderers = ["xolo-hound", "duende", "jungle-jaguar", "huay-chivo", "tlacatecolotl", "caxtiltecatl"]
@@ -1094,22 +1159,96 @@ function initializeDungeon() {
     ? state.run.dungeonFloor
     : 1;
   state.run.dungeonFloors = {};
-
-  // The tomb is made from the mouth up: floor 13 first, then each floor above it, ending
-  // with the floor the player stands on.
-  for (let floor = DUNGEON_FLOOR_COUNT; floor >= 1; floor -= 1) {
-    if (floor === activeFloor) continue;
+  // 1. The tomb is planned as one place, from the mouth up (systems/tomb-plan.js).
+  state.run.tombPlan = typeof planTomb === "function" && state.pack.id === starterPack.id ? planTomb() : null;
+  const floors = Array.from({ length: DUNGEON_FLOOR_COUNT }, (_, n) => DUNGEON_FLOOR_COUNT - n);
+  // 2. Every floor is dug around its planned chambers, deepest first, with its ground, water,
+  // and plants, but nothing living on it yet.
+  for (const floor of floors) {
     state.run.dungeonFloor = floor;
-    initializeDungeonFloor();
+    initializeDungeonFloor({ life: false });
     saveDungeonFloorState();
   }
-
-  state.run.dungeonFloor = activeFloor;
-  initializeDungeonFloor();
+  // 3. Life goes in from the plants up, across the whole tomb: the grazers of every floor,
+  // then the hunters their herds can feed, then the scavengers.
+  const onEachFloor = (work) => {
+    for (const floor of floors) {
+      loadDungeonFloorForWork(floor);
+      work(floor);
+      saveDungeonFloorState();
+    }
+  };
+  if (typeof ecoPopulateLayer === "function") {
+    onEachFloor(() => { if (state.run.ecology) { ecoClearFed(); ecoPopulateLayer("herb"); } });
+    onEachFloor(() => { if (state.run.ecology) ecoPopulateLayer("pred"); });
+    onEachFloor(() => { if (state.run.ecology) ecoPopulateLayer("scav"); });
+    // 4. It lives a while, so herds, hunters, and gardens have found each other.
+    onEachFloor(() => { if (state.run.ecology) ecoEquilibrateFloor(); });
+    onEachFloor(() => { if (state.run.ecology) ecoTopUpFloor(); });
+  }
+  // 5. The guardians and the tomb's other people, whatever the food says: the tzitzimitl
+  // over the mouth, the keepers of the lore chambers, the dead at their shrines.
+  onEachFloor(() => placeTombResidents());
+  loadDungeonFloorForWork(activeFloor);
+  revealAroundPlayer();
   return state.run.rooms[0];
 }
 
-function initializeDungeonFloor() {
+// Puts a stored floor in state.run to work on it while the tomb is being made (no drift,
+// no arrival).
+function loadDungeonFloorForWork(floor) {
+  const snapshot = state.run.dungeonFloors[String(floor)];
+  if (!snapshot) return;
+  state.run.dungeonFloor = floor;
+  for (const key of [
+    "dungeonLayoutVersion", "mapId", "rooms", "terrain", "openDoors", "currentRoom",
+    "enemies", "hazards", "treasures", "wells", "wellsInitialized", "seen", "steps",
+    "mainTreasureClaimed", "questComplete", "fixedMapContentVersion", "floorStairs", "player"
+  ]) state.run[key] = copyDungeonValue(snapshot[key]);
+  state.run.lurkers = copyDungeonValue(snapshot.lurkers || []);
+  state.run.ecology = copyDungeonValue(snapshot.ecology || null);
+  delete state.run.dungeonFloors[String(floor)];
+}
+
+// The creatures the tomb's food doesn't decide: the guardians, the spirits at the shrines,
+// the raiders and wanderers. On the bottom floor the guardian of the mouth is the tzitzimitl.
+function placeTombResidents() {
+  const player = state.run.player;
+  const residents = createEnemies(state.run.rooms, player);
+  state.run.enemies = [...state.run.enemies, ...residents];
+  const bossRoomIndex = state.run.rooms.findIndex((room) => room.type === "boss" && (room.source || state.run.dungeonFloor === DUNGEON_FLOOR_COUNT));
+  if (state.run.mapId === GTFL_MAP_ID && state.run.dungeonFloor === DUNGEON_FLOOR_COUNT) {
+    const finalBoss = state.pack.enemies.find((enemy) => enemy.id === "tzitzimitl");
+    const boss = state.run.enemies.find((enemy) => enemy.roomIndex === bossRoomIndex && enemy.guardian);
+    if (!finalBoss || !boss) throw new Error("The final tomb floor requires a Tzitzimitl boss and boss chamber.");
+    Object.assign(boss, {
+      templateId: finalBoss.id,
+      sprite: finalBoss.sprite,
+      name: finalBoss.name,
+      description: `${finalBoss.description || ""}${finalBoss.gear ? ` Gear: ${finalBoss.gear}.` : ""}`,
+      hp: finalBoss.hp,
+      maxHp: finalBoss.hp,
+      ac: finalBoss.ac,
+      attackBonus: finalBoss.attackBonus,
+      damage: finalBoss.damage,
+      initiativeBonus: finalBoss.initiativeBonus || 0,
+      xp: finalBoss.xp,
+      edible: Boolean(finalBoss.edible),
+      inflicts: PROGRESSION.creatureConditions.tzitzimitl ? { ...PROGRESSION.creatureConditions.tzitzimitl } : undefined,
+      guardian: true,
+      greatGuardian: true
+    });
+    state.run.rooms[bossRoomIndex].optionalQuest = true;
+  }
+  if (state.run.ecology && typeof ecoCreature === "function") {
+    for (const creature of [...state.run.enemies, ...(state.run.lurkers || [])]) ecoCreature(creature);
+  }
+}
+
+// Makes the floor the player is on. With `life: false` (the tomb being made at new game)
+// it stops at the land: chambers, ground, plants, water, treasure, and traps; the creatures
+// come later, for the whole tomb at once (initializeDungeon).
+function initializeDungeonFloor({ life = true } = {}) {
   if (!Number.isInteger(state.run.dungeonFloor)) state.run.dungeonFloor = 1;
   const dungeon = generateDungeon();
   const startRoom = dungeon.rooms[0];
@@ -1149,9 +1288,9 @@ function initializeDungeonFloor() {
     assignHabitats(state.run.rooms);
   }
   if (typeof clearBattlefield === "function") clearBattlefield();
-  state.run.enemies = createEnemies(state.run.rooms, player);
+  state.run.enemies = life ? createEnemies(state.run.rooms, player) : [];
   const bossRoomIndex = state.run.rooms.findIndex((room) => room.type === "boss");
-  if (state.run.mapId === GTFL_MAP_ID && state.run.dungeonFloor === DUNGEON_FLOOR_COUNT) {
+  if (life && state.run.mapId === GTFL_MAP_ID && state.run.dungeonFloor === DUNGEON_FLOOR_COUNT) {
     const finalBoss = state.pack.enemies.find((enemy) => enemy.id === "tzitzimitl");
     const boss = state.run.enemies.find((enemy) => enemy.roomIndex === bossRoomIndex);
     if (!finalBoss || !boss) throw new Error("The final tomb floor requires a Tzitzimitl boss and boss chamber.");
@@ -1197,9 +1336,9 @@ function initializeDungeonFloor() {
   }
   state.run.wells = createDungeonWells();
   state.run.wellsInitialized = true;
-  if (typeof initializeEcology === "function") initializeEcology();
+  if (typeof initializeEcology === "function") initializeEcology({ life });
   refreshCompanionFormation();
-  revealAroundPlayer();
+  if (life) revealAroundPlayer();
   return startRoom;
 }
 
@@ -1265,7 +1404,15 @@ function restoreDungeonFloorState(snapshot, entryId) {
   state.run.lost = false;
   state.run.currentRoom = roomIndexAt(state.run.player.x, state.run.player.y);
   refreshCompanionFormation();
+  catchUpFloorOnArrival();
   revealAroundPlayer();
+}
+
+// The floor has lived on while you were away (deaths, births, kills, newcomers). Settle that
+// time now, before the first frame is drawn, so what you see on arrival is how it is.
+function catchUpFloorOnArrival() {
+  if (state.run.location !== "dungeon" || typeof ecologyAdvance !== "function") return;
+  ecologyAdvance();
 }
 
 function dungeonSignsForSnapshot(snapshot) {
@@ -1387,6 +1534,7 @@ function beginNewDelve() {
   state.dashReady = false;
   state.disengageReady = false;
   state.run.unsecuredLoot = { gold: 0, items: [] };
+  if (typeof pruneDishes === "function") pruneDishes();
   if (state.run.won) renewTombPassages();
   const room = travelToFloor(1, "surface-entrance");
   state.run.location = "dungeon";
@@ -1411,9 +1559,17 @@ function travelToFloor(floor, entryId) {
       return state.run.rooms[0];
     }
     if (!snapshot.floorStairs?.some((stair) => stair.id === entryId)) {
+      // The lift comes down beside the first chamber's stair, never on it.
       const start = snapshot.rooms[0];
+      const taken = new Set((snapshot.floorStairs || []).map((stair) => tileIndex(stair.x, stair.y)));
+      let spot = { x: start.anchorX, y: start.anchorY };
+      for (let r = 1; r <= 3 && taken.has(tileIndex(spot.x, spot.y)); r += 1) {
+        const near = [];
+        for (let dy = -r; dy <= r; dy += 1) for (let dx = -r; dx <= r; dx += 1) near.push({ x: start.anchorX + dx, y: start.anchorY + dy });
+        spot = near.find((tile) => snapshot.terrain[tileIndex(tile.x, tile.y)] === "floor" && !taken.has(tileIndex(tile.x, tile.y))) || spot;
+      }
       snapshot.floorStairs = [...(snapshot.floorStairs || []), {
-        id: entryId, x: start.anchorX, y: start.anchorY, type: "lift", role: "entrance", name: "Wardens' lift"
+        id: entryId, x: spot.x, y: spot.y, type: "lift", role: "entrance", name: "Wardens' lift"
       }];
     }
     restoreDungeonFloorState(snapshot, entryId);
@@ -1421,6 +1577,11 @@ function travelToFloor(floor, entryId) {
   } else if (state.run.player) {
     const stair = state.run.floorStairs?.find((entry) => entry.id === entryId);
     if (stair) state.run.player = { ...state.run.player, x: stair.x, y: stair.y };
+    // Back on the floor you left from (time passed in town): settle it before it's drawn.
+    const location = state.run.location;
+    state.run.location = "dungeon";
+    catchUpFloorOnArrival();
+    state.run.location = location;
   }
   return state.run.rooms[state.run.currentRoom] || state.run.rooms[0];
 }

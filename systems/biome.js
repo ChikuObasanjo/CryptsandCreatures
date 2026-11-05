@@ -236,7 +236,7 @@ function habitatAllowed(habitat, floor) {
 function assignHabitatsFromEnvironment(rooms, floor = state.run.dungeonFloor || 1) {
   const habitats = Object.entries(BIOME.habitats).filter(([, habitat]) => habitatAllowed(habitat, floor));
   const eligible = rooms.map((room, index) => index)
-    .filter((index) => index > 0 && !rooms[index].mainTreasure && !["boss", "exit", "entrance"].includes(rooms[index].type));
+    .filter((index) => index > 0 && !rooms[index].mainTreasure && !rooms[index].lore && !["boss", "exit", "entrance"].includes(rooms[index].type));
   const counts = {};
   const assigned = new Map();
   // Basins first (they can only be water), then the rest in a random order.

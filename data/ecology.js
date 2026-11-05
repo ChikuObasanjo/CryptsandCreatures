@@ -102,7 +102,7 @@ window.CryptsEcology = {
       names: { fortress: "Overgrown hall" },
       prefers: { moist: [0.55, 0.35], elev: [0.65, 0.4] },
       resources: { plants: [2, 3], fungus: [0, 1] }, colonies: { chapolin: [0, 1], chicatana: [0, 1] },
-      residents: { "maztican-cave-locust": 1.5, colotl: 1.2, mazacoatl: 0.8 , "cave-turkey": 1.6, "giant-turkey": 1.3, "turkey-raptor": 0.8, hueymapachin: 0.4}, population: [0, 2], ground: "r",
+      residents: { "maztican-cave-locust": 1.5, colotl: 1.2, mazacoatl: 0.8, tlacoocelotl: 0.7, "jungle-jaguar": 0.5, "cave-turkey": 1.6, "giant-turkey": 1.3, "turkey-raptor": 0.8, hueymapachin: 0.4}, population: [0, 2], ground: "r",
       text: "Roots hang through the ceiling in curtains. Everything that eats them lives here, and everything that eats those.",
       texts: { fortress: "Pale roots have come up through the floor from below and split the old lords' paving. Grazers browse them; hunters follow the grazers." }
     },
@@ -127,7 +127,7 @@ window.CryptsEcology = {
       name: "Bat roost", depth: [1, 13], weight: 1.6, fertile: true,
       prefers: { elev: [0.75, 0.35], shelter: [0.55, 0.4], moist: [0.4, 0.35] }, likesNear: { "fungal-garden": 1.5 },
       resources: {}, colonies: {},
-      residents: { "tomb-bat": 3, camazotz: 0.4 }, population: [1, 2], peaceful: true, ground: "g",
+      residents: { "tomb-bat": 3 }, population: [1, 2], peaceful: true, ground: "g",
       text: "The ceiling rustles. Droppings carpet the floor, and the glowcaps in the next chambers grow fat on them."
     },
     "predator-den": {
@@ -136,7 +136,7 @@ window.CryptsEcology = {
       prefers: { shelter: [0.85, 0.3] },
       needsNear: { habitats: ["fungal-garden", "insect-cavern", "flooded-chamber", "overgrown-ruins", "bat-roost"], reach: 2, otherwise: null },
       resources: { bones: [1, 2] }, colonies: {},
-      residents: { "jungle-jaguar": 2, "huay-chivo": 0.8, mazacoatl: 1 , mapachin: 0.8, hueymapachin: 0.8, "elder-mapachin": 0.6}, population: [1, 1], territory: true, ground: "b",
+      residents: { tlacoocelotl: 1.6, "jungle-jaguar": 2, "black-jaguar": 1.6, "huay-chivo": 0.8, mazacoatl: 1 , mapachin: 0.8, hueymapachin: 0.8, "elder-mapachin": 0.6}, population: [1, 1], territory: true, ground: "b",
       text: "It smells of musk and old meat. A large hunter sleeps here between hunts, close to where its prey feeds.",
       texts: { fortress: "The old lords' soldiers slept here. Now a hunter does, on a bed of their shields, with bones around it." }
     },
@@ -184,14 +184,14 @@ window.CryptsEcology = {
       prefers: { elev: [0.25, 0.3], magic: [0.55, 0.35] },
       resources: { bones: [1, 2] }, colonies: { pinacate: [0, 1] },
       features: { mouth: { chance: 1 } },
-      residents: { "huay-chivo": 0.5, "xolo-hound": 0.8 , dungeonrabbit: 0.6, dungeonrabbit2: 1, "elder-mapachin": 0.5}, population: [0, 1], ground: "f",
+      residents: { "huay-chivo": 0.5, "xolo-hound": 0.8, "black-jaguar": 0.9, dungeonrabbit: 0.6, dungeonrabbit2: 1, "elder-mapachin": 0.5}, population: [0, 1], ground: "f",
       text: "The rock here is red and wet and breathes. A mouth opens in the floor. This is Tlaltecuhtli's body, and the dead go back into it."
     },
     "star-hollow": {
       name: "Star hollow", depth: [8, 13], weight: 1.9,
       prefers: { magic: [0.85, 0.25] },
       resources: { fungus: [1, 2] }, colonies: {},
-      residents: { itzpapalotl: 1, "feathered-serpent": 0.8, tlacatecolotl: 0.8, maquizcoatl: 0.4 , "black-turkey-raptor": 0.6, dungeonrabbit: 0.8, dungeonrabbit2: 0.6}, population: [0, 1], ground: "c",
+      residents: { itzpapalotl: 1, "feathered-serpent": 0.8, tlacatecolotl: 0.8, maquizcoatl: 0.4, "black-jaguar": 0.5, "black-turkey-raptor": 0.6, dungeonrabbit: 0.8, dungeonrabbit2: 0.6}, population: [0, 1], ground: "c",
       text: "Crystal grows out of the walls in the shapes of stars, and glowcaps feed on its light. Some creatures here live nowhere else in the tomb."
     }
   },
@@ -203,14 +203,21 @@ window.CryptsEcology = {
   //              hungry: only comes for you when it's hungry; fed, it minds its own business
   //              wary: keeps away from you unless you corner or attack it
   //              neutral: lets you be unless you offend it (see `offended`)
-  // appetite     how fast it gets hungry (satiety lost per tick)
+  // upkeep       what it eats in a day, in upkeep points (one unit of plant growth); the
+  //              energy system (systems/energy.js) decides from this which floors can feed it,
+  //              how often it eats and how big its bites are, and what it's worth as prey
+  // rank         its tier in a chain (grasshopper, turkey-raptors, rabbits; mapachines;
+  //              jaguars): a tiered species is crowded off floors rich enough for its bigger kin
+  // appetite     how fast it gets hungry, for spirits, guardians, and raiders only (the rest
+  //              get it from their upkeep)
   // size         how much a kill or a carcass of it feeds (and how much meat it gives)
   // meat         what butchering it gives you; `prepare` is what can go wrong doing it
-  // breeds       { every: ticks, cap: per floor } for creatures that multiply when well fed
+  // breeds       { every: ticks per birth per well-fed adult, cap: most per floor (untiered kinds only) }
   // flees        it breaks off and runs below this share of its hit points
   // territorial  drives off others of its kind (and other big hunters) from its home
   // aquatic      swims deep water
   // sleepsAfter  after a big meal it sleeps it off for this many ticks
+  // important    a great guardian (Camazotz): placed by the tomb's plan, never by the food
   species: {
     chapolin: {
       role: "colony", is: ["insects"], eats: ["fungus", "plants", "provisions"], temperament: "wary",
@@ -218,8 +225,8 @@ window.CryptsEcology = {
       note: "Grazes glowcaps and roots in swarms that grow and shrink with the food. Bats, scorpions, snakes, and owls eat it."
     },
     "maztican-cave-locust": {
-      role: "grazer", rank: 2, upkeep: 1.5, bite: 1, is: ["insects", "small"], eats: ["fungus", "plants", "provisions"], temperament: "wary",
-      appetite: 1, size: 1, meat: "chapulines", breeds: { every: 72, cap: 4 }, flees: 0.6,
+      role: "grazer", rank: 2, upkeep: 1.5, is: ["insects", "small"], eats: ["fungus", "plants", "provisions"], temperament: "wary",
+      appetite: 1, size: 1, meat: "chapulines", breeds: { every: 200 }, flees: 0.6,
       note: "A chapolin grown huge on the deep's food. Alone it's shy and grazes. When a big swarm runs out of food, the big ones band together and strip the next garden bare."
     },
     // ---- The turkey-raptors: the grazing birds a step above the grasshoppers ----
@@ -227,55 +234,55 @@ window.CryptsEcology = {
     // everything down here goes. Four colorings, each bigger than the last, and each only
     // holds on where the floor can feed it (see systems/energy.js).
     "cave-turkey": {
-      role: "grazer", rank: 3, upkeep: 3, bite: 1, is: ["small"], eats: ["fungus", "plants", "insects", "provisions"], temperament: "wary",
-      appetite: 0.95, size: 2, meat: "monster-meat", breeds: { every: 110, cap: 4 }, flees: 0.6, packs: true,
+      role: "grazer", rank: 3, upkeep: 2.2, is: ["small"], eats: ["fungus", "plants", "insects", "provisions"], temperament: "wary",
+      appetite: 0.95, size: 2, meat: "monster-meat", breeds: { every: 500 }, flees: 0.6, packs: true,
       note: "A turkey grown to the height of a man's hip, blue-feathered, scratching glowcap beds and snapping up grasshoppers. Shy alone; it keeps to a flock."
     },
     "giant-turkey": {
-      role: "grazer", rank: 4, upkeep: 5, bite: 2, is: ["small", "large"], eats: ["fungus", "plants", "insects", "provisions"], temperament: "wary",
-      appetite: 1.05, size: 3, meat: "monster-meat", breeds: { every: 140, cap: 3 }, flees: 0.5, packs: true,
+      role: "grazer", rank: 4, upkeep: 3, is: ["small", "large"], eats: ["fungus", "plants", "insects", "provisions"], temperament: "wary",
+      appetite: 1.05, size: 3, meat: "monster-meat", breeds: { every: 600 }, flees: 0.5, packs: true,
       note: "A green-feathered turkey as tall as a man, with a claw on each foot that it uses on anything that crowds its flock."
     },
     "turkey-raptor": {
-      role: "grazer", rank: 5, upkeep: 8, bite: 3, is: ["large"], eats: ["fungus", "plants", "insects", "provisions"], temperament: "wary",
-      appetite: 1.2, size: 3, meat: "monster-meat", breeds: { every: 180, cap: 3 }, flees: 0.4, packs: true,
+      role: "grazer", rank: 5, upkeep: 4.2, is: ["large"], eats: ["fungus", "plants", "insects", "provisions"], temperament: "wary",
+      appetite: 1.2, size: 3, meat: "monster-meat", breeds: { every: 700 }, flees: 0.4, packs: true,
       note: "A red-feathered, long-tailed runner with a turkey's head and a hunter's feet. It grazes, but it kicks hard enough to kill a jaguar cub."
     },
     "black-turkey-raptor": {
-      role: "grazer", rank: 6, upkeep: 12, bite: 4, is: ["large"], eats: ["fungus", "plants", "insects", "provisions"], temperament: "wary",
-      appetite: 1.4, size: 4, meat: "monster-meat", breeds: { every: 240, cap: 2 }, flees: 0.3, territorial: true,
+      role: "grazer", rank: 6, upkeep: 5.8, is: ["large"], eats: ["fungus", "plants", "insects", "provisions"], temperament: "wary",
+      appetite: 1.4, size: 4, meat: "monster-meat", breeds: { every: 800 }, flees: 0.3, territorial: true,
       note: "The deep floors' largest bird, black and blue-necked, and the first herbivore that hunters leave alone unless they are desperate."
     },
     // ---- The tomb rabbits: the deepest and most dangerous grazers ----
     dungeonrabbit: {
-      role: "grazer", rank: 7, upkeep: 16, bite: 5, is: ["large"], eats: ["fungus", "plants", "provisions"], temperament: "wary",
-      appetite: 1.6, size: 4, meat: "monster-meat", breeds: { every: 220, cap: 3 }, flees: 0.25, territorial: true,
+      role: "grazer", rank: 7, upkeep: 6.9, is: ["large"], eats: ["fungus", "plants", "provisions"], temperament: "wary",
+      appetite: 1.6, size: 4, meat: "monster-meat", breeds: { every: 450 }, flees: 0.25, territorial: true,
       note: "A pale rabbit the size of a calf, grown on the richest ground in the tomb. It bolts when it can and kicks to kill when it can't."
     },
     dungeonrabbit2: {
-      role: "grazer", rank: 8, upkeep: 22, bite: 7, is: ["large"], eats: ["fungus", "plants", "provisions"], temperament: "wary",
-      appetite: 1.9, size: 5, meat: "monster-meat", breeds: { every: 300, cap: 2 }, flees: 0.2, territorial: true,
+      role: "grazer", rank: 8, upkeep: 9.5, is: ["large"], eats: ["fungus", "plants", "provisions"], temperament: "wary",
+      appetite: 1.9, size: 5, meat: "monster-meat", breeds: { every: 600 }, flees: 0.2, territorial: true,
       note: "The largest grazer in the tomb. It lives only where the mouth's warmth feeds the gardens, and it strips them faster than anything else down here."
     },
     // ---- The mapachines: scavengers that follow the dead ----
     mapachin: {
-      role: "scavenger", rank: 2, upkeep: 2.5, is: ["small"], eats: ["carrion", "provisions", "fungus", "insects", "fish"], temperament: "wary",
-      appetite: 0.55, size: 1, meat: "monster-meat", breeds: { every: 180, cap: 4 }, flees: 0.65,
+      role: "scavenger", rank: 2, upkeep: 0.9, is: ["small"], eats: ["carrion", "provisions", "fungus", "insects", "fish"], temperament: "wary",
+      appetite: 0.55, size: 1, meat: "monster-meat", breeds: { every: 600 }, flees: 0.65,
       note: "A raccoon of the tomb. It follows hunters, waits over carcasses, washes its food in the pools, and steals what is left unattended."
     },
     hueymapachin: {
-      role: "scavenger", rank: 3, upkeep: 5, is: ["small", "large"], eats: ["carrion", "provisions", "fungus", "insects", "fish", "small"], temperament: "wary",
-      appetite: 0.6, size: 2, meat: "monster-meat", breeds: { every: 240, cap: 3 }, flees: 0.45,
+      role: "scavenger", rank: 3, upkeep: 1.7, is: ["small", "large"], eats: ["carrion", "provisions", "fungus", "insects", "fish", "small"], temperament: "wary",
+      appetite: 0.6, size: 2, meat: "monster-meat", breeds: { every: 700 }, flees: 0.45,
       note: "A mapachin grown to the size of a hound, with hands that open doors and pry at caches. It takes weak or sleeping prey as well as the dead."
     },
     "elder-mapachin": {
-      role: "scavenger", rank: 4, upkeep: 9, is: ["large"], eats: ["carrion", "provisions", "fungus", "insects", "fish", "small", "large"], temperament: "hungry",
-      appetite: 0.65, size: 3, meat: "monster-meat", breeds: { every: 400, cap: 2 }, flees: 0.3, territorial: true,
+      role: "scavenger", rank: 4, upkeep: 3.3, is: ["large"], eats: ["carrion", "provisions", "fungus", "insects", "fish", "small", "large"], temperament: "hungry",
+      appetite: 0.65, size: 3, meat: "monster-meat", breeds: { every: 900 }, flees: 0.3, territorial: true,
       note: "A gray-masked old raccoon the size of a bear cub. It drives smaller scavengers off a carcass and will take a wounded hunter's kill from it."
     },
     "tomb-bat": {
-      role: "predator", upkeep: 2, is: ["small"], eats: ["insects"], temperament: "hungry",
-      appetite: 0.6, size: 1, breeds: { every: 96, cap: 4 }, flees: 0.4,
+      role: "predator", upkeep: 1.2, is: ["small"], eats: ["insects"], temperament: "hungry",
+      appetite: 0.6, size: 1, breeds: { every: 500 }, flees: 0.4,
       note: "Hunts insects on the wing and roosts in the high chambers. Its droppings feed the fungus next door."
     },
     duende: {
@@ -283,34 +290,45 @@ window.CryptsEcology = {
       appetite: 0.5, size: 1, flees: 0.5,
       note: "A house spirit from Spanish folk tales, not the old ones. It lives in walls and steals food left out, offerings, and gold."
     },
+    // ---- The jaguars: the hunters of the grazing herds, one tier for each ----
+    tlacoocelotl: {
+      role: "predator", rank: 2, upkeep: 1.6, is: ["small"], eats: ["small", "insects", "carrion"], temperament: "hungry",
+      appetite: 0.5, size: 2, meat: "monster-meat", breeds: { every: 700 }, flees: 0.4,
+      note: "Hunts grasshoppers, cave turkeys, and mapachines on the upper floors. Fed, it lets you be."
+    },
+    "black-jaguar": {
+      role: "predator", rank: 4, upkeep: 5.2, is: ["large"], eats: ["small", "large", "carrion"], temperament: "hungry",
+      appetite: 0.4, size: 5, meat: "monster-meat", territorial: true, flees: 0.15, breeds: { every: 1400 }, sleepsAfter: 30,
+      note: "The deep floors' hunter: it takes black turkey-raptors and tomb rabbits, and it is the only thing that keeps the rabbits from eating the gardens to the rock."
+    },
     "jungle-jaguar": {
-      role: "predator", upkeep: 9, is: ["large"], eats: ["small", "insects", "large", "carrion"], temperament: "hungry",
-      appetite: 0.45, size: 3, meat: "monster-meat", territorial: true, flees: 0.25, breeds: { every: 400, cap: 2 },
+      role: "predator", rank: 3, upkeep: 2.7, is: ["large"], eats: ["small", "insects", "large", "carrion"], temperament: "hungry",
+      appetite: 0.45, size: 3, meat: "monster-meat", territorial: true, flees: 0.25, breeds: { every: 900 },
       note: "Hunts anything smaller than itself and keeps a den near where its prey feeds. Fed, it lets you pass. Hungry, it doesn't. It won't share its ground with another jaguar."
     },
     "cenote-stalker": {
-      role: "predator", upkeep: 6, is: ["small"], eats: ["fish", "small", "large"], temperament: "hungry",
-      appetite: 0.5, size: 2, aquatic: true, taboo: true, breeds: { every: 300, cap: 2 }, flees: 0.3,
+      role: "predator", upkeep: 3, is: ["small"], eats: ["fish", "small", "large"], temperament: "hungry",
+      appetite: 0.5, size: 2, aquatic: true, taboo: true, breeds: { every: 900 }, flees: 0.3,
       note: "The ahuizotl. It lives in deep water and takes things from the edge with the hand on its tail. When it's hungry it cries like a baby, and the fish and frogs jump to bring you closer. Its kills belong to Tlaloc, and so does it: those who touch either come to grief."
     },
     axolocatl: {
-      role: "omnivore", upkeep: 3, is: ["small"], eats: ["fish", "plants", "insects"], temperament: "hostile",
-      appetite: 0.6, size: 2, meat: "monster-meat", breeds: { every: 120, cap: 3 }, aquatic: true, flees: 0.3,
+      role: "omnivore", upkeep: 1.5, is: ["small"], eats: ["fish", "plants", "insects"], temperament: "hostile",
+      appetite: 0.6, size: 2, meat: "monster-meat", breeds: { every: 500 }, aquatic: true, flees: 0.3,
       note: "Fishes its pool, eats the water bugs, and guards its spawn. Cipactli and the ahuizotl hunt it."
     },
     colotl: {
-      role: "predator", upkeep: 4, is: ["small"], eats: ["insects"], temperament: "hungry",
-      appetite: 0.7, size: 2, meat: "colotl-tail", breeds: { every: 144, cap: 3 }, flees: 0.3,
+      role: "predator", upkeep: 2, is: ["small"], eats: ["insects"], temperament: "hungry",
+      appetite: 0.7, size: 2, meat: "colotl-tail", breeds: { every: 600 }, flees: 0.3,
       prepare: { hazard: "poison", dc: 13, note: "The sting gland has to come out whole." },
       note: "Hunts insects in the dry, warm chambers and guards its brood. Butchering one is safe once you know where the venom sits."
     },
     "xolo-hound": {
-      role: "scavenger", upkeep: 3, is: ["large"], eats: ["carrion", "provisions"], temperament: "wary",
+      role: "scavenger", upkeep: 1.5, is: ["large"], eats: ["carrion", "provisions"], temperament: "wary",
       appetite: 0.6, size: 2, flees: 0.4,
       note: "Eats the dead. Follows the smell of a kill, waits its turn while the hunter feeds, and leaves the living alone."
     },
     cipactli: {
-      role: "predator", upkeep: 16, is: ["large"], eats: ["fish", "small", "large", "carrion"], temperament: "hostile",
+      role: "predator", upkeep: 12, is: ["large"], eats: ["fish", "small", "large", "carrion"], temperament: "hostile",
       appetite: 0.35, size: 4, meat: "caiman-tail", aquatic: true, territorial: true, sleepsAfter: 48,
       note: "The top of the pool. Eats fish, axolocatl, the ahuizotl, and anything that wades in. After a big meal it lies still for hours."
     },
@@ -320,12 +338,12 @@ window.CryptsEcology = {
       note: "Eats glowcap beds whole and sleeps it off on its hoard."
     },
     "huay-chivo": {
-      role: "scavenger", upkeep: 7, is: ["large"], eats: ["carrion", "small", "provisions"], temperament: "hostile",
+      role: "scavenger", upkeep: 3.5, is: ["large"], eats: ["carrion", "small", "provisions"], temperament: "hostile",
       appetite: 0.6, size: 3, flees: 0.25,
       note: "A Maya witch in a goat's shape (a way, a person's animal double). It feeds on the dead and on small animals, and attacks people on sight."
     },
     camazotz: {
-      role: "predator", is: ["large"], eats: ["small", "large", "tonalli"], temperament: "hostile",
+      role: "predator", important: true, is: ["large"], eats: ["small", "large", "tonalli"], temperament: "hostile",
       appetite: 0.4, size: 3,
       note: "The K'iche' Maya death bat. Hunts the warm-blooded and drinks the life from the dying."
     },
@@ -355,7 +373,7 @@ window.CryptsEcology = {
       note: "Drawn to fresh deaths and old offerings."
     },
     tlacatecolotl: {
-      role: "predator", upkeep: 5, is: ["small"], eats: ["insects", "small", "tonalli"], temperament: "hostile",
+      role: "predator", upkeep: 2.5, is: ["small"], eats: ["insects", "small", "tonalli"], temperament: "hostile",
       appetite: 0.5, size: 2,
       note: "An owl in a man: hunts bats and insects, and feeds on shrines."
     },
@@ -370,8 +388,8 @@ window.CryptsEcology = {
       note: "Fed by what this whole tomb was built to offer."
     },
     mazacoatl: {
-      role: "predator", upkeep: 10, is: ["large"], eats: ["small", "large"], temperament: "hungry",
-      appetite: 0.25, size: 3, meat: "mazacoatl-meat", territorial: true, sleepsAfter: 60, flees: 0.2, breeds: { every: 500, cap: 2 },
+      role: "predator", upkeep: 6, is: ["large"], eats: ["small", "large"], temperament: "hungry",
+      appetite: 0.25, size: 3, meat: "mazacoatl-meat", territorial: true, sleepsAfter: 60, flees: 0.2, breeds: { every: 1200 },
       note: "The deer serpent: a great snake with antlers, named for what it eats. It isn't venomous; it waits, takes something with four legs, coils, and then sleeps for a long time. The Mexica kept and bred them for their meat."
     },
     maquizcoatl: {
@@ -391,8 +409,8 @@ window.CryptsEcology = {
     }
   },
 
-  // Ingredients that only the tomb provides, and the dishes they make. `requires` names the
-  // naturalist's knowledge a recipe needs (a species or colony observed).
+  // Ingredients that only the tomb provides. How they cook is in data/cooking.js. The old
+  // fixed recipes below are kept only so dishes already in saves still load.
   ingredients: {
     "cave-mushrooms": { name: "Glowcap mushrooms", food: 15, nutrients: { protein: 15, carbohydrates: 10, greens: 30 }, weight: 0.4, price: 1,
       description: "Pale mushrooms with a faint glow, gathered from the tomb's fungal gardens. Better cooked than raw." },
