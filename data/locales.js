@@ -161,6 +161,13 @@
   // any other the first time the player picks it.
   const loading = {};
   function loadCatalog(locale) {
+    // English keys are the English text (en.json maps every key to itself, for translators),
+    // so English needs nothing fetched.
+    if (locale === "en") {
+      catalogs.en ||= {};
+      matchers.en ||= compileMatchers(catalogs.en);
+      return Promise.resolve();
+    }
     if (!catalogUrls[locale]) return Promise.resolve();
     loading[locale] ||= (async () => {
       try {

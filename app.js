@@ -675,6 +675,31 @@ function storageAvailable() {
   }
 }
 
+// Saves are kept small: a floor's map arrays (one entry per square, 2,025 of them) are
+// written as short strings instead of long JSON arrays, which takes a save from ~0.8 MB to
+// about half that, so it writes faster and more save slots fit in the browser's storage.
+const SAVE_PACK_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function packSaveValue(key, value) {
+  if (!Array.isArray(value) || value.length < 256) return value;
+  if (value.every((entry) => typeof entry === "boolean")) {
+    return { $packed: "bits", length: value.length, data: value.map((entry) => (entry ? "1" : "0")).join("") };
+  }
+  if (value.every((entry) => typeof entry === "string")) {
+    const words = [...new Set(value)];
+    if (words.length > SAVE_PACK_CHARS.length) return value;
+    return { $packed: "words", words, data: value.map((entry) => SAVE_PACK_CHARS[words.indexOf(entry)]).join("") };
+  }
+  return value;
+}
+
+function unpackSaveValue(key, value) {
+  if (!value || typeof value !== "object" || typeof value.$packed !== "string" || typeof value.data !== "string") return value;
+  if (value.$packed === "bits") return [...value.data].map((digit) => digit === "1");
+  if (value.$packed === "words" && Array.isArray(value.words)) return [...value.data].map((digit) => value.words[SAVE_PACK_CHARS.indexOf(digit)]);
+  return value;
+}
+
 function saveRun() {
   try {
     const saveId = state.activeSaveId || createSaveId();
@@ -693,7 +718,7 @@ function saveRun() {
       location: state.run.location,
       updatedAt
     };
-    localStorage.setItem(`${STORE_KEYS.saveSlotPrefix}${saveId}`, JSON.stringify(slot));
+    localStorage.setItem(`${STORE_KEYS.saveSlotPrefix}${saveId}`, JSON.stringify(slot, packSaveValue));
     index.slots = existing
       ? index.slots.map((save) => save.id === saveId ? metadata : save)
       : [...index.slots, metadata];
@@ -2408,6 +2433,7 @@ function resolveEnemyDefeat(enemy) {
   onCreatureDefeated(enemy);
   dropEnemyTreasure(enemy);
   if (typeof ecologyCreatureDied === "function") ecologyCreatureDied(enemy);
+  if (typeof mindWitnessDeath === "function") mindWitnessDeath(enemy);
   showCombatFeedback("defeat", `${enemy.name} defeated`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
   addExperience(enemy.xp);
   addLog(`${enemy.name} falls. You gain ${enemy.xp} experience.`);
@@ -2655,7 +2681,10 @@ function enemiesTakeTurn() {
       continue;
     }
     const distance = distanceInSquares(enemy, state.run.player);
-    if (!enemy.alerted && creatureNotices(enemy, distance)) enemy.alerted = true;
+    // Animals decide for themselves what you are to them (systems/minds.js); the rest notice
+    // you by their habits.
+    if (typeof mindThink === "function" && !enemy.asleep && mindThink(enemy, distance)) continue;
+    if (!enemy.alerted && !(typeof mindDecided === "function" && mindDecided(enemy)) && creatureNotices(enemy, distance)) enemy.alerted = true;
     if (enemySleeps(enemy)) continue;
     if (!enemy.alerted) {
       if (typeof ecologyIdle === "function" && ecologyIdle(enemy)) continue;
@@ -4381,8 +4410,10 @@ function inspectMapTile(tile) {
       const strikeText = strikeKnowledgeText(enemy);
       const hunger = typeof ecoHungerState === "function" ? ecoHungerState(enemy) : "";
       const hungerText = { starving: "It's starving: desperate, and weaker for it.", hungry: "It looks hungry.", fed: "It looks well fed.", gorged: "It's gorged and sluggish." }[hunger] || "";
-      const calm = typeof ecologyIgnoresPlayer === "function" && !enemy.alerted && ecologyIgnoresPlayer(enemy);
-      description = `${enemy.description} ${condition}${hungerText ? ` ${hungerText}` : ""}${strikeText ? ` ${strikeText}` : ""} ${calm ? "It isn't interested in you right now; it fights back if you attack." : "Hostile; attack from an adjacent tile."}`;
+      const calm = typeof creatureIsThreat === "function" ? !creatureIsThreat(enemy)
+        : typeof ecologyIgnoresPlayer === "function" && !enemy.alerted && ecologyIgnoresPlayer(enemy);
+      const manner = typeof mindDescription === "function" ? mindDescription(enemy) : "";
+      description = `${enemy.description} ${condition}${hungerText ? ` ${hungerText}` : ""}${manner ? ` ${manner}` : ""}${strikeText ? ` ${strikeText}` : ""} ${calm ? "It isn't interested in you right now; it fights back if you attack." : "Hostile; attack from an adjacent tile."}`;
       if (treasure) description += ` Treasure is also on this tile and will be collected when you can enter it: ${
         treasures.map((entry) => [
           entry.gold ? formatCurrency(entry.gold) : "",
@@ -6769,7 +6800,7 @@ function normalizeSavedPack(raw) {
 function activateSaveSlot(saveId, { markPlayed = true } = {}) {
   const serialized = localStorage.getItem(`${STORE_KEYS.saveSlotPrefix}${saveId}`);
   if (!serialized) throw new Error("saved character data could not be found.");
-  const slot = JSON.parse(serialized);
+  const slot = JSON.parse(serialized, unpackSaveValue);
   if (!slot || slot.schemaVersion !== 1 || !slot.pack || !slot.run) {
     throw new Error("saved character data has an unsupported format.");
   }

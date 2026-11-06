@@ -16,7 +16,7 @@
 
 const CHARACTER_TEXTURE_BASE = `${(typeof window !== "undefined" && window.CHARACTER_TEXTURE_ROOT) || "./"}resources/character-textures/`;
 const CHARACTER_TEXTURE_CHANNELS = { dye: "tunic", trim: "trim", skin: "skin", hair: "hair" };
-const characterTextures = { images: new Map(), composed: new Map(), defs: new Map(), ready: false };
+const characterTextures = { images: new Map(), composed: new Map(), defs: new Map(), loading: new Map(), refresh: null };
 
 function characterTextureEntry(kind, id) {
   const manifest = (typeof window !== "undefined" && window.CryptsCharacterTextures?.parts) || null;
@@ -41,6 +41,11 @@ function characterTextureDefsMarkup() {
   return markup;
 }
 
+// Colored parts are painted on a canvas, which is slow on old phones (a PNG encode per
+// part). Each result is kept in the browser's Cache Storage, so a returning player's
+// figures come straight back without painting. Bump the version when the painting changes.
+const CHARACTER_COMPOSITE_STORE = "cnc-figure-composites-v1";
+
 function characterTextureComposite(kind, id, variant, channels, palette) {
   const colors = channels.map((channel) => palette?.[CHARACTER_TEXTURE_CHANNELS[channel]] || "#ffffff");
   const key = `${characterTextureFile(kind, id, variant, "")}|${colors.join(",")}`;
@@ -48,10 +53,43 @@ function characterTextureComposite(kind, id, variant, channels, palette) {
   if (cached) return cached;
   const base = characterTextures.images.get(characterTextureFile(kind, id, variant, ""));
   if (!base?.complete || !base.naturalWidth) return null;
+  if (!channels.length) return base.dataset.url;
+  if (typeof caches === "undefined") return characterTexturePaint(kind, id, variant, channels, colors, key);
+  // Look in the store (and paint it if it isn't there) without holding up this frame.
+  if (!characterTextures.loading.has(key)) {
+    characterTextures.loading.set(key, characterTextureFromStore(kind, id, variant, channels, colors, key).finally(() => {
+      characterTextures.loading.delete(key);
+      characterTexturesLoaded();
+    }));
+  }
+  return null;
+}
+
+async function characterTextureFromStore(kind, id, variant, channels, colors, key) {
+  const stamp = window.CryptsCharacterTextures?.stamp || "";
+  const address = `https://figure-composite.invalid/${encodeURIComponent(`${stamp}|${key}`)}`;
+  try {
+    const store = await caches.open(CHARACTER_COMPOSITE_STORE);
+    const hit = await store.match(address);
+    if (hit) {
+      const url = await hit.text();
+      if (url.startsWith("data:image/")) {
+        characterTextures.composed.set(key, url);
+        return;
+      }
+    }
+    const url = characterTexturePaint(kind, id, variant, channels, colors, key);
+    if (url?.startsWith("data:image/")) await store.put(address, new Response(url, { headers: { "Content-Type": "text/plain" } }));
+  } catch {
+    characterTexturePaint(kind, id, variant, channels, colors, key);
+  }
+}
+
+function characterTexturePaint(kind, id, variant, channels, colors, key) {
+  const base = characterTextures.images.get(characterTextureFile(kind, id, variant, ""));
+  if (!base?.complete || !base.naturalWidth) return null;
   let url;
-  if (!channels.length) {
-    url = base.dataset.url;
-  } else {
+  {
     const size = base.naturalWidth;
     const canvas = document.createElement("canvas");
     canvas.width = size;
@@ -92,12 +130,13 @@ function characterTextureComposite(kind, id, variant, channels, palette) {
 
 // The markup for a painted part, or null to fall back to the built-in drawing.
 function characterTextureLayer(kind, id, palette = {}, variant = "") {
-  if (!characterTextures.ready) return null;
   const entry = characterTextureEntry(kind, id);
   if (!entry) return null;
   const chosen = variant && entry[variant] ? variant : "";
   const channels = entry[chosen];
   if (!channels) return null;
+  // Textures load the first time a figure wears them; until then the built-in drawing stands in.
+  if (!characterTextureRequest(kind, id, chosen, channels)) return null;
   const url = characterTextureComposite(kind, id, chosen, channels, palette);
   if (!url) return null;
   let defId = null;
@@ -126,31 +165,48 @@ function loadCharacterTextureImage(file, stamp) {
       image.src = url;
     }))
     .then((image) => { characterTextures.images.set(file, image); })
-    .catch((error) => console.warn(`Character texture ${file} could not be loaded (${error.message}); the built-in drawing is used.`));
+    .catch((error) => {
+      // Remember the miss, so the figure uses its built-in drawing instead of asking again every frame.
+      characterTextures.images.set(file, null);
+      console.warn(`Character texture ${file} could not be loaded (${error?.message}); the built-in drawing is used.`);
+    });
 }
 
-async function loadCharacterTextures() {
-  const manifest = window.CryptsCharacterTextures;
-  const parts = manifest?.parts || {};
-  const jobs = [];
-  for (const [kind, ids] of Object.entries(parts)) {
-    for (const [id, variants] of Object.entries(ids)) {
-      for (const [variant, channels] of Object.entries(variants)) {
-        jobs.push(loadCharacterTextureImage(characterTextureFile(kind, id, variant, ""), manifest.stamp || ""));
-        for (const channel of channels) jobs.push(loadCharacterTextureImage(characterTextureFile(kind, id, variant, channel), manifest.stamp || ""));
-      }
+// Loads one part's painting and masks if they aren't in yet. Returns true when they are all
+// loaded (ready to draw), false while they are on their way.
+function characterTextureRequest(kind, id, variant, channels) {
+  if (typeof fetch !== "function" || typeof FileReader === "undefined") return false;
+  const stamp = window.CryptsCharacterTextures?.stamp || "";
+  const files = [characterTextureFile(kind, id, variant, ""), ...channels.map((channel) => characterTextureFile(kind, id, variant, channel))];
+  let ready = true;
+  for (const file of files) {
+    if (characterTextures.images.has(file)) continue;
+    ready = false;
+    if (!characterTextures.loading.has(file)) {
+      characterTextures.loading.set(file, loadCharacterTextureImage(file, stamp).finally(() => {
+        characterTextures.loading.delete(file);
+        characterTexturesLoaded();
+      }));
     }
   }
-  if (!jobs.length) return;
-  await Promise.all(jobs);
-  characterTextures.ready = true;
-  if (typeof codexFigureCache !== "undefined") codexFigureCache.clear();
-  if (typeof codexIconCache !== "undefined") codexIconCache.clear();
-  if (typeof codexPortraitCache !== "undefined") codexPortraitCache.clear();
-  if (typeof render === "function" && typeof state !== "undefined" && state.gameStarted) render();
-  if (typeof updateCharacterPreview === "function" && typeof elements !== "undefined" && elements["character-dialog"]?.open) updateCharacterPreview();
+  return ready;
 }
 
-if (typeof window !== "undefined" && typeof fetch === "function") {
-  window.addEventListener("DOMContentLoaded", () => { loadCharacterTextures(); });
+// Resolves when every texture now on its way has arrived (systems/arrival.js waits on this
+// before showing a new screen).
+function characterTexturesPending() {
+  return Promise.all([...characterTextures.loading.values()]);
+}
+
+// When a batch of textures has arrived, redraw the figures once.
+function characterTexturesLoaded() {
+  if (characterTextures.loading.size || characterTextures.refresh) return;
+  characterTextures.refresh = setTimeout(() => {
+    characterTextures.refresh = null;
+    if (typeof codexFigureCache !== "undefined") codexFigureCache.clear();
+    if (typeof codexIconCache !== "undefined") codexIconCache.clear();
+    if (typeof codexPortraitCache !== "undefined") codexPortraitCache.clear();
+    if (typeof render === "function" && typeof state !== "undefined" && state.gameStarted) render();
+    if (typeof updateCharacterPreview === "function" && typeof elements !== "undefined" && elements["character-dialog"]?.open) updateCharacterPreview();
+  }, 30);
 }

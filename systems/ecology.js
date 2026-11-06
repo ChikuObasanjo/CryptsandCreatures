@@ -486,7 +486,10 @@ function ecologyIgnoresPlayer(creature, distance = distanceInSquares(creature, s
 // A creature is a threat if it's alive and not minding its own business.
 function creatureIsThreat(creature) {
   if (!creature?.alive || creature.friendly) return false;
-  if (creature.alerted) return true;
+  if (creature.alerted) return !(creature.fleeTurns > 0 && creature.mind?.intent === "flee");
+  // An animal that has made up its mind about you (systems/minds.js) is a threat only if it
+  // means to fight.
+  if (creature.mind && typeof mindApplies === "function" && mindApplies(creature)) return creature.mind.intent === "fight";
   return !ecologyIgnoresPlayer(creature);
 }
 
@@ -777,6 +780,7 @@ function ecoEatCache(creature, species, cache) {
   cache.items = cache.items.filter((entry) => entry.quantity > 0);
   if (!cache.items.length && !cache.gold) state.run.treasures = state.run.treasures.filter((entry) => entry !== cache);
   ecoFeed(creature, 55, 3);
+  if (cache.dropped && typeof mindFedBy === "function") mindFedBy(creature);
   ecoWitness(creature, creature.templateId, "eats:provisions");
   ecoLog(creature, `${creature.name} finds the ${itemDetails(item.id).name} you left and eats it.`);
 }
@@ -2090,6 +2094,8 @@ function ecologyMoodLabel(creature) {
   if (eco.hunting) return "hunting";
   const hunger = ecoHungerState(creature);
   if (hunger === "starving") return "starving";
+  if (creature.mind?.intent === "watch") return "watching you";
+  if (creature.mind?.intent === "flee") return "afraid of you";
   if (!creature.alerted && ecologyIgnoresPlayer(creature)) return hunger === "gorged" ? "sluggish" : "minding its own business";
   return "";
 }

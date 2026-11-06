@@ -55,8 +55,9 @@ function arrivalCheck() {
 
 async function arrivalSettle(token, shownAt) {
   const urls = arrivalImageUrls();
+  const textures = typeof characterTexturesPending === "function" ? characterTexturesPending() : Promise.resolve();
   await Promise.race([
-    Promise.all(urls.map(arrivalDecode)),
+    Promise.all([...urls.map(arrivalDecode), textures]),
     new Promise((resolve) => window.setTimeout(resolve, ARRIVAL_MAX_WAIT))
   ]);
   if (token !== arrival.token) return;
