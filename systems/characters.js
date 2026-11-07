@@ -129,6 +129,26 @@ function withNeedsPenalty(character, needs) {
   };
 }
 
+// Sleep, shown as a status like any other:
+//   Rested       for the first 8 hours after a full sleep: +1 to attack rolls (a boon)
+//   (nothing)    8 to 12 hours awake
+//   Unrested I   12+ hours awake: −1 to every ability score
+//   Unrested II  24+ hours: −2
+//   Unrested III 36+ hours: −3, and from 48 hours exhaustion wounds you every 8 hours
+// Sleep (camp, the Ceiba House, the inn) resets the count.
+const RESTED_HOURS = 8;
+const UNREST_STEP_HOURS = 12;
+
+function restState(needs) {
+  const awake = needs?.hoursAwake || 0;
+  const level = needLevel(needs, "sleep");
+  if (level > 0) {
+    return { kind: "unrested", level, awake, nextIn: level < 3 ? (level + 1) * UNREST_STEP_HOURS - awake : Math.max(0, 48 - awake) };
+  }
+  if (awake < RESTED_HOURS) return { kind: "rested", level: 0, awake, nextIn: RESTED_HOURS - awake };
+  return { kind: "awake", level: 0, awake, nextIn: UNREST_STEP_HOURS - awake };
+}
+
 function needLevel(needs, type) {
   if (type === "food") return (needs?.food ?? 100) < 25 ? 1 : 0;
   if (type === "water") return (needs?.water ?? 100) < 25 ? 1 : 0;
@@ -474,10 +494,6 @@ function generateAbilityRolls() {
     const dice = Array.from({ length: 4 }, () => randomInt(6)).sort((a, b) => a - b);
     return dice[1] + dice[2] + dice[3];
   });
-}
-
-function ordinalSuffix(number) {
-  return number === 1 ? "st" : number === 2 ? "nd" : number === 3 ? "rd" : "th";
 }
 
 function syncHeritageOptions(selected = elements["character-heritage"].value) {

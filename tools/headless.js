@@ -65,4 +65,5 @@ module.exports = { load };
 if (require.main === module) {
   const { errors } = load();
   console.log(errors.length ? errors.join("\n") : "loaded with no errors");
+  if (errors.length) process.exitCode = 1;
 }

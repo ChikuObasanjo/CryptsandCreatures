@@ -1,7 +1,7 @@
 "use strict";
 
 // Every unique item has its own art file in resources/items/, so each can be repainted
-// on its own. Replace the PNG and bump SPRITE_RESOURCE_VERSION in app.js.
+// on its own. Replace the PNG and rebuild (the build re-versions the art).
 //
 //   gear, food, treasure, tools ..... resources/items/<item id>.png      e.g. torch.png
 //   weapons ......................... resources/items/weapon-<id>.png    e.g. weapon-katana.png

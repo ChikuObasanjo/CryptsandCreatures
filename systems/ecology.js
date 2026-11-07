@@ -677,7 +677,13 @@ function ecoStep(creature, target, { catchUp = false, away = false } = {}) {
       data.route = distanceInSquares(creature, target) <= 1 ? [] : ecoRoute(creature, target, catchUp) || [];
       data.routeGoal = goalKey;
     }
-    const next = data.route?.[0];
+    let next = data.route?.[0];
+    // Something else moved it since the route was planned (a chase, a fright, its own mind):
+    // the route no longer starts beside it, so plan again from here.
+    if (next && (Math.abs(next.x - creature.x) > 1 || Math.abs(next.y - creature.y) > 1)) {
+      data.route = ecoRoute(creature, target, catchUp) || [];
+      next = data.route[0];
+    }
     if (!next) return false;
     if (tileHasCreature(next.x, next.y, creature) || (next.x === player.x && next.y === player.y) ||
       (catchUp && distanceInSquares(next, player) <= 4)) {
@@ -1426,9 +1432,11 @@ function ecoReform(eco) {
 
 // Creatures act on their own between your turns when more than one tick passes at once
 // (a rest, a meal, an hour of foraging). The first tick's creatures already acted.
+// The extra moves of a long action (a search, a meal): only creatures you can't see take
+// them, so nothing in view jumps several squares between two frames.
 function ecologyCreaturesAct() {
   for (const creature of [...state.run.enemies]) {
-    if (!creature.alive || creature.alerted) continue;
+    if (!creature.alive || creature.alerted || ecoSeen(creature)) continue;
     ecologyIdle(creature, { catchUp: true });
   }
 }
@@ -1675,7 +1683,7 @@ function ecoOfferingItem(list = Object.keys(ECO.offerings)) {
 function ecologyInteractions() {
   if (state.run?.location !== "dungeon" || !ecoState()) return [];
   const list = [];
-  const add = (label, action, group) => list.push({ label, action, group });
+  const add = (label, action, group, icon = "") => list.push({ label, action, group, icon });
   const chaneque = state.run.enemies.find((enemy) => enemy.alive && enemy.templateId === "chaneque" && !enemy.alerted &&
     distanceInSquares(enemy, state.run.player) <= 1 && !enemy.eco?.appeased);
   if (chaneque && ecoOfferingItem(ECO.guardianOfferings.chaneque)) add("Offer the chaneque a gift", () => appeaseGuardian(chaneque), "explore");
@@ -1693,9 +1701,10 @@ function ecologyInteractions() {
   if (summit) add(`Pick a summit cap · ${summit.summitCaps}`, () => pickSummitCap(summit), "supplies");
   const colony = ecoFeatureNear((feature) => feature.kind === "colony" && ECO.colonies[feature.species]?.harvest &&
     feature.count >= ECO.colonies[feature.species].harvestAt);
-  if (colony) add(`${ECO.colonies[colony.species].harvestVerb} · ${Math.floor(colony.count)}`, () => harvestColony(colony), "supplies");
+  if (colony) add(`${ECO.colonies[colony.species].harvestVerb} · ${Math.floor(colony.count)}`, () => harvestColony(colony), "supplies", "tokens/chapolin-colony");
   const patch = ecoFeatureNear((feature) => ["fungus", "plants", "pool"].includes(feature.kind) && feature.amount > 0);
-  if (patch) add(`${ECO.resources[patch.kind].harvestVerb} · ${patch.amount}`, () => harvestFeature(patch), "supplies");
+  if (patch) add(`${ECO.resources[patch.kind].harvestVerb} · ${patch.amount}`, () => harvestFeature(patch), "supplies",
+    { fungus: "tokens/fungus-patch", pool: "tokens/pool", plants: "tokens/root-tangle" }[patch.kind] || "");
   if (typeof duendeInteractions === "function") list.unshift(...duendeInteractions());
   return list;
 }

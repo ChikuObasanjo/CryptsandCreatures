@@ -1,0 +1,428 @@
+/* Phone layout: the game fills the screen.
+ *
+ * On a phone (body.phone-layout, set by app.js for narrow screens) the town or tomb is drawn
+ * edge to edge behind everything, the way mobile dungeon crawlers do it, and the interface
+ * floats on top of it:
+ *   - a slim status bar at the top (portrait, health, food, water, time, menus),
+ *   - the target frame and the row of nearby creatures just under it,
+ *   - the place name as a small banner,
+ *   - the newest message above the controls,
+ *   - the controls docked at the bottom on a parchment sheet.
+ * app.js measures the top and bottom bars (--hud-top, --hud-bottom) and shifts the map so
+ * you stand in the middle of the open space between them, not behind the controls.
+ * On larger screens none of this applies; styles.css lays the game out in panels.
+ */
+
+body.phone-layout.immersive-game {
+  --hud-top: 64px;
+  --hud-bottom: 260px;
+  --hud-glass: color-mix(in srgb, var(--card) 94%, transparent);
+  --hud-ink-shadow: 0 1px 0 rgba(20, 12, 8, 0.5);
+  overflow: hidden;
+  background: #120d0a;
+  overscroll-behavior: none;
+}
+
+/* ---- The world, full screen ---- */
+body.phone-layout.immersive-game .app-shell,
+body.phone-layout.immersive-game .game-layout,
+body.phone-layout.immersive-game .play-column,
+body.phone-layout.immersive-game .dungeon-screen,
+body.phone-layout.immersive-game .town-screen,
+body.phone-layout.immersive-game .map-panel,
+body.phone-layout.immersive-game .town-walk-panel {
+  display: contents;
+}
+body.phone-layout.immersive-game .game-layout.hidden,
+body.phone-layout.immersive-game .dungeon-screen.hidden,
+body.phone-layout.immersive-game .town-screen.hidden { display: none; }
+body.phone-layout.immersive-game footer,
+body.phone-layout.immersive-game .town-banner,
+body.phone-layout.immersive-game .town-legend,
+body.phone-layout.immersive-game .map-legend,
+body.phone-layout.immersive-game .keyboard-hint,
+body.phone-layout.immersive-game .town-controls-hint,
+body.phone-layout.immersive-game .map-hint,
+body.phone-layout.immersive-game .player-combatant,
+body.phone-layout.immersive-game .action-panel > .section-heading > div,
+body.phone-layout.immersive-game .topbar > div:first-child { display: none; }
+
+body.phone-layout.immersive-game .dungeon-map-viewport,
+body.phone-layout.immersive-game .town-map-viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  width: auto;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: #120d0a;
+  box-shadow: none;
+}
+body.phone-layout.immersive-game .dungeon-map,
+body.phone-layout.immersive-game .town-map {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  translate: calc(-50% + var(--map-shift-x, 0px)) calc(-50% + var(--map-shift, 0px));
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ---- Top status bar ---- */
+body.phone-layout.immersive-game .topbar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 30;
+  padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
+  border-bottom: 0;
+  background: linear-gradient(to bottom, var(--card) 0%, var(--hud-glass) 100%) ;
+  box-shadow: 0 2px 0 var(--line), 0 8px 18px rgba(20, 12, 8, 0.35);
+}
+body.phone-layout.immersive-game .topbar::after { inset: auto 0 -8px; height: 6px; background-size: 18px 6px; }
+body.phone-layout.immersive-game .topbar-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "portrait resources buttons";
+  align-items: center;
+  gap: 8px;
+}
+body.phone-layout.immersive-game .portrait-button { grid-area: portrait; width: 48px; height: 48px; }
+body.phone-layout.immersive-game .header-resources {
+  grid-area: resources;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  gap: 4px 6px;
+  min-width: 0;
+}
+body.phone-layout.immersive-game .header-resources > .topbar-resource:first-child { display: none; }
+body.phone-layout.immersive-game .topbar-meter-resource {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  gap: 4px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+body.phone-layout.immersive-game .topbar-meter-resource > img,
+body.phone-layout.immersive-game .topbar-meter-resource .resource-glyph { width: 18px; height: 18px; font-size: 15px; }
+body.phone-layout.immersive-game .topbar-meter-label { font-size: 11.5px; line-height: 1.1; }
+body.phone-layout.immersive-game .topbar-meter-label .meter-word,
+body.phone-layout.immersive-game .topbar-meter-label small { display: none; }
+body.phone-layout.immersive-game .supply-meter-track { height: 7px; }
+body.phone-layout.immersive-game .expedition-kit-strip { grid-column: 1 / span 2; gap: 3px; overflow: hidden; }
+body.phone-layout.immersive-game .kit-resource { min-height: 24px; padding: 0 5px 0 2px; font-size: 11.5px; }
+body.phone-layout.immersive-game .kit-resource-icon { width: 18px; height: 18px; }
+body.phone-layout.immersive-game .clock-resource {
+  grid-column: 3;
+  justify-content: flex-end;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+body.phone-layout.immersive-game .clock-glyph { font-size: 13px; width: auto; height: auto; }
+body.phone-layout.immersive-game .header-resources.has-spell-slots .expedition-kit-strip { grid-column: 1; }
+body.phone-layout.immersive-game .spell-slot-resource { grid-column: 2; min-height: 24px; padding: 0 6px; }
+body.phone-layout.immersive-game .spell-slot-label { display: none; }
+body.phone-layout.immersive-game #game-settings-toggle,
+body.phone-layout.immersive-game #journal-toggle {
+  width: 38px;
+  height: 38px;
+  min-height: 0;
+  padding: 0;
+  font-size: 0;
+}
+body.phone-layout.immersive-game #game-settings-toggle span,
+body.phone-layout.immersive-game #journal-toggle .utility-icon { font-size: 18px; }
+body.phone-layout.immersive-game .topbar-actions > #game-settings-toggle { grid-area: buttons; align-self: start; }
+body.phone-layout.immersive-game .topbar-actions > #journal-toggle { grid-area: buttons; align-self: end; }
+body.phone-layout.immersive-game .topbar-actions { grid-template-rows: auto; }
+body.phone-layout.immersive-game .topbar-actions > #game-settings-toggle,
+body.phone-layout.immersive-game .topbar-actions > #journal-toggle { position: relative; }
+body.phone-layout.immersive-game .topbar-actions:has(#journal-toggle:not(.hidden)) {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "portrait resources settings journal";
+}
+body.phone-layout.immersive-game .topbar-actions:has(#journal-toggle:not(.hidden)) > #game-settings-toggle { grid-area: settings; align-self: center; }
+body.phone-layout.immersive-game .topbar-actions:has(#journal-toggle:not(.hidden)) > #journal-toggle { grid-area: journal; align-self: center; }
+
+/* ---- Under the status bar: place name, target, nearby ---- */
+body.phone-layout.immersive-game .map-panel > .section-heading {
+  position: fixed;
+  top: calc(var(--hud-top) + 12px);
+  left: 8px;
+  z-index: 12;
+  max-width: calc(100vw - 16px);
+  padding: 3px 10px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--hud-glass);
+  box-shadow: 0 2px 0 var(--line);
+  pointer-events: none;
+}
+body.phone-layout.immersive-game .map-panel > .section-heading h2 {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+body.phone-layout.immersive-game .map-panel > .section-heading .eyebrow { display: none; }
+body.phone-layout.immersive-game.has-target .map-panel > .section-heading { display: none; }
+body.phone-layout.immersive-game .delve-objectives { display: none; }
+
+body.phone-layout.immersive-game .battle-hud {
+  position: fixed;
+  top: calc(var(--hud-top) + 12px);
+  left: 8px;
+  right: 8px;
+  z-index: 12;
+  display: grid;
+  gap: 8px;
+  width: auto;
+  max-width: none;
+  /* (An aligned fixed box shrinks to fit its content; stretch keeps it edge to edge.) */
+  justify-self: stretch;
+  padding: 0;
+  pointer-events: none;
+}
+body.phone-layout.immersive-game .battle-hud > * { pointer-events: auto; }
+body.phone-layout.immersive-game .enemy-combatant {
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 8px;
+  padding: 4px 8px 5px;
+  background: var(--hud-glass);
+}
+body.phone-layout.immersive-game .enemy-combatant .combatant-art { width: 38px; height: 38px; border-radius: 5px; }
+body.phone-layout.immersive-game .enemy-combatant .combatant-info { gap: 2px; }
+body.phone-layout.immersive-game .enemy-combatant .combatant-title strong { font-size: 14px; }
+body.phone-layout.immersive-game .enemy-combatant .combatant-title span { overflow: hidden; font-size: 9.5px; white-space: nowrap; text-overflow: ellipsis; }
+body.phone-layout.immersive-game .enemy-combatant .health-label { font-size: 11px; line-height: 1.1; }
+body.phone-layout.immersive-game .enemy-combatant .health-track { height: 5px; }
+body.phone-layout.immersive-game .enemy-combatant .combatant-detail,
+body.phone-layout.immersive-game .enemy-combatant .strike-chips { display: none; }
+/* Like party frames on a phone RPG, the other creatures stack down the screen's edge, out
+   of the way of the squares around you. */
+body.phone-layout.immersive-game .nearby-strip {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-self: end;
+  gap: 10px;
+  padding: 4px 2px 0;
+  overflow: visible;
+}
+body.phone-layout.immersive-game .nearby-chip { width: 40px; padding: 2px 2px 3px; gap: 2px; border-radius: 7px; background: var(--hud-glass); }
+body.phone-layout.immersive-game .nearby-chip-distance { top: -6px; right: -6px; min-width: 18px; height: 18px; font-size: 10px; line-height: 14px; }
+body.phone-layout.immersive-game .map-status-chips { justify-content: flex-start; }
+
+/* ---- Bottom: messages and controls ---- */
+body.phone-layout.immersive-game .compact-log {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: calc(var(--hud-bottom) + 8px);
+  z-index: 11;
+  display: grid;
+  gap: 4px;
+  pointer-events: none;
+}
+body.phone-layout.immersive-game .compact-log li {
+  max-width: 100%;
+  padding: 0 9px;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  box-shadow: 0 1px 0 var(--line);
+  font-size: 12.5px;
+  line-height: 1.3;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+body.phone-layout.immersive-game .compact-log li:not(:first-child) { display: none; }
+body.phone-layout.immersive-game .look-inspector {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: calc(var(--hud-bottom) + 8px);
+  z-index: 13;
+  margin: 0;
+  background: var(--card);
+}
+
+body.phone-layout.immersive-game .dungeon-controls {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "stance stance"
+    "dpad actions";
+  align-items: end;
+  gap: 8px 10px;
+  padding: 10px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  border-top: 2px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  background: var(--hud-glass) var(--paper-texture);
+  box-shadow: 0 -8px 20px rgba(20, 12, 8, 0.35);
+}
+body.phone-layout.immersive-game .dungeon-controls > .touch-dpad { --dpad-size: 44px; gap: 5px; align-self: end; }
+body.phone-layout.immersive-game .stance-control { padding: 2px; }
+body.phone-layout.immersive-game .stance-control button { min-height: 28px; padding: 1px 6px; font-size: 13px; }
+body.phone-layout.immersive-game .stance-control kbd { display: none; }
+body.phone-layout.immersive-game .action-panel { position: relative; gap: 6px; }
+body.phone-layout.immersive-game .action-panel > .section-heading { min-height: 0; padding-right: 34px; }
+body.phone-layout.immersive-game .action-panel > .section-heading { display: none; }
+body.phone-layout.immersive-game .ability-guide-shortcut { top: -4px; right: 0; width: 28px; height: 28px; font-size: 14px; }
+body.phone-layout.immersive-game .action-primary .button { min-height: 46px; font-size: 14.5px; }
+body.phone-layout.immersive-game .action-group > summary,
+body.phone-layout.immersive-game .look-toggle { min-height: 42px; }
+
+/* "Inspect" lives with the other actions instead of floating over the map. */
+body.phone-layout.immersive-game .look-toggle {
+  position: fixed;
+  right: 10px;
+  bottom: calc(var(--hud-bottom) + 8px);
+  z-index: 14;
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+body.phone-layout.immersive-game.dungeon-game:has(.compact-log li) .compact-log { right: 108px; }
+
+/* ---- Town ---- */
+body.phone-layout.immersive-game .town-walk-panel > .section-heading { display: contents; }
+body.phone-layout.immersive-game .town-walk-panel > .section-heading > div {
+  position: fixed;
+  top: calc(var(--hud-top) + 12px);
+  left: 8px;
+  z-index: 12;
+  pointer-events: none;
+  padding: 3px 10px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--hud-glass);
+  box-shadow: 0 2px 0 var(--line);
+}
+body.phone-layout.immersive-game .town-walk-panel > .section-heading .eyebrow { margin: 0; font-size: 10px; }
+body.phone-layout.immersive-game .town-walk-panel > .section-heading h3 { display: none; }
+body.phone-layout.immersive-game .town-location-copy {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: calc(var(--hud-bottom) + 8px);
+  z-index: 11;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  box-shadow: 0 1px 0 var(--line);
+  font-size: 13px;
+  line-height: 1.3;
+}
+body.phone-layout.immersive-game .town-location-copy:empty { display: none; }
+body.phone-layout.immersive-game .town-touch-dpad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  --dpad-size: 46px;
+  width: auto;
+  justify-content: start;
+  justify-self: stretch;
+  padding: 10px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  border-top: 2px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  background: var(--hud-glass) var(--paper-texture);
+  box-shadow: 0 -8px 20px rgba(20, 12, 8, 0.35);
+}
+body.phone-layout.immersive-game #town-interact-button {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 52px);
+  z-index: 21;
+  max-width: calc(100vw - 3 * 46px - 60px);
+  min-height: 52px;
+  pointer-events: auto;
+}
+body.phone-layout.immersive-game #town-interact-button kbd { display: none; }
+
+/* Shops and other full-screen panels keep their own layout, above the world. */
+body.phone-layout.immersive-game .store-screen:not(.hidden) {
+  position: fixed;
+  inset: var(--hud-top) 0 0;
+  z-index: 25;
+  display: block;
+  overflow: auto;
+  background: var(--paper) var(--paper-texture);
+}
+body.phone-layout.immersive-game .side-column { z-index: 40; }
+
+/* ---- Phone turned sideways: controls down the right edge ---- */
+body.phone-layout.phone-landscape.immersive-game { --hud-bottom: 0px; }
+body.phone-layout.phone-landscape.immersive-game .topbar { padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: 4px; }
+body.phone-layout.phone-landscape.immersive-game .portrait-button { width: 40px; height: 40px; }
+body.phone-layout.phone-landscape.immersive-game .header-resources { display: flex; align-items: center; gap: 10px; }
+body.phone-layout.phone-landscape.immersive-game .topbar-meter-resource { flex: 1 1 0; }
+body.phone-layout.phone-landscape.immersive-game .expedition-kit-strip,
+body.phone-layout.phone-landscape.immersive-game .clock-resource,
+body.phone-layout.phone-landscape.immersive-game .spell-slot-resource { flex: 0 0 auto; }
+body.phone-layout.phone-landscape.immersive-game .dungeon-controls,
+body.phone-layout.phone-landscape.immersive-game .town-touch-dpad {
+  inset: var(--hud-top) 0 0 auto;
+  width: min(330px, 46vw);
+  border-top: 0;
+  border-left: 2px solid var(--line);
+  border-radius: 16px 0 0 0;
+  overflow-y: auto;
+  padding: 8px max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) 8px;
+  box-shadow: -8px 0 20px rgba(20, 12, 8, 0.35);
+}
+body.phone-layout.phone-landscape.immersive-game .dungeon-controls {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "stance stance" "dpad actions";
+  align-content: end;
+}
+body.phone-layout.phone-landscape.immersive-game .dungeon-controls > .touch-dpad { --dpad-size: 38px; gap: 4px; }
+body.phone-layout.phone-landscape.immersive-game .action-primary .button { min-height: 40px; font-size: 13px; }
+body.phone-layout.phone-landscape.immersive-game .town-touch-dpad { --dpad-size: 44px; align-content: end; justify-content: center; }
+body.phone-layout.phone-landscape.immersive-game #town-interact-button {
+  right: calc(var(--hud-right) + 10px);
+  bottom: max(10px, env(safe-area-inset-bottom));
+  max-width: calc(100vw - var(--hud-right) - 20px);
+}
+body.phone-layout.phone-landscape.immersive-game .compact-log,
+body.phone-layout.phone-landscape.immersive-game .town-location-copy,
+body.phone-layout.phone-landscape.immersive-game .look-inspector {
+  right: calc(var(--hud-right) + 8px);
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
+body.phone-layout.phone-landscape.immersive-game.town-game .town-location-copy { right: calc(var(--hud-right) + 200px); }
+body.phone-layout.phone-landscape.immersive-game .look-toggle { right: calc(var(--hud-right) + 8px); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 52px); }
+body.phone-layout.phone-landscape.immersive-game.dungeon-game:has(.compact-log li) .compact-log { right: calc(var(--hud-right) + 8px); }
+body.phone-layout.phone-landscape.immersive-game .battle-hud { right: calc(var(--hud-right) + 8px); grid-template-columns: minmax(0, 320px) auto; justify-content: space-between; align-items: start; }
+body.phone-layout.phone-landscape.immersive-game .map-panel > .section-heading { max-width: calc(100vw - var(--hud-right) - 16px); }
+
+/* Status chips (rested, unrested, poison, boons...) sit under the target frame on the left;
+   the nearby creatures stack on the right. */
+body.phone-layout.immersive-game .battle-hud .map-status-chips { grid-row: 2; grid-column: 1; justify-self: start; align-self: start; margin: 0; max-width: calc(100% - 64px); }
+body.phone-layout.immersive-game .battle-hud .nearby-strip { grid-row: 2; grid-column: 1; }
+body.phone-layout.immersive-game:not(.has-target) .battle-hud .map-status-chips { grid-row: 1; margin-top: 30px; }

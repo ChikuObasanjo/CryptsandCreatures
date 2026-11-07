@@ -300,6 +300,9 @@ function moveCreature(enemy, step, { forced = false } = {}) {
   if (enemy.rooted > 0 && !forced) return false;
   const dx = step.x - enemy.x;
   const dy = step.y - enemy.y;
+  // A step is one square. Anything farther is a stale plan (the creature was moved since it
+  // was made) and would look like a teleport; refuse it. Shoves and throws pass `forced`.
+  if (!forced && (Math.abs(dx) > 1 || Math.abs(dy) > 1)) return false;
   enemy.x = step.x;
   enemy.y = step.y;
   state.creatureMoveEffects[enemy.id] = {

@@ -83,10 +83,6 @@ function equippedStrike() {
   return weaponStrike(state.run?.character?.equipment?.weapon);
 }
 
-function spellStrikeKind(spellId) {
-  return window.CryptsSpells.catalog[spellId]?.strike || "";
-}
-
 function creatureStrikes(enemy) {
   return CREATURE_STRIKES[enemy?.templateId] || {};
 }

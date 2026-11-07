@@ -143,7 +143,3 @@ function normalizeFavorRecord(entry) {
   return entry.favor === "open" || entry.favor === "done" ? entry.favor : null;
 }
 
-// Journal lines for open favors.
-function favorJournalLines() {
-  return openFavors().map((id) => `${t(favorFor(id).title)}: ${t(favorFor(id).hint)}`);
-}

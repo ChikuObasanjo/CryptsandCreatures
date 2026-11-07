@@ -66,18 +66,52 @@ function setMapZoom(next, { announce = false } = {}) {
   }
   return value;
 }
-function dungeonViewShape() {
-  const across = Math.max(3, (window.matchMedia("(max-width: 540px)").matches ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom);
-  const viewport = elements["dungeon-map-viewport"];
-  const width = viewport?.clientWidth || 0;
-  const height = viewport?.clientHeight || 0;
+// The map viewports' sizes, kept up to date by a ResizeObserver, so drawing a turn never has
+// to stop and measure the page (reading clientWidth after changing the page forces the
+// browser to lay everything out again, mid-turn).
+const viewportSizes = new WeakMap();
+const viewportObserver = typeof ResizeObserver === "function" ? new ResizeObserver((entries) => {
+  for (const entry of entries) viewportSizes.set(entry.target, { width: entry.target.clientWidth, height: entry.target.clientHeight });
+}) : null;
+
+function viewportSize(viewport) {
+  if (!viewport) return { width: 0, height: 0 };
+  let size = viewportSizes.get(viewport);
+  if (!size || size.width < 60) {
+    size = { width: viewport.clientWidth || 0, height: viewport.clientHeight || 0 };
+    viewportSizes.set(viewport, size);
+    viewportObserver?.observe(viewport);
+  }
+  return size;
+}
+
+// How many tiles to draw, and how big, to fit a map viewport. `across` tiles fit the short
+// side. In the phone layout the map fills the whole screen behind the interface, so it draws
+// enough tiles to cover it (the edges are cut off), plus the rows the map is shifted by to
+// keep you centered between the top and bottom bars (systems/layout.js).
+function mapViewShape(viewport, margin = 0) {
+  const phone = document.body.classList.contains("phone-layout");
+  const across = Math.max(3, (phone || window.matchMedia("(max-width: 540px)").matches ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom);
+  const { width, height } = viewportSize(viewport);
   if (width < 60 || height < 60) return { cols: across, rows: across, tile: 0 };
-  const tile = Math.floor(Math.min(width, height) / across);
+  const tile = Math.floor((Math.min(width, height) - margin) / across);
+  if (phone) {
+    const cover = (count) => {
+      const whole = Math.max(3, Math.min(27, Math.ceil(count)));
+      return whole % 2 ? whole : whole + 1;
+    };
+    const shift = 2 * layoutMapShift();
+    return { cols: cover((width + shift) / tile), rows: cover((height + shift) / tile), tile };
+  }
   const odd = (count) => {
     const whole = Math.max(3, Math.min(19, Math.floor(count)));
     return whole % 2 ? whole : whole - 1;
   };
   return { cols: odd(width / tile), rows: odd(height / tile), tile };
+}
+
+function dungeonViewShape() {
+  return mapViewShape(elements["dungeon-map-viewport"]);
 }
 const FONT_CHOICES = ["unifont", "codex"];
 function applyFontChoice(font) {
@@ -236,7 +270,8 @@ const NUTRIENT_DECAY_HOURS = 12;
 const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
-const SPRITE_RESOURCE_VERSION = 85;
+// The build replaces this with a fingerprint of all the art; no need to bump it by hand.
+const SPRITE_RESOURCE_VERSION = "4f8803d37f";
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
@@ -700,13 +735,48 @@ function unpackSaveValue(key, value) {
   return value;
 }
 
-function saveRun() {
+// Saving is coalesced: everything that changes the run asks for a save (each log line and
+// every render did, so one turn wrote the whole tomb to storage several times), and one
+// write happens when the browser is next idle, after the turn has been drawn. It is flushed
+// at once when the game is hidden or closed (switching apps, the app switcher, the tab
+// closing), and `saveRun({ now: true })` writes straight away where the result matters.
+let saveRunPending = null;
+
+function saveRun({ now = false } = {}) {
+  if (now) {
+    cancelPendingSave();
+    return saveRunNow();
+  }
+  if (!saveRunPending) {
+    saveRunPending = typeof requestIdleCallback === "function"
+      ? { idle: requestIdleCallback(flushPendingSave, { timeout: 700 }) }
+      : { timer: setTimeout(flushPendingSave, 250) };
+  }
+  return true;
+}
+
+function cancelPendingSave() {
+  if (!saveRunPending) return;
+  if (saveRunPending.idle && typeof cancelIdleCallback === "function") cancelIdleCallback(saveRunPending.idle);
+  if (saveRunPending.timer) clearTimeout(saveRunPending.timer);
+  saveRunPending = null;
+}
+
+function flushPendingSave() {
+  if (!saveRunPending) return;
+  saveRunPending = null;
+  if (state.run) saveRunNow();
+}
+
+function saveRunNow() {
   try {
     const saveId = state.activeSaveId || createSaveId();
     const updatedAt = new Date().toISOString();
     const slot = {
       schemaVersion: 1,
-      pack: state.pack,
+      // The built-in tomb is rebuilt from the game's own data on load (normalizeSavedPack),
+      // so only its name is stored.
+      pack: state.pack?.id === starterPack.id ? { id: starterPack.id, title: starterPack.title } : state.pack,
       run: state.run
     };
     const index = readSaveIndex();
@@ -1214,8 +1284,7 @@ function showRestTransition(previousHours, currentHours) {
       : `Eight hours pass · Day ${day} · ${clock}:00`;
   transition.hidden = false;
   transition.classList.remove("time-transition-active");
-  void transition.offsetWidth;
-  transition.classList.add("time-transition-active");
+  requestAnimationFrame(() => transition.classList.add("time-transition-active"));
   restTransitionTimer = window.setTimeout(() => {
     transition.classList.remove("time-transition-active");
     transition.hidden = true;
@@ -1319,52 +1388,6 @@ function advanceSurvivalTime(resting = false, elapsedMinutes = 10) {
   }
 }
 
-function buyStoreItem(itemId) {
-  const item = itemDetails(itemId);
-  if (!item) throw new Error("That item is not available.");
-  if (itemId === "dungeon-gourmet-guide" && state.run.gourmetGuideOwned) {
-    elements["shop-message"].textContent = "You already know the Dungeon Gourmet Guide.";
-    return;
-  }
-  const price = storeBuyPrice(item);
-  if (state.run.gold < price) {
-    elements["shop-message"].textContent = `You need ${formatCurrency(price)} for ${item.name}.`;
-    return;
-  }
-  const projectedWeight = getCarriedWeight() + item.weight;
-  if (projectedWeight > getCarryCapacity(state.run.character)) {
-    elements["shop-message"].textContent = `There is no room for ${item.name}; your pack would exceed its carrying capacity.`;
-    return;
-  }
-  state.run.gold = roundGold(state.run.gold - price);
-  if (!addInventoryItem(itemId)) {
-    state.run.gold = roundGold(state.run.gold + price);
-    elements["shop-message"].textContent = `There is no room for ${item.name}.`;
-    return;
-  }
-  if (itemId === "dungeon-gourmet-guide") state.run.gourmetGuideOwned = true;
-  elements["shop-message"].textContent = `Bought ${item.name} for ${formatCurrency(price)}.`;
-  addLog(`You buy ${item.name} for ${formatCurrency(price)}.`);
-  render();
-}
-
-function sellStoreItem(itemId) {
-  const item = itemDetails(itemId);
-  const quantity = inventoryQuantity(itemId);
-  if (!item || quantity <= (isEquipped(itemId) ? 1 : 0)) return;
-  const value = storeSellPrice(item);
-  removeInventoryItem(itemId);
-  const received = addGoldWithinCapacity(value);
-  elements["shop-message"].textContent = received === value
-    ? `Sold ${item.name} for ${formatCurrency(value)}.`
-    : `Sold ${item.name}; ${formatCurrency(received)} fits in your pack.`;
-  addLog(`You sell ${item.name} for ${formatCurrency(received)}.`);
-  if (item.categoryId === "Treasure") {
-    changeFactionStanding("traders-circle", 2, `you sell ${item.name} through Teyac's market`);
-  }
-  render();
-}
-
 function getRoom() {
   return state.run.rooms[state.run.currentRoom];
 }
@@ -1401,12 +1424,6 @@ function chooseEnemyTarget(title, enemies, action, strike = "") {
     label: `${enemy.name} · ${distanceInSquares(enemy, state.run.player)} squares · ${enemy.hp}/${enemy.maxHp} HP${strike ? strikeForecastLabel(enemy, strike) : ""}`,
     action: () => action(enemy)
   })));
-}
-
-function nearestEnemy() {
-  const enemies = state.run.enemies.filter((enemy) => enemy.alive);
-  enemies.sort((a, b) => distanceInSquares(a, state.run.player) - distanceInSquares(b, state.run.player));
-  return enemies[0] || null;
 }
 
 function resolveRoomEntry(index) {
@@ -2033,12 +2050,27 @@ function facingForDelta(dx, dy) {
   return vertical && horizontal ? `${vertical}${horizontal}` : vertical || horizontal || "south";
 }
 
+// Plays a CSS animation class again from the start: off now, back on next frame (instead
+// of forcing a layout with offsetWidth, which stalls the turn on slow devices).
+function restartAnimation(element, className, ms) {
+  element.classList.remove(className);
+  clearTimeout(element.restartTimer);
+  requestAnimationFrame(() => {
+    element.classList.add(className);
+    element.restartTimer = window.setTimeout(() => element.classList.remove(className), ms);
+  });
+}
+
+// Restarts the map's small action pulse. The class comes off now and goes back on next
+// frame, which restarts the animation without forcing a layout of the whole map mid-turn.
 function animateAction(type) {
   const map = elements["dungeon-map"];
   map.classList.remove("action-advance", "action-camp");
-  void map.offsetWidth;
-  map.classList.add(type === "camp" ? "action-camp" : "action-advance");
-  window.setTimeout(() => map.classList.remove("action-advance", "action-camp"), 420);
+  clearTimeout(animateAction.timer);
+  requestAnimationFrame(() => {
+    map.classList.add(type === "camp" ? "action-camp" : "action-advance");
+    animateAction.timer = window.setTimeout(() => map.classList.remove("action-advance", "action-camp"), 420);
+  });
 }
 
 function alliesTakeTurn() {
@@ -2446,27 +2478,14 @@ function attack() {
     showToast("No creature is within your weapon's reach.");
     return;
   }
-  chooseEnemyTarget("Choose a creature to attack", targets, (target) => {
+  const strikeAt = (target) => {
     const ranged = distanceInSquares(target, state.run.player) > 1;
     attackEnemy(target, { ranged, disadvantage: ranged && enemiesAdjacent().length > 0 });
-  }, equippedStrike());
-}
-
-function spellTargets(range = 7) {
-  return state.run.enemies
-    .filter((enemy) => enemy.alive && distanceInSquares(enemy, state.run.player) <= range &&
-      hasLineOfSight(state.run.player, enemy))
-    .sort((a, b) => distanceInSquares(a, state.run.player) - distanceInSquares(b, state.run.player) ||
-      a.name.localeCompare(b.name));
-}
-
-function spellTarget(range = 7) {
-  return spellTargets(range)[0] || null;
-}
-
-// Spells and techniques live in systems/abilities.js; this name stays for older callers.
-function castSpell(spellId, chosenTarget = null) {
-  useAbility(spellId, chosenTarget);
+  };
+  // The creature you picked (target frame, nearby row, or the map) is attacked directly.
+  const picked = pinnedTargetAmong(targets);
+  if (picked) return strikeAt(picked);
+  chooseEnemyTarget("Choose a creature to attack", targetFirst(targets), strikeAt, equippedStrike());
 }
 
 // Shove a creature straight away from you, stopping at walls and other creatures. Traps it
@@ -2569,14 +2588,6 @@ function setStance(next) {
   sfx("talk");
   showToast(t(STANCES[stance].help), 2200);
   render();
-}
-
-function dash() {
-  setStance("run");
-}
-
-function disengage() {
-  setStance("disengage");
 }
 
 function skillBonus(skill) {
@@ -2713,9 +2724,7 @@ function showCombatFeedback(kind, message, target = {}) {
   const feedback = elements["combat-feedback"];
   feedback.className = `combat-feedback ${kind}`;
   feedback.textContent = message;
-  void feedback.offsetWidth;
-  feedback.classList.add("playing");
-  window.setTimeout(() => feedback.classList.remove("playing"), 760);
+  restartAnimation(feedback, "playing", 760);
   if (kind === "miss") return;
   const effect = {
     kind: kind === "defeat" ? "death" : kind === "player-death" ? "player-death" : kind === "heal" ? "heal" : "hit",
@@ -2738,9 +2747,7 @@ function showCombatFeedback(kind, message, target = {}) {
     if (!actor) return;
     const feedbackClass = effect.kind === "heal" ? "heal-flash" : "hit-flash";
     actor.classList.remove("hit-flash", "heal-flash");
-    void actor.offsetWidth;
-    actor.classList.add(feedbackClass);
-    window.setTimeout(() => actor.classList.remove(feedbackClass), 520);
+    restartAnimation(actor, feedbackClass, 520);
   }
 }
 
@@ -3463,20 +3470,6 @@ function talkToTownNpc(id) {
   elements["town-dialog"].showModal();
 }
 
-function openCosmeticShop() {
-  const trader = TOWN_NPCS.find((npc) => npc.id === "gear-mender");
-  if (state.run.location !== "city" || townDistance(state.run.townPosition, trader) > 1) {
-    showToast("Walk beside Mahuiz in Chiltomatlan to browse his curiosities.");
-    return;
-  }
-  openShop("mahuiz", "regalia");
-  return;
-  elements["town-dialog"].close();
-  elements["cosmetic-shop-message"].textContent = "";
-  renderCosmeticShop();
-  elements["cosmetic-shop-dialog"].showModal();
-}
-
 function renderCosmeticShop() {
   const character = state.run.character;
   if (!character.cosmetics) character.cosmetics = { owned: [], helmet: null, clothes: null };
@@ -3512,7 +3505,7 @@ function updateCosmeticSlot(slot, cosmeticId) {
   const character = state.run.character;
   const previousCosmetics = { ...character.cosmetics, owned: [...character.cosmetics.owned] };
   character.cosmetics[slot] = cosmeticId;
-  if (!saveRun()) {
+  if (!saveRun({ now: true })) {
     character.cosmetics = previousCosmetics;
     return false;
   }
@@ -3544,7 +3537,7 @@ function purchaseOrEquipCosmetic(cosmeticId) {
     character.cosmetics.owned.push(cosmeticId);
   }
   character.cosmetics[item.slot] = cosmeticId;
-  if (!saveRun()) {
+  if (!saveRun({ now: true })) {
     state.run.gold = previousGold;
     character.cosmetics = previousCosmetics;
     return;
@@ -3599,7 +3592,7 @@ function claimTownGearReward() {
       character.equipmentEnhancements[key].push(target.id);
     }
   }
-  if (!saveRun()) {
+  if (!saveRun({ now: true })) {
     character.equipmentEnhancements = previousEnhancements;
     try {
       if (lastClaim === null) localStorage.removeItem(GEAR_REWARD_COOLDOWN_KEY);
@@ -3715,10 +3708,7 @@ function contextualInteractions() {
   if (huntOnly) living.forEach(add);
   if (enemies.length && !huntOnly) {
     add({
-      label: enemies.length > 1
-        ? `Attack · choose target (${enemies.length})`
-        : `Attack · ${enemies[0].name}${distanceInSquares(enemies[0], state.run.player) === 1 &&
-          flankingCompanion(enemies[0]) ? " · Advantage" : ""}`,
+      label: attackButtonLabel(enemies),
       action: attack, group: null
     });
   }
@@ -3789,7 +3779,8 @@ function contextualInteractions() {
     }
   }
   if (huntOnly) {
-    add({ label: enemies.length > 1 ? `Hunt · choose (${enemies.length})` : `Hunt · ${enemies[0].name}`, action: attack, group: null });
+    const prey = pinnedTargetAmong(enemies) || (enemies.length === 1 ? enemies[0] : null);
+    add({ label: prey ? `Hunt · ${prey.name}` : `Hunt · ${enemies.length} in reach`, action: attack, group: null });
   }
   return list;
 }
@@ -3870,17 +3861,7 @@ function makeXochipilliOffering(cost) {
 }
 
 function townViewShape() {
-  const viewport = document.getElementById("town-map-viewport");
-  const across = Math.max(3, (window.matchMedia("(max-width: 540px)").matches ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom);
-  const width = viewport?.clientWidth || 0;
-  const height = viewport?.clientHeight || 0;
-  if (width < 60 || height < 60) return { cols: across, rows: across, tile: 0 };
-  const tile = Math.floor((Math.min(width, height) - 4) / across);
-  const odd = (count) => {
-    const whole = Math.max(3, Math.min(19, Math.floor(count)));
-    return whole % 2 ? whole : whole - 1;
-  };
-  return { cols: odd(width / tile), rows: odd(height / tile), tile };
+  return mapViewShape(document.getElementById("town-map-viewport"), document.body.classList.contains("phone-layout") ? 0 : 4);
 }
 
 function resizeTownMap() {
@@ -4058,6 +4039,7 @@ function renderMap() {
   elements["dungeon-map"].dataset.zoom = String(mapZoom);
   const fragment = document.createDocumentFragment();
   const enemiesAt = new Map(state.run.enemies.filter((enemy) => enemy.alive).map((enemy) => [tileIndex(enemy.x, enemy.y), enemy]));
+  const mapTarget = currentTarget();
   const companionsAt = new Map(state.run.party.map((companion) => [tileIndex(companion.x, companion.y), companion]));
   const fieldsAt = new Map();
   const summonsAt = new Map();
@@ -4250,6 +4232,10 @@ function renderMap() {
           }
           const mood = creatureStateLabel(enemy);
           if (mood) tile.classList.add(`creature-${mood.replace(/\s+/g, "-")}`);
+          if (enemy === mapTarget) {
+            tile.classList.add("is-target");
+            tile.dataset.targetTone = creatureTone(enemy);
+          }
           addLayer(`${enemy.guardian ? "Guardian" : enemy.elite ? "Elite creature" : "Creature"}: ${enemy.name}${mood ? ` (${mood})` : ""}`, enemySprite, "creature", enemy.id);
         }
         if (effect?.kind === "death" && effect.actor === "enemy" && !enemiesAt.has(index)) {
@@ -4290,6 +4276,12 @@ function renderMap() {
           const item = document.createElement("span");
           item.className = `tile-entity tile-entity-${layer.effectClass}`;
           item.style.setProperty("--stack-index", String(layer.stackIndex));
+          if (layer.effectClass === "creature" && mapTarget && layer.id === mapTarget.id) {
+            const ring = document.createElement("span");
+            ring.className = "target-ring";
+            ring.setAttribute("aria-hidden", "true");
+            item.append(ring);
+          }
           const isStriking = strike && (
             (strike.actor === "player" && layer.effectClass === "player") ||
             (strike.actor === "companion" && layer.effectClass === "companion" && strike.companionId === layer.id) ||
@@ -4541,7 +4533,10 @@ function renderActions() {
     "knack-quick": "keepsake",
     "knack-button": "keepsake"
   };
-  const addButton = (label, action, shortcut, secondary = false, disabled = false, target = elements["action-buttons"], id = "") => {
+  // Buttons for things you do (stairs, doors, attacks, gathering...) get a picture of the
+  // thing itself (systems/action-icons.js); the rest keep their item icons.
+  const describedActions = /^(interact-button|here-\d+-button|attack-(button|quick)|search-(button|quick)|wait-button|camp-(button|quick)|eat-quick|drink-quick|potion-quick)$/;
+  const addButton = (label, action, shortcut, secondary = false, disabled = false, target = elements["action-buttons"], id = "", icon = "") => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `button${secondary ? " secondary" : ""}`;
@@ -4563,12 +4558,14 @@ function renderActions() {
     const abilityMatch = /^ability-(.+)-(button|quick)$/.exec(id);
     const sprite = icons[id] || (id.startsWith("here-") ? "tool" : null) || (abilityMatch && abilityDef(abilityMatch[1]) ? abilityIcon(abilityDef(abilityMatch[1]))
       : id.startsWith("spell-") ? icons["spell-button"] : null);
-    if (sprite) {
-      const icon = document.createElement("img");
-      icon.src = `./resources/items/${sprite}.png?v=${SPRITE_RESOURCE_VERSION}`;
-      icon.alt = "";
-      icon.draggable = false;
-      glyph.append(icon);
+    if (icon || describedActions.test(id)) {
+      glyph.append(actionIconElement(actionIconName(label, icon)));
+    } else if (sprite) {
+      const image = document.createElement("img");
+      image.src = `./resources/items/${sprite}.png?v=${SPRITE_RESOURCE_VERSION}`;
+      image.alt = "";
+      image.draggable = false;
+      glyph.append(image);
     }
     const actionLabel = document.createElement("span");
     actionLabel.className = "action-label";
@@ -4615,10 +4612,11 @@ function renderActions() {
   const atEntrance = isAtDungeonEntrance();
   const interactions = contextualInteractions();
   addButton(interactionLabel, interact, "space enter e", false,
-    ended || interactionLabel === "Nothing nearby", primaryActions, "interact-button");
+    ended || interactionLabel === "Nothing nearby", primaryActions, "interact-button", contextualInteraction()?.icon || "");
   primaryActions.lastElementChild?.classList.add("quick-main");
   if (interactions.length > 1 && !ended) {
-    // Several things to do here: a switch beside the big button steps through them.
+    // Several things to do here: a slim tab under the big button steps through them and
+    // says what comes next, so the big button keeps the whole width for its words.
     const main = primaryActions.lastElementChild;
     const row = document.createElement("div");
     row.className = "interact-row";
@@ -4626,7 +4624,7 @@ function renderActions() {
     row.append(main);
     const current = Math.max(0, interactions.findIndex((entry) => entry.label === interactionLabel));
     const next = interactions[(current + 1) % interactions.length];
-    addButton(`⇄ ${current + 1}/${interactions.length}`, cycleInteraction, "tab", true, false, row, "interact-switch");
+    addButton(`${current + 1}/${interactions.length} · ${t("Next")}: ${t(next.label).split(" · ")[0]}`, cycleInteraction, "tab", true, false, row, "interact-switch", "glyph:cycle");
     const switcher = row.lastElementChild;
     const tip = `${t("Next")}: ${t(next.label)} · Tab`;
     switcher.title = tip;
@@ -4636,14 +4634,12 @@ function renderActions() {
   // Every option also has its own button in Explore or Supplies.
   interactions.forEach((entry, index) => {
     if (!entry.group) return;
-    addButton(entry.label, entry.action, "", true, ended, elements[`action-${entry.group}`], `here-${index}-button`);
+    addButton(entry.label, entry.action, "", true, ended, elements[`action-${entry.group}`], `here-${index}-button`, entry.icon || "");
     elements[`action-${entry.group}`].lastElementChild?.classList.add("here-action");
   });
   addButton("Wait", waitTurn, "x .", true, ended, elements["action-explore"], "wait-button");
   if (validAttackTargets.length) {
-    const attackLabel = validAttackTargets.length > 1
-      ? `Attack · choose target (${validAttackTargets.length})`
-      : `Attack · ${validAttackTargets[0].name}${strikeForecastLabel(validAttackTargets[0], equippedStrike())}`;
+    const attackLabel = attackButtonLabel(validAttackTargets, { forecast: true });
     addButton(attackLabel, attack, "r", true, ended, elements["action-combat"], "attack-button");
   }
   unlockedAbilityIds().forEach((abilityId, index) => {
@@ -4766,7 +4762,7 @@ function renderQuickActions({ addButton, primaryActions, ended, combatActive, va
   const hurt = state.run.hp <= state.run.maxHp / 2 || progress().conditions.length > 0;
   if (combatActive && !ended) {
     if (validAttackTargets.length && !interactIsAttack) {
-      pick({ label: validAttackTargets.length > 1 ? `Attack · choose target (${validAttackTargets.length})` : `Attack · ${validAttackTargets[0].name}`,
+      pick({ label: attackButtonLabel(validAttackTargets),
         action: attack, key: "r", id: "attack-quick", tone: "combat" });
     }
     for (const abilityId of quickAbilityPicks({ hurt }).slice(0, 2)) {
@@ -4857,34 +4853,7 @@ function renderRoom() {
     status.textContent = "Exploring";
   }
 
-  // The encounter card shows what matters most: something after you, then a threat, then wildlife.
-  const nearby = state.run.enemies.filter((entry) => entry.alive && (entry.alerted ||
-    distanceInSquares(entry, state.run.player) <= (creatureIsThreat(entry) ? 7 : 2)));
-  nearby.sort((a, b) => Number(b.alerted) - Number(a.alerted) || Number(creatureIsThreat(b)) - Number(creatureIsThreat(a)) ||
-    distanceInSquares(a, state.run.player) - distanceInSquares(b, state.run.player));
-  const enemy = nearby[0] || null;
-  const distance = enemy ? distanceInSquares(enemy, state.run.player) : Infinity;
-  const visibleEnemy = Boolean(enemy);
-  elements.encounter.classList.toggle("hidden", !visibleEnemy);
-  if (visibleEnemy) {
-    elements["enemy-name"].textContent = enemy.title ? `${enemy.title} ${t(enemy.name.slice(enemy.title.length + 1))}` : t(enemy.name);
-    const mood = creatureStateLabel(enemy);
-    elements["enemy-rank"].textContent = enemy.greatGuardian ? "GREAT GUARDIAN" : enemy.guardian ? "GUARDIAN"
-      : mood ? t(mood).toUpperCase() : enemy.elite ? "ELITE" : t("HOSTILE");
-    elements.encounter.classList.toggle("is-elite", Boolean(enemy.elite));
-    elements.encounter.classList.toggle("is-guardian", Boolean(enemy.guardian));
-    const studied = bestiaryRank(enemy.templateId);
-    const inflicts = enemy.inflicts ? ` Can leave you ${t(PROGRESSION.conditions[enemy.inflicts.condition].name).toLowerCase()}.` : "";
-    const habitNote = creatureHabitNote(enemy);
-    const habitText = !habitNote ? "" : knowsCreatureHabit(enemy) ? ` ${t(habitNote)}` : ` ${t("Its habits are still a mystery to you. Defeat one to learn them.")}`;
-    elements["enemy-description"].textContent = `${t(enemy.description || "Keep your guard up.")}${inflicts}${habitText}${studied && studied.kills >= 5 ? ` ${studied.title}: ${studied.description}` : ""}`;
-    renderStrikeChips(elements["enemy-strikes"], enemy);
-    elements["enemy-health"].textContent = `${enemy.hp} / ${enemy.maxHp} HP`;
-    elements["enemy-health-fill"].style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
-    const flanker = flankingCompanion(enemy);
-    elements["enemy-distance"].textContent = `${distance} ${distance === 1 ? "square" : "squares"} away${flanker ? ` · ${flanker.name} flanks` : ""}`;
-    elements["enemy-portrait"].replaceChildren(createSprite(enemySpriteId(enemy), "combatant-sprite"));
-  }
+  renderSurroundings();
   renderActions();
   document.querySelectorAll("[data-move]").forEach((button) => {
     button.disabled = state.run.location !== "dungeon" || state.run.lost || state.run.won;
@@ -5274,13 +5243,16 @@ function renderPartyStatus() {
       waterBadge.title = `Water ${Math.round(member.needs.water)}%`;
       waterBadge.textContent = `Water ${Math.round(member.needs.water)}%`;
       const sleepBadge = document.createElement("span");
-      sleepBadge.className = `need-badge${sleepLevel ? " need-warning" : ""}`;
-      sleepBadge.setAttribute("aria-label", sleepLevel ? `Tired, level ${sleepLevel}` : "Rested");
-      sleepBadge.title = sleepLevel ? `Tiredness level ${sleepLevel}` : "Rested";
+      const rest = restState(member.needs);
+      const restLabel = rest.kind === "unrested" ? `${t("Unrested")} ${["", "I", "II", "III"][sleepLevel]}`
+        : rest.kind === "rested" ? t("Rested") : t("Awake {0}h", { 0: rest.awake });
+      sleepBadge.className = `need-badge${sleepLevel ? " need-warning" : rest.kind === "rested" ? " need-benefit" : ""}`;
+      sleepBadge.setAttribute("aria-label", restLabel);
+      sleepBadge.title = restLabel;
       const sleepIcon = document.createElement("span");
       sleepIcon.setAttribute("aria-hidden", "true");
       sleepIcon.textContent = sleepLevel ? "Z" : "·";
-      sleepBadge.append(sleepIcon, document.createTextNode(sleepLevel ? ` Tired ${sleepLevel}` : " Rested"));
+      sleepBadge.append(sleepIcon, document.createTextNode(` ${restLabel}`));
       needs.append(foodBadge, waterBadge, sleepBadge);
       const nutrition = nutritionStatus(member.needs);
       const nutritionBadge = document.createElement("span");
@@ -5639,14 +5611,6 @@ function showDialogCopyPage(id, pageIndex) {
   pager.dataset.page = String(page);
 }
 
-function renderPagedStoreList(listElement, key, pageSize) {
-  const rows = [...listElement.children];
-  const pages = Math.max(1, Math.ceil(rows.length / pageSize));
-  state.listPages[key] = Math.max(0, Math.min(state.listPages[key], pages - 1));
-  updateListPager(key, rows.length, pageSize);
-  listElement.replaceChildren(...rows.slice(state.listPages[key] * pageSize, (state.listPages[key] + 1) * pageSize));
-}
-
 function renderInventory() {
   const inventory = [...state.run.inventory].sort((a, b) => itemDetails(a.id).name.localeCompare(itemDetails(b.id).name));
   const carried = getCarriedWeight();
@@ -5724,86 +5688,8 @@ const SHOP_CATEGORY_NAMES = {
   miscellaneous: "Miscellaneous · tools & keepsakes"
 };
 
-function storeCategoryForItem(item) {
-  if (FOOD_ITEMS[item.id] || ["Food", "Drink"].includes(item.categoryId) || item.id === "clean-water" ||
-    ["Supply", "Kit", "Tool"].includes(item.categoryId)) return "supplies";
-  if (item.categoryId === "Potion") return "consumables";
-  if (item.slot || ["Weapon", "Armor", "Clothing"].includes(item.categoryId)) return "equipment";
-  return "miscellaneous";
-}
-
 function renderShop() {
   renderShopScreen();
-}
-
-function renderLegacyShop() {
-  const carried = getCarriedWeight();
-  const capacity = getCarryCapacity(state.run.character);
-  const discount = traderDiscountRate();
-  elements["store-carry-load"].textContent = `Purse: ${formatCurrency(state.run.gold)} · Pack: ${formatWeight(carried)} / ${capacity} lb · Coins weigh 1 lb per 50 gp.${discount ? ` Traders' Circle rate: ${Math.round(discount * 100)}% off.` : ""}`;
-  const buying = elements["store-screen"].dataset.storeView !== "sell";
-  document.querySelector(".store-categories").hidden = !buying;
-  document.querySelectorAll("[data-store-category]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.storeCategory === state.storeCategory));
-  });
-  elements["store-buy-heading"].textContent = SHOP_CATEGORY_NAMES[state.storeCategory] || SHOP_CATEGORY_NAMES.supplies;
-  elements["store-buy-list"].replaceChildren();
-  elements["store-sell-list"].replaceChildren();
-  for (const itemId of shopStock()) {
-    const item = itemDetails(itemId);
-    if (storeCategoryForItem(item) !== state.storeCategory) continue;
-    const row = document.createElement("div");
-    row.className = "store-row";
-    const details = document.createElement("div");
-    details.className = "store-item-copy";
-    const name = document.createElement("strong");
-    name.textContent = item.name;
-    const note = document.createElement("span");
-    const carriedQuantity = inventoryQuantity(itemId);
-    const guideOwned = itemId === "dungeon-gourmet-guide" && state.run.gourmetGuideOwned;
-    note.textContent = `${formatWeight(item.weight)} lb${carriedQuantity ? ` · In pack: ${carriedQuantity}` : ""}${guideOwned ? " · Learned for this expedition" : ""} · ${item.description || item.category}`;
-    details.append(name, note);
-    const buy = document.createElement("button");
-    buy.type = "button";
-    buy.className = "button secondary";
-    buy.dataset.buyItem = item.id;
-    const price = storeBuyPrice(item);
-    buy.textContent = `Buy · ${formatCurrency(price)}`;
-    buy.disabled = guideOwned || state.run.gold < price || carried - price / 50 + item.weight > capacity;
-    buy.addEventListener("click", () => buyStoreItem(item.id));
-    row.append(details, buy);
-    elements["store-buy-list"].append(row);
-  }
-  const sellable = state.run.inventory.filter((entry) => entry.id !== "dungeon-gourmet-guide" &&
-    entry.quantity > (isEquipped(entry.id) ? 1 : 0));
-  if (!sellable.length) {
-    const empty = document.createElement("p");
-    empty.className = "inventory-empty";
-    empty.textContent = "No unequipped items to sell.";
-    elements["store-sell-list"].append(empty);
-  }
-  for (const entry of sellable) {
-    const item = itemDetails(entry.id);
-    const row = document.createElement("div");
-    row.className = "store-row";
-    const details = document.createElement("div");
-    details.className = "store-item-copy";
-    const name = document.createElement("strong");
-    name.textContent = `${item.name}${entry.quantity > 1 ? ` ×${entry.quantity}` : ""}`;
-    const note = document.createElement("span");
-    note.textContent = `${formatWeight(item.weight)} lb each · sells for ${formatCurrency(storeSellPrice(item))}`;
-    const sell = document.createElement("button");
-    sell.type = "button";
-    sell.className = "button secondary";
-    sell.dataset.sellItem = item.id;
-    sell.textContent = "Sell one";
-    sell.addEventListener("click", () => sellStoreItem(item.id));
-    details.append(name, note);
-    row.append(details, sell);
-    elements["store-sell-list"].append(row);
-  }
-  renderPagedStoreList(elements["store-buy-list"], "storeBuy", listPageSize("store"));
-  renderPagedStoreList(elements["store-sell-list"], "storeSell", listPageSize("store"));
 }
 
 function renderLog() {
@@ -5892,6 +5778,7 @@ function render() {
   renderPurses();
   document.body.classList.toggle("immersive-game", Boolean(state.gameStarted));
   document.body.classList.toggle("dungeon-game", state.gameStarted && state.run.location === "dungeon");
+  document.body.classList.toggle("town-game", Boolean(state.gameStarted && state.run.location === "city"));
   const clockHour = Math.floor((state.run.gameMinutes ?? state.run.gameHours * 60) / 60) % 24;
   document.body.classList.toggle("nighttime", state.gameStarted &&
     ["city", "store"].includes(state.run.location) && (clockHour < 6 || clockHour >= 18));
@@ -6749,7 +6636,7 @@ function loadState() {
     upgradeGreatTempleContent();
     const saveId = createSaveId();
     state.activeSaveId = saveId;
-    saveRun();
+    saveRun({ now: true });
   } catch (error) {
     showToast(`Saved game could not be loaded: ${escapeMessage(error)}`);
   }
@@ -6798,6 +6685,8 @@ function normalizeSavedPack(raw) {
 }
 
 function activateSaveSlot(saveId, { markPlayed = true } = {}) {
+  // Whatever the current run still has waiting to be saved goes in before switching.
+  flushPendingSave();
   const serialized = localStorage.getItem(`${STORE_KEYS.saveSlotPrefix}${saveId}`);
   if (!serialized) throw new Error("saved character data could not be found.");
   const slot = JSON.parse(serialized, unpackSaveValue);
@@ -6872,6 +6761,8 @@ function renderSaveManager() {
 }
 
 function deleteSaveSlot(save) {
+  // Whatever the current run still has waiting to be saved goes in before switching.
+  flushPendingSave();
   if (!window.confirm(t("Delete {name}'s saved game? This cannot be undone.", { name: save.name }))) return;
   try {
     const index = readSaveIndex();
@@ -7212,6 +7103,7 @@ function connectEvents() {
   connectEquipmentSheet();
   connectCharacterSheet();
   connectCreatureCards();
+  connectSurroundings();
   elements["ability-score-fields"].addEventListener("change", swapDuplicateAbilityAssignment);
   elements["return-to-city"].addEventListener("click", leaveStore);
   document.querySelectorAll("[data-store-tab]").forEach((button) => {
@@ -7383,12 +7275,15 @@ function connectEvents() {
     stopHeldMovement();
     for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close();
     if (state.utilityDrawer) closeUtilityDrawer(false);
-    if (state.run) saveRun();
+    if (state.run) saveRun({ now: true });
     state.gameStarted = false;
     renderStartScreen();
   };
   elements["return-to-title"].addEventListener("click", quitToMainMenu);
   document.getElementById("settings-quit")?.addEventListener("click", quitToMainMenu);
+  document.getElementById("copy-problem-report")?.addEventListener("click", async () => {
+    showToast(t(await safetyCopyReport() ? "Problem report copied." : "Could not copy the report on this device."));
+  });
   elements["return-after-delving"].addEventListener("click", returnToChiltomatlan);
   elements["town-interact-button"].addEventListener("click", interact);
   elements["dungeon-map"].addEventListener("pointerover", (event) => {
@@ -7449,8 +7344,13 @@ function connectEvents() {
   }, true);
   window.addEventListener("blur", clearTouchMovementInput);
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) clearTouchMovementInput();
+    if (document.hidden) {
+      clearTouchMovementInput();
+      flushPendingSave();
+    }
   });
+  window.addEventListener("pagehide", flushPendingSave);
+  window.addEventListener("beforeunload", flushPendingSave);
   elements["dungeon-map"].addEventListener("click", (event) => {
     if (Date.now() < (state.suppressMapTapUntil || 0)) return;
     const tile = event.target.closest(".map-tile");
@@ -7466,6 +7366,12 @@ function connectEvents() {
     if (distance === 0) {
       interact();
       return;
+    }
+    // Tapping a creature makes it your target; beside you, the tap also attacks or bumps it.
+    const tapped = state.run.enemies.find((enemy) => enemy.alive && enemy.x === x && enemy.y === y);
+    if (tapped && nearbyCreatures().includes(tapped)) {
+      selectTarget(tapped);
+      if (distance > 1) { render(); return; }
     }
     const revealedTrap = distance === 1 && state.run.hazards.find((hazard) =>
       !hazard.triggered && hazard.revealed && hazard.x === x && hazard.y === y);
@@ -7649,6 +7555,8 @@ function registerServiceWorker() {
 }
 
 function start() {
+  safetyKeepStorage();
+  connectLayout();
   updatePwaInstallOption();
   window.matchMedia("(display-mode: standalone)").addEventListener?.("change", updatePwaInstallOption);
   storageAvailable();

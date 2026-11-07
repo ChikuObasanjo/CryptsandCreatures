@@ -56,17 +56,6 @@ function openShop(vendor = "market", category = "all") {
 
 // ---------- Catalog entries ----------
 
-function shopIconUrl(entry) {
-  if (entry.kind === "cosmetic") return codexGearIconUrl(COSMETICS[entry.cosmeticId].slot, entry.cosmeticId);
-  const item = entry.item;
-  if (item.slot === "wear") return codexGearIconUrl(item.wearSlot, item.cosmeticId);
-  if (item.slot === "weapon") return codexGearIconUrl("weapon", item.equipmentId);
-  if (item.slot === "armor") return codexGearIconUrl("armor", item.equipmentId);
-  const sprite = item.sprite || inventoryIconFile(item);
-  const folder = RARE_TREASURE_SPRITES.includes(sprite) ? "enemies" : "items";
-  return `./resources/${folder}/${sprite}.png?v=${SPRITE_RESOURCE_VERSION}`;
-}
-
 function shopCategoryFor(entry, vendor) {
   if (entry.kind === "cosmetic") return "regalia";
   const item = entry.item;

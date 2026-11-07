@@ -374,12 +374,6 @@ function choosePatolliMove(game, side, moves, level = "sharp") {
   return best;
 }
 
-// Kept for callers that pass only the moves: the side to move is whoever's turn it is.
-function choosePatolliAiMove(game, moves) {
-  const side = game.turn === "opponent" ? "opponent" : "player";
-  return choosePatolliMove(game, side, moves, side === "opponent" ? (game.difficulty || "sharp") : "sharp");
-}
-
 function runPatolliAiTurn(game) {
   if (game.status !== "active") return;
   while (game.status === "active") {

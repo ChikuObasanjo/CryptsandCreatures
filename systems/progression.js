@@ -299,6 +299,7 @@ function heroStatModifiers() {
   const mods = { attack: 0, damage: 0, ac: 0 };
   if (!state.run?.progress) return mods;
   if (activeBuff("hearty")) mods.attack += 1;
+  if (restState(state.run.needs).kind === "rested") mods.attack += 1;
   if (activeBuff("fiery")) mods.damage += 2;
   if (activeBuff("steady")) mods.ac += 1;
   if (activeBuff("bold")) mods.attack += 1;
@@ -858,6 +859,18 @@ function renderStatusChips() {
   if (!container || !state.run) return;
   pruneBuffsSilently();
   const chips = [];
+  // Sleep first: it's the one that changes slowly and is easiest to forget.
+  const rest = restState(state.run.needs);
+  const numerals = ["", "I", "II", "III"];
+  if (rest.kind === "rested") {
+    chips.push({ className: "status-chip boon rest-rested", text: `${t("Rested")} · ${rest.nextIn}h`,
+      title: t("Well slept: +1 to attack rolls. Wears off after {0} hours awake.", { 0: RESTED_HOURS }) });
+  } else if (rest.kind === "unrested") {
+    chips.push({ className: `status-chip condition-unrested unrested-${rest.level}`, text: `${t("Unrested")} ${numerals[rest.level]}`,
+      title: `${t("{0} hours without sleep: −{1} to every ability score.", { 0: rest.awake, 1: rest.level })} ${rest.level < 3
+        ? t("Worse in {0} hours.", { 0: rest.nextIn })
+        : rest.awake >= 48 ? t("Exhaustion is wounding you.") : t("Exhaustion starts to wound you in {0} hours.", { 0: rest.nextIn })} ${t("Sleep at a camp or in Chiltomatlan to recover.")}` });
+  }
   for (const entry of progress().conditions) {
     const condition = PROGRESSION.conditions[entry.id];
     chips.push({ className: `status-chip condition-${entry.id}`, text: `${t(condition.name)} · ${entry.turns}`, title: t(condition.description) });
@@ -872,10 +885,25 @@ function renderStatusChips() {
     element.className = chip.className;
     element.textContent = chip.text;
     element.title = chip.title;
+    // Tapping a chip explains it (phones have no hover tooltips).
+    element.tabIndex = 0;
+    element.setAttribute("role", "button");
+    element.setAttribute("aria-label", `${chip.text}. ${chip.title}`);
     return element;
   });
   container.replaceChildren(...build());
   container.hidden = chips.length === 0;
+  const cardChips = document.getElementById("character-conditions");
+  if (cardChips) {
+    cardChips.replaceChildren(...build());
+    cardChips.hidden = chips.length === 0;
+  }
+  // A sleepy face on your portrait in the top bar, so tiredness is noticed at a glance.
+  const portrait = elements["character-button"];
+  if (portrait) {
+    portrait.dataset.rest = rest.kind === "unrested" ? `unrested-${rest.level}` : rest.kind;
+    portrait.title = rest.kind === "unrested" ? `${t("Unrested")} ${numerals[rest.level]}` : rest.kind === "rested" ? t("Rested") : "";
+  }
   const mapChips = elements["map-status-chips"];
   if (mapChips) {
     mapChips.replaceChildren(...build());
@@ -889,6 +917,15 @@ function pruneBuffsSilently() {
 }
 
 function connectProgressionEvents() {
+  for (const id of ["player-conditions", "map-status-chips", "character-conditions"]) {
+    const container = document.getElementById(id);
+    const explain = (event) => {
+      const chip = event.target.closest(".status-chip");
+      if (chip?.title) showToast(`${chip.textContent}: ${chip.title}`, 6000);
+    };
+    container?.addEventListener("click", explain);
+    container?.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); explain(event); } });
+  }
   elements["projects-list"].addEventListener("click", (event) => {
     const button = event.target.closest("[data-build-project]");
     if (button) buildProject(button.dataset.buildProject);

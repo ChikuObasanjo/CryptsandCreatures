@@ -2,6 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <!-- Content Security Policy: the page may only run scripts and load files that come from
+         the game itself, so even if a bit of text ever slipped into the page as markup it
+         could not run code or send anything elsewhere. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#f8eed6">
     <meta name="mobile-web-app-capable" content="yes">
@@ -10,8 +14,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="description" content="Explore a forbidden tomb, manage your supplies, and return to Chiltomatlan to prepare for another descent.">
     <link rel="manifest" href="./manifest.json">
-    <link rel="icon" href="./icon.png?v=2" type="image/png" sizes="512x512">
-    <link rel="stylesheet" href="./styles.css?v=338">
+    <link rel="icon" href="./icon.png?v=a643f47223" type="image/png" sizes="512x512">
+    <link rel="stylesheet" href="./styles.css?v=bc7ca6a94c">
+    <link rel="stylesheet" href="./phone.css?v=874a484ad4">
     <title>Crypts &amp; Creatures</title>
   </head>
   <body>
@@ -27,7 +32,7 @@
           </button>
           <div id="header-resources" class="header-resources hidden" aria-label="Expedition supplies" data-i18n-attr="aria-label:Expedition supplies">
             <span class="topbar-resource" title="Gold" aria-label="Gold" data-i18n-attr="aria-label:Gold;title:Gold">
-              <img class="resource-glyph gold-glyph" src="./resources/items/coin-pile.png?v=77" alt="" aria-hidden="true">
+              <img class="resource-glyph gold-glyph" src="./resources/items/coin-pile.png?v=47a85b3a9d" alt="" aria-hidden="true">
               <span class="resource-copy"><strong id="header-gold">0 gp</strong><small id="header-at-risk">Secured: 0 gp</small></span>
             </span>
             <div class="topbar-meter-resource health-meter-resource" title="Current hit points" data-i18n-attr="title:Current hit points">
@@ -40,7 +45,7 @@
               </div>
             </div>
             <div class="topbar-meter-resource food-meter-resource" title="Food drains during dungeon turns" data-i18n-attr="title:Food drains during dungeon turns">
-              <img src="./resources/items/ration.png?v=77" alt="" aria-hidden="true">
+              <img src="./resources/items/ration.png?v=d1f62eef7c" alt="" aria-hidden="true">
               <div class="topbar-meter-copy">
                 <div class="topbar-meter-label"><strong><span class="meter-word">Food</span> <span id="header-food">100%</span></strong><small><span id="header-rations">0</span> meals</small></div>
                 <div id="header-food-meter" class="supply-meter-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Food meter">
@@ -49,7 +54,7 @@
               </div>
             </div>
             <div class="topbar-meter-resource water-meter-resource" title="Water drains during dungeon turns" data-i18n-attr="title:Water drains during dungeon turns">
-              <img src="./resources/items/water.png?v=77" alt="" aria-hidden="true">
+              <img src="./resources/items/water.png?v=3b731237cf" alt="" aria-hidden="true">
               <div class="topbar-meter-copy">
                 <div class="topbar-meter-label"><strong><span class="meter-word">Water</span> <span id="header-water">100%</span></strong><small><span id="header-water-stock">0</span> gourds</small></div>
                 <div id="header-water-meter" class="supply-meter-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-label="Water meter">
@@ -88,7 +93,7 @@
           </div>
           <p id="continue-hint" class="title-hint" aria-live="polite" data-i18n="No saved game on this device.">No saved game on this device.</p>
         </div>
-        <img class="title-art" src="./resources/ui/title-temple.png?v=79" alt="" aria-hidden="true">
+        <img class="title-art" src="./resources/ui/title-temple.png?v=e029aff649" alt="" aria-hidden="true">
       </section>
 
       <dialog id="save-manager-dialog" class="save-manager-dialog settings-dialog" aria-labelledby="save-manager-heading">
@@ -177,6 +182,11 @@
           <h3 id="settings-game-heading" class="settings-group-heading" data-i18n="Game">Game</h3>
           <button id="settings-quit" class="button secondary" type="button" data-i18n="Quit to main menu">Quit to main menu</button>
           <p class="muted" data-i18n="Your run is saved. Choose Continue on the main menu to pick it up where you left off.">Your run is saved. Choose Continue on the main menu to pick it up where you left off.</p>
+        </section>
+        <section class="settings-group" aria-labelledby="settings-problems-heading">
+          <h3 id="settings-problems-heading" class="settings-group-heading" data-i18n="Problems">Problems</h3>
+          <button id="copy-problem-report" class="button secondary" type="button" data-i18n="Copy problem report">Copy problem report</button>
+          <p class="muted" data-i18n="If something goes wrong, the game notes it here. Copy the report and send it along with what you were doing.">If something goes wrong, the game notes it here. Copy the report and send it along with what you were doing.</p>
         </section>
         </div>
       </dialog>
@@ -334,6 +344,7 @@
           <div class="health-summary">
             <div class="health-label"><span data-i18n="Hit points">Hit points</span><strong id="player-hp">18 / 18</strong></div>
             <div class="health-track player-track"><span id="player-health-fill"></span></div>
+            <div id="character-conditions" class="status-chips character-conditions" aria-label="Conditions and boons" data-i18n-attr="aria-label:Conditions and boons" hidden></div>
           </div>
           <div class="character-tabs" role="tablist" aria-label="Adventurer details" data-i18n-attr="aria-label:Adventurer details">
             <button id="tab-equipment" class="character-tab" type="button" role="tab" aria-selected="true" aria-controls="panel-equipment" tabindex="0" data-character-tab="equipment" data-i18n="Equipment">Equipment</button>
@@ -468,7 +479,7 @@
                   <p id="shop-tagline" class="shop-tagline"></p>
                 </div>
                 <div class="shop-wallet">
-                  <span class="shop-purse" title="Gold in your purse"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong id="shop-purse">0 gp</strong></span>
+                  <span class="shop-purse" title="Gold in your purse"><img src="./resources/items/coin-pile.png?v=47a85b3a9d" alt=""><strong id="shop-purse">0 gp</strong></span>
                   <span class="shop-load" title="Pack weight. Secured gold stays in your Ceiba House strongbox; only gold found on this delve weighs 1 lb per 50 gp.">
                     <span class="shop-load-label">Pack <strong id="shop-load-text"></strong></span>
                     <span class="shop-load-track"><span id="shop-load-fill"></span></span>
@@ -516,15 +527,15 @@
                 <div id="action-primary" class="action-primary" aria-label="Current interaction"></div>
                 <div class="action-groups" aria-label="Other actions">
                   <details class="action-group" id="action-group-combat">
-                    <summary><img src="./resources/items/weapon.png?v=77" alt="" aria-hidden="true"><span data-i18n="Combat">Combat</span><span class="action-category-mark"></span></summary>
+                    <summary><img src="./resources/items/weapon.png?v=e81ac19a5a" alt="" aria-hidden="true"><span data-i18n="Combat">Combat</span><span class="action-category-mark"></span></summary>
                     <div id="action-combat" class="action-category-actions"></div>
                   </details>
                   <details class="action-group" id="action-group-explore">
-                    <summary><img src="./resources/items/tool.png?v=77" alt="" aria-hidden="true"><span data-i18n="Explore">Explore</span><span class="action-category-mark"></span></summary>
+                    <summary><img src="./resources/items/tool.png?v=65d6c8c008" alt="" aria-hidden="true"><span data-i18n="Explore">Explore</span><span class="action-category-mark"></span></summary>
                     <div id="action-explore" class="action-category-actions"></div>
                   </details>
                   <details class="action-group" id="action-group-supplies">
-                    <summary><img src="./resources/items/water.png?v=77" alt="" aria-hidden="true"><span data-i18n="Supplies">Supplies</span><span class="action-category-mark"></span></summary>
+                    <summary><img src="./resources/items/water.png?v=3b731237cf" alt="" aria-hidden="true"><span data-i18n="Supplies">Supplies</span><span class="action-category-mark"></span></summary>
                     <div id="action-supplies" class="action-category-actions"></div>
                   </details>
                 </div>
@@ -565,6 +576,7 @@
                   <span id="enemy-strikes" class="strike-chips" hidden></span>
                 </div>
               </div>
+              <div id="nearby-strip" class="nearby-strip" role="group" aria-label="Creatures nearby" data-i18n-attr="aria-label:Creatures nearby" hidden></div>
               <div id="map-status-chips" class="status-chips map-status-chips" aria-label="Conditions and boons" hidden></div>
             </div>
             <div class="section-heading">
@@ -579,7 +591,7 @@
               <div id="dungeon-map" class="dungeon-map" role="group" aria-label="Nearby dungeon tiles" data-i18n-attr="aria-label:Nearby dungeon tiles"></div>
               <button id="look-toggle" class="button secondary look-toggle" type="button"
                 aria-pressed="false" aria-label="Inspect a tile" title="Inspect a tile">
-                <img src="./resources/items/tool.png?v=77" alt="" aria-hidden="true">
+                <img src="./resources/items/tool.png?v=65d6c8c008" alt="" aria-hidden="true">
                 <span class="action-label" data-i18n="Inspect">Inspect</span>
                 </button>
             </div>
@@ -738,7 +750,7 @@
             <p class="eyebrow" id="town-dialog-role">Chiltomatlan · a conversation</p>
             <h2 id="town-dialog-heading"></h2>
           </div>
-          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong data-purse>0 gp</strong></span>
+          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=47a85b3a9d" alt=""><strong data-purse>0 gp</strong></span>
           <button class="quiet-button venue-close" id="town-dialog-x" type="button" aria-label="Continue walking" data-i18n-attr="aria-label:Continue walking">×</button>
         </header>
         <p id="town-dialog-copy" class="story-copy venue-speech"></p>
@@ -780,7 +792,7 @@
             <h2 id="projects-heading" data-i18n="Town projects">Town projects</h2>
             <p class="venue-tagline">Gold you bring home rebuilds the town. Every project is permanent and helps every future delve.</p>
           </div>
-          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong id="projects-gold" data-purse>0 gp</strong></span>
+          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=47a85b3a9d" alt=""><strong id="projects-gold" data-purse>0 gp</strong></span>
           <button class="quiet-button venue-close" id="projects-x" type="button" aria-label="Back to the plaza">×</button>
         </header>
         <p id="projects-message" class="cosmetic-shop-message" role="status" aria-live="polite"></p>
@@ -817,7 +829,7 @@
             <h2 id="house-title">Adobe calli</h2>
             <p class="venue-tagline" id="house-tagline"></p>
           </div>
-          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong data-purse>0 gp</strong></span>
+          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=47a85b3a9d" alt=""><strong data-purse>0 gp</strong></span>
           <button class="quiet-button venue-close" id="house-close" type="button" aria-label="Back to the plaza">×</button>
         </header>
         <div id="house-body" class="house-body"></div>
@@ -853,7 +865,7 @@
             <h2 id="patolli-heading" data-i18n="Patolli">Patolli</h2>
             <p class="venue-tagline">Six pieces, six matched wagers. The first to claim four wins the match.</p>
           </div>
-          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=78" alt=""><strong data-purse>0 gp</strong></span>
+          <span class="venue-purse" title="Gold in your Ceiba House strongbox"><img src="./resources/items/coin-pile.png?v=47a85b3a9d" alt=""><strong data-purse>0 gp</strong></span>
           <button class="button secondary venue-header-action" id="patolli-rules-toggle" type="button" aria-expanded="false" data-i18n="Read the rules">Read the rules</button>
         </header>
         <section id="patolli-rules" class="patolli-rules-page" aria-label="Patolli rules" hidden data-i18n-attr="aria-label:Patolli rules">
@@ -977,54 +989,58 @@
         <button id="message-box-advance" class="button secondary" type="button" data-i18n="Continue">Continue</button>
       </div>
     </section>
-    <script src="./data/locales.js?v=16" defer></script>
-    <script src="./data/items.js?v=12" defer></script>
-    <script src="./data/progression.js?v=3" defer></script>
-    <script src="./data/enemies.js?v=14" defer></script>
-    <script src="./data/content.js?v=5" defer></script>
-    <script src="./data/spells.js?v=5" defer></script>
-    <script src="./data/character-options.js?v=10" defer></script>
-    <script src="./data/exotics.js?v=4" defer></script>
-    <script src="./data/wardrobe.js?v=6" defer></script>
-    <script src="./data/goods.js?v=3" defer></script>
-    <script src="./data/tomb-gear.js?v=2" defer></script>
-    <script src="./data/ecology.js?v=5" defer></script>
-    <script src="./data/cooking.js?v=1" defer></script>
-    <script src="./systems/patolli.js?v=6" defer></script>
-    <script src="./systems/progression.js?v=16" defer></script>
-    <script src="./systems/relics.js?v=2" defer></script>
-    <script src="./systems/behaviors.js?v=7" defer></script>
-    <script src="./systems/strikes.js?v=3" defer></script>
-    <script src="./systems/biome.js?v=2" defer></script>
-    <script src="./systems/ecology.js?v=11" defer></script>
-    <script src="./systems/energy.js?v=2" defer></script>
-    <script src="./systems/tomb-plan.js?v=1" defer></script>
-    <script src="./systems/knacks.js?v=2" defer></script>
-    <script src="./systems/abilities.js?v=3" defer></script>
-    <script src="./data/figure-art.js?v=1" defer></script>
-    <script src="./systems/figure-art.js?v=1" defer></script>
-    <script src="./data/character-textures.js?v=2" defer></script>
-    <script src="./systems/character-textures.js?v=2" defer></script>
-    <script src="./systems/codex-figure.js?v=19" defer></script>
-    <script src="./systems/shop.js?v=7" defer></script>
-    <script src="./systems/house.js?v=9" defer></script>
-    <script src="./systems/camp.js?v=5" defer></script>
-    <script src="./systems/cooking.js?v=1" defer></script>
-    <script src="./systems/arrival.js?v=2" defer></script>
-    <script src="./systems/minds.js?v=1" defer></script>
-    <script src="./systems/duende-quest.js?v=3" defer></script>
-    <script src="./systems/item-art.js?v=2" defer></script>
-    <script src="./systems/sound.js?v=2" defer></script>
-    <script src="./systems/equipment-sheet.js?v=4" defer></script>
-    <script src="./systems/sheets.js?v=9" defer></script>
-    <script src="./data/villagers.js?v=6" defer></script>
-    <script src="./data/lore.js?v=2" defer></script>
-    <script src="./data/favors.js?v=1" defer></script>
-    <script src="./systems/villagers.js?v=7" defer></script>
-    <script src="./systems/favors.js?v=1" defer></script>
-    <script src="./systems/characters.js?v=26" defer></script>
-    <script src="./systems/look-editor.js?v=2" defer></script>
-    <script src="./systems/dungeons.js?v=115" defer></script>
-    <script src="./app.js?v=217" defer></script>
+    <script src="./systems/safety.js?v=2d3577395f" defer></script>
+    <script src="./data/locales.js?v=bd652e856f" defer></script>
+    <script src="./data/items.js?v=511256bc28" defer></script>
+    <script src="./data/progression.js?v=f11fe8abce" defer></script>
+    <script src="./data/enemies.js?v=a34b1d8957" defer></script>
+    <script src="./data/content.js?v=8c90c3470d" defer></script>
+    <script src="./data/spells.js?v=fb4424dd87" defer></script>
+    <script src="./data/character-options.js?v=cc04f0d860" defer></script>
+    <script src="./data/exotics.js?v=d646fde4fd" defer></script>
+    <script src="./data/wardrobe.js?v=bd9064722b" defer></script>
+    <script src="./data/goods.js?v=6c19aea2b8" defer></script>
+    <script src="./data/tomb-gear.js?v=8b260305de" defer></script>
+    <script src="./data/ecology.js?v=f49a67bf44" defer></script>
+    <script src="./data/cooking.js?v=33f24faaf8" defer></script>
+    <script src="./systems/patolli.js?v=77abf17f86" defer></script>
+    <script src="./systems/progression.js?v=f9a690a5fe" defer></script>
+    <script src="./systems/relics.js?v=30f48fb650" defer></script>
+    <script src="./systems/behaviors.js?v=a489c025a5" defer></script>
+    <script src="./systems/strikes.js?v=9831ecb020" defer></script>
+    <script src="./systems/biome.js?v=032d8526c7" defer></script>
+    <script src="./systems/ecology.js?v=927bfe18e6" defer></script>
+    <script src="./systems/energy.js?v=2c01fbde43" defer></script>
+    <script src="./systems/tomb-plan.js?v=4997625009" defer></script>
+    <script src="./systems/knacks.js?v=b9ac19203f" defer></script>
+    <script src="./systems/abilities.js?v=79c603e736" defer></script>
+    <script src="./data/figure-art.js?v=947630eec3" defer></script>
+    <script src="./systems/figure-art.js?v=7aadb5e4eb" defer></script>
+    <script src="./data/character-textures.js?v=c805797613" defer></script>
+    <script src="./systems/character-textures.js?v=5f91305960" defer></script>
+    <script src="./systems/codex-figure.js?v=e391132edb" defer></script>
+    <script src="./systems/shop.js?v=16b88ef97e" defer></script>
+    <script src="./systems/house.js?v=d100dc6471" defer></script>
+    <script src="./systems/camp.js?v=f90b17b2c9" defer></script>
+    <script src="./systems/cooking.js?v=9f41f3128a" defer></script>
+    <script src="./systems/arrival.js?v=e4526cede2" defer></script>
+    <script src="./systems/minds.js?v=11b2c32545" defer></script>
+    <script src="./systems/duende-quest.js?v=ae2a2e1ec2" defer></script>
+    <script src="./systems/item-art.js?v=6e70985291" defer></script>
+    <script src="./systems/sound.js?v=cedc53442b" defer></script>
+    <script src="./systems/equipment-sheet.js?v=4163e9106d" defer></script>
+    <script src="./systems/sheets.js?v=4cf0892980" defer></script>
+    <script src="./systems/surroundings.js?v=6d33e030ea" defer></script>
+    <script src="./systems/action-icons.js?v=6c617cd94e" defer></script>
+    <script src="./systems/layout.js?v=af6616cc1e" defer></script>
+    <script src="./data/villagers.js?v=b158641b00" defer></script>
+    <script src="./data/lore.js?v=de2b723b7c" defer></script>
+    <script src="./data/favors.js?v=9361b90401" defer></script>
+    <script src="./systems/villagers.js?v=138f084b09" defer></script>
+    <script src="./systems/favors.js?v=6779e6da72" defer></script>
+    <script src="./systems/characters.js?v=2453b4b837" defer></script>
+    <script src="./systems/look-editor.js?v=bfcac3661a" defer></script>
+    <script src="./systems/dungeons.js?v=bf09cbbea6" defer></script>
+    <script src="./app.js?v=82a7f8e2be" defer></script>
   </body>
 </html>

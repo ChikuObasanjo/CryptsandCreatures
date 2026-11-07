@@ -37,10 +37,6 @@ function unlockedAbilityIds(classId = state.run?.character?.class, level = state
   return classAbilityIds(classId).filter((id) => abilityUnlocked(id, level));
 }
 
-function nextAbilityUnlock(classId = state.run?.character?.class, level = state.run?.level || 1) {
-  return classAbilityIds(classId).map((id) => ({ id, def: abilityDef(id) })).find((entry) => entry.def.level > level) || null;
-}
-
 function abilityKey(id) {
   const index = unlockedAbilityIds().indexOf(id);
   return index >= 0 ? ABILITY_KEYS[index] || "" : "";
@@ -335,7 +331,7 @@ function useAbility(id, chosenTarget = null) {
 }
 
 function chooseAbilityTarget(id, def, targets) {
-  chooseFromOptions(t("Choose a target for {0}", { 0: t(def.name) }), targets.map((enemy) => {
+  chooseFromOptions(t("Choose a target for {0}", { 0: t(def.name) }), targetFirst(targets).map((enemy) => {
     const caught = def.area || def.target === "line" ? abilityVictims(def, enemy).length : 0;
     const extra = caught > 1 ? ` · ${t("hits {0}", { 0: caught })}` : "";
     return {

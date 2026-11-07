@@ -397,20 +397,6 @@ function openCreatureCard(templateId, enemy = null) {
 }
 
 function connectCreatureCards() {
-  const encounter = elements.encounter;
-  if (encounter) {
-    encounter.tabIndex = 0;
-    encounter.setAttribute("role", "button");
-    encounter.title = t("Show the full creature card");
-    const open = () => {
-      const enemy = nearestEnemy();
-      if (enemy) openCreatureCard(enemy.templateId, enemy);
-    };
-    encounter.addEventListener("click", open);
-    encounter.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); open(); }
-    });
-  }
   elements["bestiary-list"]?.addEventListener("click", (event) => {
     const entry = event.target.closest("[data-creature-id]");
     if (entry) openCreatureCard(entry.dataset.creatureId);

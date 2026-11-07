@@ -1461,6 +1461,8 @@ function dungeonSignsForSnapshot(snapshot) {
 }
 
 function newRun(character) {
+  // The run being replaced keeps its last changes.
+  if (typeof flushPendingSave === "function") flushPendingSave();
   if (!character.equipmentEnhancements) {
     character.equipmentEnhancements = { weaponIds: [], armorIds: [] };
   }

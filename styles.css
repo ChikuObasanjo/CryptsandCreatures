@@ -594,22 +594,22 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
   padding: 0;
   border: 0;
   background-color: var(--paper-deep);
-  background-image: url("./resources/tiles/town-street.png?v=92");
+  background-image: url("./resources/tiles/town-street.png?v=672bd5b2cd");
   background-position: center;
   background-size: 100% 100%;
   overflow: visible;
 }
 .town-tile:focus-visible { z-index: 2; outline-offset: -3px; }
-.town-tile.town-wall { background-image: url("./resources/tiles/town-wall.png?v=91"); }
+.town-tile.town-wall { background-image: url("./resources/tiles/town-wall.png?v=bb88f6f040"); }
 .town-tile.town-street,
-.town-tile.town-well { background-image: url("./resources/tiles/town-street.png?v=92"); }
-.town-tile.town-inn { background-image: url("./resources/tiles/town-inn-full.png?v=90"), url("./resources/tiles/town-street.png?v=92"); }
-.town-tile.town-market { background-image: url("./resources/tiles/town-market-full.png?v=90"); background-color: #dcc28e; }
-.town-tile.town-gate { background-image: url("./resources/tiles/town-gate.png?v=90"), url("./resources/tiles/town-street.png?v=92"); }
-.town-tile.town-route { background-image: url("./resources/tiles/town-route.png?v=1"); }
-.town-tile.town-plaza { background-image: url("./resources/tiles/town-plaza.png?v=1"); }
-.town-tile.town-canal { background-color: #5c9896; background-image: url("./resources/tiles/town-canal.png?v=1"); }
-.town-tile.town-canal.is-vertical { background-image: url("./resources/tiles/town-canal-vertical.png?v=1"); }
+.town-tile.town-well { background-image: url("./resources/tiles/town-street.png?v=672bd5b2cd"); }
+.town-tile.town-inn { background-image: url("./resources/tiles/town-inn-full.png?v=3cc9823a69"), url("./resources/tiles/town-street.png?v=672bd5b2cd"); }
+.town-tile.town-market { background-image: url("./resources/tiles/town-market-full.png?v=792a939bcb"); background-color: #dcc28e; }
+.town-tile.town-gate { background-image: url("./resources/tiles/town-gate.png?v=f29bae475f"), url("./resources/tiles/town-street.png?v=672bd5b2cd"); }
+.town-tile.town-route { background-image: url("./resources/tiles/town-route.png?v=964514b16d"); }
+.town-tile.town-plaza { background-image: url("./resources/tiles/town-plaza.png?v=2302617d35"); }
+.town-tile.town-canal { background-color: #5c9896; background-image: url("./resources/tiles/town-canal.png?v=2139f92eaf"); }
+.town-tile.town-canal.is-vertical { background-image: url("./resources/tiles/town-canal-vertical.png?v=e8b0bd6922"); }
 /* A stone bank wherever the canal meets land. */
 .town-tile.town-canal::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -628,8 +628,8 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
 .town-tile.town-canal.bank-s::after { border-bottom-width: 1.5px; bottom: 4px; }
 .town-tile.town-canal.bank-w::after { border-left-width: 1.5px; left: 4px; }
 .town-tile.town-canal.bank-e::after { border-right-width: 1.5px; right: 4px; }
-.town-tile.town-bridge { background-image: url("./resources/tiles/town-bridge.png?v=1"); }
-.town-tile.town-bridge-vertical { background-image: url("./resources/tiles/town-bridge-vertical.png?v=1"); }
+.town-tile.town-bridge { background-image: url("./resources/tiles/town-bridge.png?v=1904c8c5f3"); }
+.town-tile.town-bridge-vertical { background-image: url("./resources/tiles/town-bridge-vertical.png?v=6e1c45c8fe"); }
 .town-tile > img {
   position: absolute;
   inset: 3%;
@@ -1105,8 +1105,8 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
   font-style: normal;
   font-size: 11px;
 }
-.legend-wall { background: #5a554b url("./resources/tiles/wall.png?v=91") center / cover; }
-.legend-floor { background: #ece0c1 url("./resources/tiles/floor.png?v=91") center / cover; }
+.legend-wall { background: #5a554b url("./resources/tiles/wall.png?v=9aa34d4fd7") center / cover; }
+.legend-floor { background: #ece0c1 url("./resources/tiles/floor.png?v=329cd7910c") center / cover; }
 .legend-player { background: var(--gold); border-radius: 50% !important; }
 .legend-companion { background: var(--jade); border-radius: 50% !important; }
 .legend-enemy { background: var(--red); border-radius: 50% !important; }
@@ -1126,25 +1126,25 @@ body.nighttime .town-map { filter: brightness(0.72) saturate(0.75) hue-rotate(-8
   box-shadow: inset 0 0 0 0.5px rgba(20, 12, 8, 0.35);
 }
 .map-tile.wall,
-.map-tile.stone { background-color: #2d241e; background-image: url("./resources/tiles/wall.png?v=91"); }
+.map-tile.stone { background-color: #2d241e; background-image: url("./resources/tiles/wall.png?v=9aa34d4fd7"); }
 .map-tile.stone { filter: brightness(0.6) saturate(0.85); }
 .map-tile.wall.wall-variant-1 { background-position: 100% 0; filter: brightness(0.96); }
 .map-tile.wall.wall-variant-2 { filter: brightness(0.92) saturate(0.95); }
 .map-tile.wall.wall-variant-3 { filter: brightness(1.04); }
 .map-tile.wall.wall-edge { box-shadow: inset 0 0 0 1px rgba(20, 12, 8, 0.6); }
-.map-tile.floor { background-color: #ece0c1; background-image: url("./resources/tiles/floor.png?v=91"); }
-.map-tile.corridor { background-color: #e3d4b0; background-image: url("./resources/tiles/corridor.png?v=91"); }
-.map-tile.door { background-color: #e3d4b0; background-image: url("./resources/tiles/floor.png?v=91"); }
+.map-tile.floor { background-color: #ece0c1; background-image: url("./resources/tiles/floor.png?v=329cd7910c"); }
+.map-tile.corridor { background-color: #e3d4b0; background-image: url("./resources/tiles/corridor.png?v=918c561e6e"); }
+.map-tile.door { background-color: #e3d4b0; background-image: url("./resources/tiles/floor.png?v=329cd7910c"); }
 .map-tile.door::before {
   content: "";
   position: absolute;
   inset: 3%;
-  background: url("./resources/tokens/door-closed.png?v=81") center / contain no-repeat;
+  background: url("./resources/tokens/door-closed.png?v=935abfe2a8") center / contain no-repeat;
   pointer-events: none;
 }
-.map-tile.door.door-open::before { background-image: url("./resources/tokens/door-open.png?v=81"); }
+.map-tile.door.door-open::before { background-image: url("./resources/tokens/door-open.png?v=860b2cc4e6"); }
 .map-tile.unseen,
-.map-tile.map-edge { background-color: #1f1b2c; background-image: url("./resources/tiles/fog.png?v=91"); filter: brightness(0.78) saturate(0.85); }
+.map-tile.map-edge { background-color: #1f1b2c; background-image: url("./resources/tiles/fog.png?v=93edd871c4"); filter: brightness(0.78) saturate(0.85); }
 .map-tile.map-edge { filter: brightness(0.45); }
 .map-tile.look-selected { z-index: 3; box-shadow: inset 0 0 0 3px var(--gold), 0 0 0 2px var(--line); }
 .map-tile.map-entrance { background-color: #ece0c1; }
@@ -4453,17 +4453,17 @@ body.pad-size-xl { --pad-scale: 1.4; }
 
 /* ---------- Build 30: the ground under the tomb (systems/biome.js) ---------- */
 .map-tile[class*="ground-"]::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0; }
-.map-tile.ground-water::before { background: url("./resources/tiles/ground/water.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-deep::before { background: url("./resources/tiles/ground/deep.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-moss::before { background: url("./resources/tiles/ground/moss.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-roots::before { background: url("./resources/tiles/ground/roots.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-guano::before { background: url("./resources/tiles/ground/guano.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-bones::before { background: url("./resources/tiles/ground/bones.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-rubble::before { background: url("./resources/tiles/ground/rubble.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-ash::before { background: url("./resources/tiles/ground/ash.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-crystal::before { background: url("./resources/tiles/ground/crystal.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-mycelium::before { background: url("./resources/tiles/ground/mycelium.png?v=1") center / 100% 100% no-repeat; }
-.map-tile.ground-flesh::before { background: url("./resources/tiles/ground/flesh.png?v=1") center / 100% 100% no-repeat; }
+.map-tile.ground-water::before { background: url("./resources/tiles/ground/water.png?v=84723025a5") center / 100% 100% no-repeat; }
+.map-tile.ground-deep::before { background: url("./resources/tiles/ground/deep.png?v=65bc7d10ca") center / 100% 100% no-repeat; }
+.map-tile.ground-moss::before { background: url("./resources/tiles/ground/moss.png?v=be4d1f0b47") center / 100% 100% no-repeat; }
+.map-tile.ground-roots::before { background: url("./resources/tiles/ground/roots.png?v=4560fdd4e6") center / 100% 100% no-repeat; }
+.map-tile.ground-guano::before { background: url("./resources/tiles/ground/guano.png?v=41195c13cb") center / 100% 100% no-repeat; }
+.map-tile.ground-bones::before { background: url("./resources/tiles/ground/bones.png?v=ea7c743d80") center / 100% 100% no-repeat; }
+.map-tile.ground-rubble::before { background: url("./resources/tiles/ground/rubble.png?v=c63d99c806") center / 100% 100% no-repeat; }
+.map-tile.ground-ash::before { background: url("./resources/tiles/ground/ash.png?v=7dfd1fb0e8") center / 100% 100% no-repeat; }
+.map-tile.ground-crystal::before { background: url("./resources/tiles/ground/crystal.png?v=1fbe97b563") center / 100% 100% no-repeat; }
+.map-tile.ground-mycelium::before { background: url("./resources/tiles/ground/mycelium.png?v=340feaec50") center / 100% 100% no-repeat; }
+.map-tile.ground-flesh::before { background: url("./resources/tiles/ground/flesh.png?v=1b71f994c5") center / 100% 100% no-repeat; }
 .map-tile.has-camp::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 60%, rgba(240, 150, 50, 0.32), transparent 70%); pointer-events: none; z-index: 1; }
 .map-tile.habitat-damp-cavern.floor { box-shadow: inset 0 0 18px rgba(63, 122, 85, 0.16); }
 .map-tile.habitat-overgrown-ruins.floor { box-shadow: inset 0 0 18px rgba(110, 72, 40, 0.18); }
@@ -4482,18 +4482,6 @@ body.pad-size-xl { --pad-scale: 1.4; }
 .map-tile.creature-disputing-territory .tile-entity-creature::after { content: "⚔"; }
 .map-tile.creature-on-the-move .tile-entity-creature::after { content: "»"; }
 
-/* Several things to do here: the big button and a switch to step through them. */
-.action-primary .interact-row { grid-column: 1 / -1; display: flex; gap: 5px; min-width: 0; }
-.action-primary .interact-row > .button { flex: 1 1 auto; min-width: 0; }
-.action-primary .interact-row > #interact-switch {
-  flex: 0 0 auto; width: auto; min-width: 46px; padding: 2px 6px; justify-content: center; text-align: center;
-  font-variant-numeric: tabular-nums; white-space: nowrap;
-  background: var(--card); color: var(--ink); border: 2px solid var(--jade-deep, #1f6b55);
-}
-.action-primary .interact-row > #interact-switch .action-key { display: none; }
-.action-primary .interact-row > #interact-switch:hover:not(:disabled) { background: color-mix(in srgb, var(--card) 80%, var(--line)); }
-.action-primary .interact-row > #interact-switch .action-glyph { display: none; }
-.action-primary .interact-row.is-demoted { order: 2; }
 .button.here-action { border-style: dashed; }
 
 /* The pack: a grid of item boxes with a rarity outline; tapping one opens its card. */
@@ -4756,3 +4744,203 @@ body.dark-mode .item-card.rarity-exotic { --rarity: #c48ae0; }
 .arrival-veil.lifting { transition: opacity 220ms ease-out; }
 .arrival-caption { margin: 0; color: #e9d7b0; font: 600 20px/1.2 var(--font-display); letter-spacing: 0.08em; }
 @media (prefers-reduced-motion: reduce) { .arrival-veil.lifting { transition: none; } }
+
+/* Shown by systems/safety.js only if an error happens before the game's own notices load. */
+.safety-notice {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 100;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #2b2118;
+  color: #f8eed6;
+  font: 700 15px/1.35 system-ui, sans-serif;
+  transform: translateX(-50%);
+}
+
+/* ---- Surroundings: target frame, nearby row, map ring (systems/surroundings.js) ---- */
+.enemy-combatant { cursor: pointer; }
+.enemy-combatant[data-tone="wary"] { box-shadow: inset 4px 0 0 var(--gold), var(--shadow); }
+.enemy-combatant[data-tone="wary"] .enemy-rank { color: var(--gold-deep); }
+.enemy-combatant[data-tone="calm"] { box-shadow: inset 4px 0 0 var(--jade), var(--shadow); }
+.enemy-combatant[data-tone="calm"] .enemy-rank { color: var(--jade-deep); }
+body.dark-mode .enemy-combatant[data-tone="wary"] .enemy-rank { color: var(--gold); }
+body.dark-mode .enemy-combatant[data-tone="calm"] .enemy-rank { color: var(--jade); }
+#enemy-distance { white-space: nowrap; }
+
+.nearby-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.nearby-strip[hidden] { display: none; }
+.nearby-chip {
+  --tone: var(--red);
+  position: relative;
+  display: grid;
+  width: 52px;
+  padding: 3px 3px 4px;
+  gap: 3px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: inset 0 -3px 0 var(--tone), 0 2px 0 var(--line);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.nearby-chip[data-tone="wary"] { --tone: var(--gold); }
+.nearby-chip[data-tone="calm"] { --tone: var(--jade); }
+.nearby-chip[aria-pressed="true"] {
+  border-color: var(--gold-deep);
+  background: color-mix(in srgb, var(--gold) 22%, var(--card));
+  box-shadow: inset 0 -3px 0 var(--tone), 0 0 0 2px var(--gold), 0 2px 0 var(--line);
+  transform: translateY(-2px);
+}
+.nearby-chip-art {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 5px;
+  background: var(--paper-deep) var(--paper-texture);
+  overflow: hidden;
+}
+.nearby-chip-sprite { width: 100%; height: 100%; object-fit: contain; }
+.nearby-chip-health { display: block; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--line) 25%, transparent); overflow: hidden; }
+.nearby-chip-health span { display: block; height: 100%; background: var(--hp); }
+.nearby-chip-distance {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--inverse-bg);
+  color: var(--inverse-text);
+  font: 700 11px/16px var(--font-ui);
+  text-align: center;
+}
+.nearby-more { color: var(--muted); font: 700 13px/1 var(--font-ui); padding: 0 4px; }
+
+.target-ring {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 4%;
+  height: 26%;
+  border: 3px solid var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgba(20, 12, 8, 0.55), 0 0 10px rgba(225, 173, 59, 0.55);
+  pointer-events: none;
+  z-index: -1;
+  animation: target-ring 1.6s ease-in-out infinite;
+}
+.map-tile[data-target-tone="hostile"] .target-ring { border-color: #e2563d; box-shadow: 0 0 0 1.5px rgba(20, 12, 8, 0.55), 0 0 10px rgba(226, 86, 61, 0.6); }
+.map-tile[data-target-tone="calm"] .target-ring { border-color: #4fbf9f; box-shadow: 0 0 0 1.5px rgba(20, 12, 8, 0.55), 0 0 10px rgba(79, 191, 159, 0.5); }
+@keyframes target-ring { 50% { transform: scale(1.08); opacity: 0.8; } }
+@media (prefers-reduced-motion: reduce) { .target-ring { animation: none; } }
+
+/* ---- Action bar (CnC43) ----
+   The big button always has the full width for its words (up to two lines, never cut
+   off); when there's more than one thing to do here, a slim tab under it says what's next.
+   Each button shows a picture of what it does (systems/action-icons.js). */
+.action-buttons .action-primary {
+  /* As many quick actions per row as fit at a readable width; a lone one takes the row. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 108px), 1fr));
+}
+.action-buttons .action-primary .button .action-label {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.15;
+}
+.action-buttons .action-primary .interact-row { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
+.action-buttons .action-primary .interact-row > .button { width: 100%; min-width: 0; }
+.action-buttons .action-primary .interact-row > #interact-switch {
+  min-height: 28px;
+  padding: 2px 8px;
+  gap: 6px;
+  justify-content: center;
+  border: 2px solid var(--jade-deep);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 2px 0 var(--line);
+  font: 700 12px/1.1 var(--font-ui);
+}
+.action-buttons .action-primary .interact-row > #interact-switch .action-label {
+  flex: 0 1 auto;
+  -webkit-line-clamp: 2;
+  text-align: center;
+}
+.action-buttons .action-primary .interact-row > #interact-switch .action-glyph { display: grid; width: 16px; height: 16px; }
+.action-buttons .action-primary .interact-row > #interact-switch .action-key { display: none; }
+.action-buttons .action-primary .interact-row > #interact-switch:hover:not(:disabled) { background: color-mix(in srgb, var(--card) 80%, var(--line)); }
+/* When attacking takes the big button, the place's actions sit underneath, smaller. */
+.action-buttons .action-primary .interact-row.is-demoted { order: 2; }
+.action-buttons .action-primary .interact-row.is-demoted > .button:not(#interact-switch) { min-height: 40px; }
+
+.action-buttons .action-primary .button.quick-main { min-height: 50px; gap: 10px; }
+.action-buttons .action-primary .button.quick-main .action-glyph { width: 30px; height: 30px; }
+.action-buttons .action-primary .button.quick-main .action-glyph img { width: 30px; height: 30px; }
+/* The key is in the button's tooltip and the keyboard help; on the button it only cost words. */
+.action-buttons .action-primary .button.quick-main .action-key { display: none; }
+.action-buttons .action-primary .button.quick-action {
+  gap: 6px;
+  justify-content: flex-start;
+  text-align: left;
+}
+.action-buttons .action-primary .button.quick-action .action-glyph { display: grid; width: 20px; height: 20px; }
+.action-buttons .action-primary .button.quick-action .action-glyph img { width: 20px; height: 20px; }
+.action-buttons .action-primary .button.quick-action .action-label { text-align: left; }
+
+.action-svg { width: 100%; height: 100%; overflow: visible; }
+.action-svg path { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.action-svg-up path, .action-svg-down path, .action-svg-home path, .action-svg-talk path {
+  fill: var(--gold);
+  stroke: var(--line);
+  stroke-width: 1.8;
+}
+.action-svg-eye path { fill: color-mix(in srgb, var(--gold) 55%, transparent); fill-rule: evenodd; }
+.button:disabled .action-svg path { fill: none; stroke: currentColor; }
+
+/* ---- Sleep as a status (systems/characters.js restState) ---- */
+.status-chip.rest-rested { background: var(--jade); color: var(--on-color); }
+.status-chip.condition-unrested { background: #6b5a8e; color: #fff7e4; }
+.status-chip.condition-unrested.unrested-2 { background: #54406f; }
+.status-chip.condition-unrested.unrested-3 { background: #3a2a52; box-shadow: inset 0 0 0 2px var(--red); }
+.character-conditions { margin-top: 8px; }
+.character-conditions .status-chip { font-size: 13px; padding: 3px 9px; }
+
+/* Your portrait in the top bar shows how you slept: a small moon-and-Z mark when unrested,
+   a jade ring when rested. */
+/* The picture is clipped to the circle, not the button, so the mark can sit on its edge. */
+.portrait-button { position: relative; overflow: visible; }
+.portrait-button .header-character-portrait { border-radius: 50%; overflow: hidden; }
+.portrait-button[data-rest="rested"] { box-shadow: inset 0 0 0 2px var(--card), inset 0 0 0 3.5px var(--jade), 0 0 0 2px var(--jade), var(--shadow); }
+.portrait-button[data-rest^="unrested"]::after {
+  content: "z";
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: #6b5a8e;
+  color: #fff7e4;
+  font: 700 12px/1 var(--font-ui);
+}
+.portrait-button[data-rest="unrested-2"]::after { content: "zz"; width: 24px; font-size: 10.5px; background: #54406f; }
+.portrait-button[data-rest="unrested-3"]::after { content: "zzz"; width: 28px; font-size: 9.5px; background: #3a2a52; border-color: var(--red); }
+.status-chip[role="button"] { cursor: pointer; touch-action: manipulation; }

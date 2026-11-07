@@ -40,10 +40,6 @@ function itemsForSlot(slot) {
   });
 }
 
-function equipmentIconFor(itemId) {
-  return itemArtUrl(itemId);
-}
-
 function equipmentSlotButton(slot) {
   const itemId = equippedInSlot(slot);
   const item = itemId ? itemDetails(itemId) : null;
