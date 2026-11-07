@@ -271,7 +271,7 @@ const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
 // The build replaces this with a fingerprint of all the art; no need to bump it by hand.
-const SPRITE_RESOURCE_VERSION = "8846d185b7";
+const SPRITE_RESOURCE_VERSION = "1c75f4e48d";
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
@@ -6298,7 +6298,7 @@ function parseSavedRun(saved, pack) {
           room.mapX < 1 || room.mapY < 1 || room.mapX + room.mapW > MAP_TILE_SIZE - 1 || room.mapY + room.mapH > MAP_TILE_SIZE - 1 ||
           room.anchorX <= room.mapX || room.anchorX >= room.mapX + room.mapW - 1 ||
           room.anchorY <= room.mapY || room.anchorY >= room.mapY + room.mapH - 1 ||
-          !["hall", "pillared", "cross", "round", "ell", "cell"].includes(room.shape) ||
+          !["hall", "pillared", "cross", "round", "ell", "cell", "gallery", "court", "cave"].includes(room.shape) ||
           room.links.some((link) => !Number.isInteger(link) || link < 0 || link >= rooms.length)) return true;
       } else if (![3, 5, 7, 9].includes(room.mapW) || ![3, 5, 7, 9].includes(room.mapH)) {
         return true;

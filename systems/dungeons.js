@@ -250,6 +250,10 @@ function generateGtflDungeonV3() {
   // (systems/tomb-plan.js): the mouth, a lore chamber, the stairwells, the seal. A floor from
   // before the plan gets a guardian's hall first instead, so it always fits.
   const planned = typeof tombPlannedChambers === "function" ? tombPlannedChambers(depth) : [];
+  // How this band was built (systems/architecture.js): where chambers go, their shapes,
+  // whether they line up and mirror each other, and how the passages run.
+  const styleName = archStyleName(depth);
+  const style = archStyle(styleName);
   for (const spot of planned) {
     const rect = {
       shape: spot.shape, boss: spot.role === "mouth" || Boolean(spot.keeper), planned: spot,
@@ -261,33 +265,67 @@ function generateGtflDungeonV3() {
     if (!fits(rect)) throw new Error("A planned tomb chamber does not fit.");
     rect.anchorX = spot.x;
     rect.anchorY = spot.y;
+    // In the living rock even the stairwells are hollows, not built rooms.
+    if (style.caverns && rect.shape === "hall") {
+      const mask = archCaveMask(rect);
+      if (mask.has((rect.anchorY - rect.mapY) * rect.mapW + rect.anchorX - rect.mapX)) {
+        rect.shape = "cave";
+        rect.mask = mask;
+      }
+    }
     placed.push(rect);
   }
-  const wanted = [...(planned.length ? [] : ["boss-hall"]),
-    ...Array.from({ length: Math.max(0, target - planned.length - (planned.length ? 0 : 1)) }, () => V3_SHAPES[randomInt(V3_SHAPES.length) - 1])];
-  for (const entry of wanted) {
+  const setAnchor = (rect) => {
+    rect.anchorX = rect.mapX + Math.floor(rect.mapW / 2);
+    rect.anchorY = rect.mapY + Math.floor(rect.mapH / 2);
+    if (rect.shape === "ell") {
+      // Put the anchor in the corner block of the L, which is always floor.
+      rect.anchorX = rect.flipX ? rect.mapX + rect.mapW - 3 : rect.mapX + 2;
+      rect.anchorY = rect.flipY ? rect.mapY + rect.mapH - 3 : rect.mapY + 2;
+    }
+  };
+  let remaining = Math.max(0, target - planned.length);
+  if (!planned.length) {
+    // A floor from before the plan gets a guardian's hall first, so it always fits.
     for (let attempt = 0; attempt < 400; attempt += 1) {
-      const probe = { x: 2 + randomInt(size - 4) - 1, y: 2 + randomInt(size - 4) - 1 };
-      const shape = entry === "boss-hall" ? (randomInt(2) === 1 ? "pillared" : "hall")
-        : land ? biomeShapeFor(land, probe.x, probe.y) : entry;
-      const dims = entry === "boss-hall" ? { w: 9 + 2 * (randomInt(2) - 1), h: 9 } : v3RoomSize(shape);
-      const rect = {
-        shape, boss: entry === "boss-hall",
-        mapW: dims.w, mapH: dims.h,
-        mapX: Math.max(1, Math.min(size - dims.w - 1, probe.x - Math.floor(dims.w / 2))),
-        mapY: Math.max(1, Math.min(size - dims.h - 1, probe.y - Math.floor(dims.h / 2))),
-        flipX: randomInt(2) === 1, flipY: randomInt(2) === 1
-      };
+      const probe = archProbe(style, placed, size);
+      const rect = { shape: randomInt(2) === 1 ? "pillared" : "hall", boss: true, mapW: 9 + 2 * (randomInt(2) - 1), mapH: 9, flipX: false, flipY: false };
+      rect.mapX = Math.max(1, Math.min(size - rect.mapW - 1, probe.x - Math.floor(rect.mapW / 2)));
+      rect.mapY = Math.max(1, Math.min(size - rect.mapH - 1, probe.y - Math.floor(rect.mapH / 2)));
       if (!fits(rect)) continue;
-      rect.anchorX = rect.mapX + Math.floor(rect.mapW / 2);
-      rect.anchorY = rect.mapY + Math.floor(rect.mapH / 2);
-      if (shape === "ell") {
-        // Put the anchor in the corner block of the L, which is always floor.
-        rect.anchorX = rect.flipX ? rect.mapX + rect.mapW - 3 : rect.mapX + 2;
-        rect.anchorY = rect.flipY ? rect.mapY + rect.mapH - 3 : rect.mapY + 2;
-      }
+      setAnchor(rect);
       placed.push(rect);
+      remaining -= 1;
       break;
+    }
+  }
+  for (let attempt = 0; remaining > 0 && attempt < 400 * target; attempt += 1) {
+    // A chamber meant to have a twin is placed in the west half; its twin goes east.
+    const twinned = remaining > 1 && Math.random() < style.mirror;
+    const probe = archProbe(style, placed, size, { westHalf: twinned });
+    const env = land ? land.sample(probe.x, probe.y) : null;
+    const shape = archPickShape(styleName, env ? env.elev < 0.4 || env.moist > 0.7 : false);
+    const dims = archRoomSize(shape);
+    const rect = {
+      shape, boss: false,
+      mapW: dims.w, mapH: dims.h,
+      mapX: Math.max(1, Math.min(size - dims.w - 1, probe.x - Math.floor(dims.w / 2))),
+      mapY: Math.max(1, Math.min(size - dims.h - 1, probe.y - Math.floor(dims.h / 2))),
+      flipX: randomInt(2) === 1, flipY: randomInt(2) === 1
+    };
+    if (!fits(rect)) continue;
+    if (shape === "cave") rect.mask = archCaveMask(rect);
+    setAnchor(rect);
+    placed.push(rect);
+    remaining -= 1;
+    // Its twin across the centre line, as planned sites are laid out.
+    if (twinned && remaining > 0) {
+      const twin = archMirror(rect, size);
+      if (Math.abs(twin.mapX - rect.mapX) >= rect.mapW + 2 && fits(twin)) {
+        setAnchor(twin);
+        placed.push(twin);
+        remaining -= 1;
+      }
     }
   }
   if (placed.length < 11) throw new Error("Could not fit enough tomb chambers on this floor.");
@@ -299,8 +337,8 @@ function generateGtflDungeonV3() {
   placed.forEach((room, index) => {
     for (let y = room.mapY; y < room.mapY + room.mapH; y += 1) {
       for (let x = room.mapX; x < room.mapX + room.mapW; x += 1) {
-        if (!v3RoomFloor(room, x, y)) continue;
-        if (v3IsPillar(room, x, y)) {
+        if (!archRoomFloor(room, x, y)) continue;
+        if (archIsPillar(room, x, y)) {
           terrain[tileIndex(x, y)] = "wall";
           pillars.add(tileIndex(x, y));
         } else {
@@ -325,102 +363,12 @@ function generateGtflDungeonV3() {
     }
   }
 
-  // Connections: a minimum spanning tree over chamber centers, plus extra loops.
+  // Connections: a spanning tree over chamber centres plus a few loops, dug in this band's style.
+  const edges = archPlanEdges(placed);
+  if (!archDigPassages({ terrain, rooms: placed, roomFloor, pillars, edges, styleName })) {
+    throw new Error("A tomb passage could not be dug.");
+  }
   const centerDistance = (a, b) => Math.hypot(a.anchorX - b.anchorX, a.anchorY - b.anchorY);
-  const edges = [];
-  const inTree = new Set([0]);
-  while (inTree.size < placed.length) {
-    let best = null;
-    for (const a of inTree) {
-      for (let b = 0; b < placed.length; b += 1) {
-        if (inTree.has(b)) continue;
-        const distance = centerDistance(placed[a], placed[b]);
-        if (!best || distance < best.distance) best = { a, b, distance };
-      }
-    }
-    inTree.add(best.b);
-    edges.push([best.a, best.b]);
-  }
-  const linked = (a, b) => edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
-  placed.forEach((room, a) => {
-    if (randomInt(100) > 38) return;
-    const candidates = placed.map((other, b) => ({ b, distance: centerDistance(room, other) }))
-      .filter(({ b, distance }) => b !== a && !linked(a, b) && distance < 20)
-      .sort((first, second) => first.distance - second.distance);
-    if (candidates[0]) edges.push([a, candidates[0].b]);
-  });
-
-  // Dig each passage with a weighted search: stone is cheap, existing corridors cheaper,
-  // crossing a wall makes a door, and walking through another chamber is allowed but costly.
-  const doors = new Set();
-  const orthogonal = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  const wallCrossable = (x, y) => {
-    const index = tileIndex(x, y);
-    if (pillars.has(index)) return false;
-    const floorSides = orthogonal.filter(([dx, dy]) => roomFloor[tileIndex(x + dx, y + dy)] >= 0);
-    const openSides = orthogonal.filter(([dx, dy]) => {
-      const type = terrain[tileIndex(x + dx, y + dy)];
-      return type === "stone" || type === "corridor";
-    });
-    // A door needs floor straight through on one side and open ground on the opposite side.
-    return floorSides.some(([dx, dy]) => openSides.some(([ox, oy]) => ox === -dx && oy === -dy));
-  };
-  const noise = new Float32Array(size * size).map(() => Math.random() * 1.6);
-  const digPath = (from, to, fromIndex, toIndex) => {
-    const startIndex = tileIndex(from.anchorX, from.anchorY);
-    const goalIndex = tileIndex(to.anchorX, to.anchorY);
-    const cost = new Float32Array(size * size).fill(Infinity);
-    const previous = new Int32Array(size * size).fill(-1);
-    cost[startIndex] = 0;
-    const open = [[0, startIndex]];
-    while (open.length) {
-      let bestIndex = 0;
-      for (let i = 1; i < open.length; i += 1) if (open[i][0] < open[bestIndex][0]) bestIndex = i;
-      const [, current] = open.splice(bestIndex, 1)[0];
-      if (current === goalIndex) break;
-      const cx = current % size;
-      const cy = Math.floor(current / size);
-      const currentWall = terrain[current] === "wall" && !doors.has(current);
-      for (const [dx, dy] of orthogonal) {
-        const nx = cx + dx;
-        const ny = cy + dy;
-        if (nx < 1 || ny < 1 || nx >= size - 1 || ny >= size - 1) continue;
-        const next = tileIndex(nx, ny);
-        const type = terrain[next];
-        let step;
-        if (doors.has(next)) step = 1;
-        else if (type === "wall") {
-          if (currentWall || !wallCrossable(nx, ny)) continue;
-          const crowded = orthogonal.some(([ax, ay]) => doors.has(tileIndex(nx + ax, ny + ay))) ? 30 : 0;
-          step = 9 + crowded;
-        } else if (type === "floor") {
-          const owner = roomFloor[next];
-          step = owner === fromIndex || owner === toIndex ? 1 : 7;
-        } else if (type === "corridor") step = 1.2;
-        else step = 2.4 + noise[next];
-        if (currentWall && type === "wall") continue;
-        const total = cost[current] + step;
-        if (total < cost[next]) {
-          cost[next] = total;
-          previous[next] = current;
-          const h = Math.abs(nx - to.anchorX) + Math.abs(ny - to.anchorY);
-          open.push([total + h * 1.2, next]);
-        }
-      }
-    }
-    if (previous[goalIndex] < 0) return false;
-    for (let index = goalIndex; index >= 0 && index !== startIndex; index = previous[index]) {
-      if (terrain[index] === "stone") terrain[index] = "corridor";
-      else if (terrain[index] === "wall") {
-        terrain[index] = "door";
-        doors.add(index);
-      }
-    }
-    return true;
-  };
-  for (const [a, b] of edges) {
-    if (!digPath(placed[a], placed[b], a, b)) throw new Error("A tomb passage could not be dug.");
-  }
 
   // Roles: start, boss (farthest by passage count), main treasure (a quiet dead end), stairs spread out.
   const adjacency = placed.map(() => []);
@@ -694,11 +642,13 @@ function roomIndexAt(x, y) {
   );
 }
 
+// A free tile of the chamber's own floor. (Its bounding box can also hold bits of passage,
+// round a hollow's or an L's outline; those don't count as being in the chamber.)
 function randomRoomFloor(room, occupied) {
   const options = [];
   for (let y = room.mapY + 1; y < room.mapY + room.mapH - 1; y += 1) {
     for (let x = room.mapX + 1; x < room.mapX + room.mapW - 1; x += 1) {
-      if (isWalkable(x, y) && !occupied.has(tileIndex(x, y))) options.push({ x, y });
+      if (state.run.terrain[tileIndex(x, y)] === "floor" && isWalkable(x, y) && !occupied.has(tileIndex(x, y))) options.push({ x, y });
     }
   }
   return options.length ? options[randomInt(options.length) - 1] : null;
@@ -1610,106 +1560,40 @@ function regenerateFloorPassages(data) {
     }
   });
   const index = (x, y) => y * size + x;
-  const orthogonal = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  // Passages fill back in. Anything that touches a chamber's floor is that chamber's wall
+  // again (in the living rock its openings were never doors, just gaps in the wall).
+  const touchesRoom = (i) => {
+    const x = i % size;
+    const y = Math.floor(i / size);
+    for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < size && ny < size && roomFloor[index(nx, ny)] >= 0) return true;
+    }
+    return false;
+  };
   const clear = () => {
     for (let i = 0; i < terrain.length; i += 1) {
-      if (terrain[i] === "corridor") terrain[i] = "stone";
-      else if (terrain[i] === "door") terrain[i] = "wall";
+      if (terrain[i] === "corridor" || terrain[i] === "door") terrain[i] = touchesRoom(i) ? "wall" : "stone";
     }
   };
-  const anchorDistance = (a, b) => Math.hypot(rooms[a].anchorX - rooms[b].anchorX, rooms[a].anchorY - rooms[b].anchorY);
   const oldLinks = rooms.map((room) => [...(room.links || [])]);
 
+  const styleName = archStyleName(data.floor ?? data.dungeonFloor ?? 1);
+  // Pillars are wall tiles inside a chamber's outline that the old passages never crossed.
+  const pillars = new Set();
+  rooms.forEach((room) => {
+    for (let y = room.mapY + 1; y < room.mapY + room.mapH - 1; y += 1) {
+      for (let x = room.mapX + 1; x < room.mapX + room.mapW - 1; x += 1) {
+        if (terrain[index(x, y)] === "wall" && ARCH_STEPS.filter(([dx, dy]) => roomFloor[index(x + dx, y + dy)] >= 0).length >= 3) pillars.add(index(x, y));
+      }
+    }
+  });
   for (let attempt = 0; attempt < 4; attempt += 1) {
     clear();
-    // A spanning tree over chambers with jittered distances, so the routes differ, plus a few loops.
-    const jitter = rooms.map(() => rooms.map(() => 0.75 + Math.random() * 0.75));
-    const edges = [];
-    const inTree = new Set([0]);
-    while (inTree.size < rooms.length) {
-      let best = null;
-      for (const a of inTree) {
-        for (let b = 0; b < rooms.length; b += 1) {
-          if (inTree.has(b)) continue;
-          const distance = anchorDistance(a, b) * jitter[a][b];
-          if (!best || distance < best.distance) best = { a, b, distance };
-        }
-      }
-      inTree.add(best.b);
-      edges.push([best.a, best.b]);
-    }
-    const linked = (a, b) => edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
-    rooms.forEach((room, a) => {
-      if (randomInt(100) > 38) return;
-      const candidates = rooms.map((other, b) => ({ b, distance: anchorDistance(a, b) }))
-        .filter(({ b, distance }) => b !== a && !linked(a, b) && distance < 20)
-        .sort((first, second) => first.distance - second.distance);
-      if (candidates[0]) edges.push([a, candidates[0].b]);
-    });
-
-    const doors = new Set();
-    const wallCrossable = (x, y) => {
-      const floorSides = orthogonal.filter(([dx, dy]) => roomFloor[index(x + dx, y + dy)] >= 0);
-      const openSides = orthogonal.filter(([dx, dy]) => {
-        const type = terrain[index(x + dx, y + dy)];
-        return type === "stone" || type === "corridor";
-      });
-      return floorSides.some(([dx, dy]) => openSides.some(([ox, oy]) => ox === -dx && oy === -dy));
-    };
-    const noise = new Float32Array(size * size).map(() => Math.random() * 1.6);
-    const dig = (fromIndex, toIndex) => {
-      const from = rooms[fromIndex];
-      const to = rooms[toIndex];
-      const startIndex = index(from.anchorX, from.anchorY);
-      const goalIndex = index(to.anchorX, to.anchorY);
-      const cost = new Float32Array(size * size).fill(Infinity);
-      const previous = new Int32Array(size * size).fill(-1);
-      cost[startIndex] = 0;
-      const open = [[0, startIndex]];
-      while (open.length) {
-        let bestIndex = 0;
-        for (let i = 1; i < open.length; i += 1) if (open[i][0] < open[bestIndex][0]) bestIndex = i;
-        const [, current] = open.splice(bestIndex, 1)[0];
-        if (current === goalIndex) break;
-        const cx = current % size;
-        const cy = Math.floor(current / size);
-        const currentWall = terrain[current] === "wall" && !doors.has(current);
-        for (const [dx, dy] of orthogonal) {
-          const nx = cx + dx;
-          const ny = cy + dy;
-          if (nx < 1 || ny < 1 || nx >= size - 1 || ny >= size - 1) continue;
-          const next = index(nx, ny);
-          const type = terrain[next];
-          let step;
-          if (doors.has(next)) step = 1;
-          else if (type === "wall") {
-            if (currentWall || !wallCrossable(nx, ny)) continue;
-            step = 9 + (orthogonal.some(([ax, ay]) => doors.has(index(nx + ax, ny + ay))) ? 30 : 0);
-          } else if (type === "floor") {
-            const owner = roomFloor[next];
-            step = owner === fromIndex || owner === toIndex ? 1 : 7;
-          } else if (type === "corridor") step = 1.2;
-          else step = 2.4 + noise[next];
-          if (currentWall && type === "wall") continue;
-          const total = cost[current] + step;
-          if (total < cost[next]) {
-            cost[next] = total;
-            previous[next] = current;
-            open.push([total + (Math.abs(nx - to.anchorX) + Math.abs(ny - to.anchorY)) * 1.2, next]);
-          }
-        }
-      }
-      if (previous[goalIndex] < 0) return false;
-      for (let i = goalIndex; i >= 0 && i !== startIndex; i = previous[i]) {
-        if (terrain[i] === "stone") terrain[i] = "corridor";
-        else if (terrain[i] === "wall") {
-          terrain[i] = "door";
-          doors.add(i);
-        }
-      }
-      return true;
-    };
-    if (!edges.every(([a, b]) => dig(a, b))) continue;
+    // New routes (jittered), dug the way this band digs them.
+    const edges = archPlanEdges(rooms, { jitter: true });
+    if (!archDigPassages({ terrain, rooms, roomFloor, pillars, edges, styleName })) continue;
     rooms.forEach((room) => { room.links = []; });
     for (const [a, b] of edges) {
       if (!rooms[a].links.includes(b)) rooms[a].links.push(b);

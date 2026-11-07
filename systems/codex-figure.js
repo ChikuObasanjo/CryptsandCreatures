@@ -1567,11 +1567,12 @@ function buildCodexFigureSvg(character, facing = "east") {
     codexLegwear(palette, outfit),
     codexLoincloth(character, palette, outfit),
     (!hasArmor ? figureArtOverride("clothes", outfit || character?.appearance?.garment || "", palette) : null) ?? codexTorso(character, palette, hasArmor, outfit),
-    // 3. The head, then what's held in front.
+    // 3. The head, then what's held: the shield in the back hand (its arm, then the shield
+    //    over that hand), and in front of both the weapon and the arm that swings it.
     `<g transform="translate(100 88) scale(${(shape.head * CODEX_HEAD_TRIM).toFixed(4)}) translate(-100 -88)">${head.front}</g>`,
     equipment.shield && !character?.iconMode ? codexArm(palette, outfit, false, false) : "",
-    character?.iconMode || weaponId === "none" ? "" : `<g transform="rotate(${codexWeaponTilt(weaponId)} 135 97) translate(12 0)">${characterTextureLayer("weapon", codexBaseWeaponId(weaponId), palette) ?? figureArtOverride("weapon", codexBaseWeaponId(weaponId), palette) ?? codexWeapon(weaponId)}</g>`,
     equipment.shield && !character?.iconMode ? characterTextureLayer("shield", "shield", palette) ?? figureArtOverride("shield", "shield", palette) ?? codexShield(palette) : "",
+    character?.iconMode || weaponId === "none" ? "" : `<g transform="rotate(${codexWeaponTilt(weaponId)} 135 97) translate(12 0)">${characterTextureLayer("weapon", codexBaseWeaponId(weaponId), palette) ?? figureArtOverride("weapon", codexBaseWeaponId(weaponId), palette) ?? codexWeapon(weaponId)}</g>`,
     character?.iconMode ? "" : codexArm(palette, outfit, true, weaponId !== "none")
   ].join("");
   const build = { slight: 0.93, broad: 1.09 }[character?.appearance?.body] || 1;
