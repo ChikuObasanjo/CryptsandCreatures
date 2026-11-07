@@ -55,9 +55,19 @@ function arrivalCheck() {
 
 async function arrivalSettle(token, shownAt) {
   const urls = arrivalImageUrls();
-  const textures = typeof characterTexturesPending === "function" ? characterTexturesPending() : Promise.resolve();
+  // Paintings arrive in rounds: a figure asks for its paintings, then (once they're in) for
+  // the colored versions. Wait round by round until nothing more is asked for.
+  const paintings = async () => {
+    if (typeof characterTexturesPending !== "function") return;
+    for (let round = 0; round < 4; round += 1) {
+      await characterTexturesPending();
+      if (token !== arrival.token) return;
+      if (typeof render === "function") render();
+      if (!characterTextures.loading.size) return;
+    }
+  };
   await Promise.race([
-    Promise.all([...urls.map(arrivalDecode), textures]),
+    Promise.all([...urls.map(arrivalDecode), paintings()]),
     new Promise((resolve) => window.setTimeout(resolve, ARRIVAL_MAX_WAIT))
   ]);
   if (token !== arrival.token) return;

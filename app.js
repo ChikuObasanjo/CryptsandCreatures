@@ -271,7 +271,7 @@ const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
 // The build replaces this with a fingerprint of all the art; no need to bump it by hand.
-const SPRITE_RESOURCE_VERSION = "1c75f4e48d";
+const SPRITE_RESOURCE_VERSION = "a16e5efa89";
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",

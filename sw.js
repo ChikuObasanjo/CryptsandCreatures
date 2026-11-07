@@ -2,7 +2,7 @@
 
 // The build (scripts/build-web.js) replaces this with a fingerprint of the asset list, so
 // there is no version to bump by hand.
-const CACHE_NAME = "crypts-and-creatures-5e90c15b3a";
+const CACHE_NAME = "crypts-and-creatures-ee9ee75625";
 
 // Installing (or updating) the offline copy. The asset list carries a content hash for
 // each file; files whose hash hasn't changed are copied from the previous offline cache

@@ -80,27 +80,6 @@ function makeFloorTerrain(depth) {
   };
 }
 
-// What a chamber is shaped like, from where it sits and which band of the tomb it's in.
-function biomeShapeFor(terrain, x, y) {
-  const env = terrain.sample(x, y);
-  const pick = (weights) => {
-    const total = Object.values(weights).reduce((sum, value) => sum + value, 0);
-    let roll = Math.random() * total;
-    for (const [shape, weight] of Object.entries(weights)) {
-      roll -= weight;
-      if (roll <= 0) return shape;
-    }
-    return "hall";
-  };
-  const wet = env.elev < 0.4 || env.moist > 0.7;
-  if (terrain.band === "fortress") {
-    return pick({ hall: 3, pillared: 2.4, cross: 1.6, cell: 1.4, ell: 1, round: wet ? 1.2 : 0.4 });
-  }
-  if (terrain.band === "living-rock" || terrain.band === "mouth") {
-    return pick({ round: wet ? 4 : 2.6, ell: 2, hall: 1.2, cell: 0.8, cross: 0.4, pillared: 0.2 });
-  }
-  return pick({ hall: 2.4, round: wet ? 2.6 : 1.2, ell: 1.4, cell: 1, cross: 0.8, pillared: 0.6 });
-}
 
 // ---------- Each chamber's surroundings ----------
 
