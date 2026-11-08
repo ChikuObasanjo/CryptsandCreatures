@@ -871,6 +871,9 @@ function renderStatusChips() {
         ? t("Worse in {0} hours.", { 0: rest.nextIn })
         : rest.awake >= 48 ? t("Exhaustion is wounding you.") : t("Exhaustion starts to wound you in {0} hours.", { 0: rest.nextIn })} ${t("Sleep at a camp or in Chiltomatlan to recover.")}` });
   }
+  // The tomb's mood, while you're in it (systems/tomb-body.js).
+  const tomb = typeof tombStatusChip === "function" ? tombStatusChip() : null;
+  if (tomb) chips.push(tomb);
   for (const entry of progress().conditions) {
     const condition = PROGRESSION.conditions[entry.id];
     chips.push({ className: `status-chip condition-${entry.id}`, text: `${t(condition.name)} · ${entry.turns}`, title: t(condition.description) });

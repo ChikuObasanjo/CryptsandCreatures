@@ -72,6 +72,27 @@ const { createGameServer } = require("../scripts/static-server");
     problems.push(`surroundings: ${error.message.split("\n")[0]}`);
   }
 
+  // The tomb's mood shows on your card when you carry a lot, and in the log when it changes.
+  try {
+    const tomb = await page.evaluate(() => {
+      const saved = state.run.unsecuredLoot;
+      state.run.unsecuredLoot = { gold: 5000, items: [] };
+      tombNotice();
+      render();
+      const chip = document.querySelector("#player-conditions .tomb-mood")?.textContent || "";
+      const said = state.run.log.slice(0, 3).some((line) => /The tomb is/.test(line));
+      state.run.unsecuredLoot = saved;
+      tombNotice();
+      render();
+      return { chip, said };
+    });
+    if (!/ravenous/.test(tomb.chip)) problems.push(`tomb chip shows "${tomb.chip}", expected ravenous`);
+    else if (!tomb.said) problems.push("the log didn't say the tomb's mood changed");
+    else console.log(`ok  the tomb's mood: "${tomb.chip}"`);
+  } catch (error) {
+    problems.push(`tomb mood: ${error.message.split("\n")[0]}`);
+  }
+
   // No action button's words are cut off (the big button and its tab may use two lines).
   const clipped = await page.evaluate(() => [...document.querySelectorAll("#action-primary .button .action-label")]
     .filter((label) => label.offsetParent && label.scrollHeight > label.clientHeight + 2)

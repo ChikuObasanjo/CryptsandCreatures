@@ -393,6 +393,8 @@ function ecoBreed(eco, cap) {
     const young = ecoNewCreature(id, spot, ecoCreature(parent).home);
     if (!young) continue;
     young.eco.sat = 50;
+    // Born knowing some of what its parent learned about you (systems/minds.js).
+    if (typeof mindInherit === "function") mindInherit(young, parent);
     state.run.enemies.push(young);
     counts[id] += 1;
     ecoEvent(parent.eco.home, `Young ${ecoName(id)} were born here.`, "born");

@@ -1023,6 +1023,8 @@ function recoverInChiltomatlan() {
     if (saved) state.run.log.unshift(`The Shrine of the Ceiba's keepers carry ${formatCurrency(saved)} of your gold home.`);
   }
   clearConditions();
+  // You and what you carried go back to the tomb, and it has eaten.
+  if (typeof tombReceivesFallen === "function") tombReceivesFallen();
   const lostLoot = discardUnsecuredLoot();
   state.run.hp = canHeal() ? state.run.maxHp : 0;
   state.run.lost = false;
@@ -1075,6 +1077,8 @@ function secureExpeditionLoot() {
   if (loot.gold || itemCount) {
     addLog(`You secure ${formatCurrency(loot.gold)} and ${itemCount} expedition item${itemCount === 1 ? "" : "s"} in Chiltomatlan.`);
   }
+  // The tomb remembers some of what you carried out of it (systems/tomb-body.js).
+  if (typeof tombRemembersLoot === "function") tombRemembersLoot();
   state.run.unsecuredLoot = { gold: 0, items: [] };
 }
 
@@ -2032,6 +2036,7 @@ function finishPlayerTurn(elapsedMinutes = 10, movementMode = null) {
     if (!state.run.lost) alliesTakeTurn();
     if (!state.run.lost) summonsTakeTurn();
     state.run.dodging = currentStance() === "guard";
+    if (!state.run.lost && typeof tombNotice === "function") tombNotice();
     if (!state.run.lost) enemiesTakeTurn();
     if (!state.run.lost && typeof ecologyAdvance === "function") ecologyAdvance();
     if (!state.run.lost) abilityTurnTick();
@@ -6169,6 +6174,8 @@ function parseSavedRun(saved, pack) {
       !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 1000) ||
     new Set(saved.unsecuredLoot.items.map((item) => item.id)).size !== saved.unsecuredLoot.items.length) return null;
   if (saved.dodging === undefined) saved.dodging = false;
+  // The tomb's mood (systems/tomb-body.js); older saves start it still.
+  if (typeof normalizeTombBody === "function") normalizeTombBody(saved);
   if (!["guard", "run", "disengage"].includes(saved.stance)) saved.stance = "guard";
   if (typeof saved.dodging !== "boolean") return null;
   if (saved.needs === undefined) saved.needs = createNeeds();

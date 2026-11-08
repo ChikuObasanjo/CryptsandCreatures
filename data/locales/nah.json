@@ -2839,7 +2839,6 @@
  "Black, still water full of small blind fish. Water creatures hunt here; the fish come back.": "Tliltik atl tlen amo molinia, temitok ika michimej tlen amo tlachiaj. Atlan yolkamej nikan tlamaj; michimej mokuepaj.",
  "Fish the pool": "Xitlatlama ipan atl",
  "Offering bowl": "Tlamanalkaxitl",
- "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself.": "Se ueuej tekaxitl ika nextli, kopalli uan uakki xochitl. Mikkatsitsij tlen amo moseuiaj mopaleuiaj ika tlen nikan kikauaj. Xikkaua kopalli, se sempoalxochitl noso tlakualli uan tejuatl tikintlakualtis.",
  "Nest": "Tapaskalli",
  "Take eggs": "Xikuika teksistli",
  "Carcass": "Nakatl mikki",
@@ -2874,8 +2873,6 @@
  "Hunts the warm-blooded and drinks the life from the dying.": "Kintoka tlen tototonik ineskuo uan kiyi iyolilis tlen miki.",
  "Fed by offerings, like a god. A well-fed serpent can be passed.": "Mopaleuia ika tlamanalli, ken se teotl. Se koatl ixuik mitskaua tipanos.",
  "Eats whatever it can take: food left out, and the tomb's own kills.": "Kikua tlen ueli kiuikas: tlakualli tlen mokaua uan tlamiktli tlen mikkakalli.",
- "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you.": "Mikki yaotlakatl mokaua ipan ikan ika tlamanalli. Xiktlakualti teopantsintli uan mitsilkauas.",
- "Fed by offerings and by fresh deaths. She watches over the nests.": "Mopaleuia ika tlamanalli uan yankuik mikilistli. Kinmokuitlauia tapaskalmej.",
  "Drawn to fresh deaths and old offerings.": "Kiuika yankuik mikilistli uan ueuej tlamanalli.",
  "An owl in a man: hunts bats and insects, and feeds on shrines.": "Se tekolotl ijtik se tlakatl: kintoka tsinakamej uan chapolimej, uan mopaleuia ipan teopantsitsij.",
  "Fed by offerings and the dying.": "Mopaleuia ika tlamanalli uan tlen miki.",
@@ -3646,5 +3643,8 @@
  "Old sentries still keep their posts, spears pointed at the stair below. A few of them turn, slowly, and look up at you.": "Wewetkej tlapixkej ok ijkatikatej in inpialoyan, intopil kitstok in tlamamatlatl tlatsintlan. Sekintin iwian mokwepaj, aw mitswalitstokej.",
  "A nest of soft roots and old feathers. The young in it were just born. The ones guarding them are very old.": "Se tapasolli yamanki nelwatl iwan wewetki ijwitl. In pipiltsitsinti ye nikan otlakatkej; in kinpiyaj wel wewetkej.",
  "Tribute from the four quarters of the world lies in heaps, forgotten: shells from both seas, feathers, gold, and stone from places no map in Chiltomatlan names.": "Tekitl in nawkampa semanawak, tlatepewtli aw tlalkawalli: teksistli in ome ilwikaatl, ijwitl, teokwitlatl, iwan tetl in kanin amo kitokayotia se amatlakwilolli Chiltomatlan.",
- "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly.": "Se wey tlapixki ijkak ixpan se kiyawatl tlatsakutli. Ipan tlaxintli se tlakatl, aw ixayak okixtlapankej. In oksekkan mokaki ijiyotl, iwian, iwian."
+ "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly.": "Se wey tlapixki ijkak ixpan se kiyawatl tlatsakutli. Ipan tlaxintli se tlakatl, aw ixayak okixtlapankej. In oksekkan mokaki ijiyotl, iwian, iwian.",
+ "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you; feed it enough and it lets go of its post and sets out for Mictlan.": "In mikki yaotlakatl ika tlamanalli kipiya in itlapiyayan. Xiktlakwalti in teokaltsintli, aw mitsilkawas; intla senka tlamanalli tikmakas, kikawas in itlapiyayan, aw ompa yas in Miktlan.",
+ "Fed by offerings and by fresh deaths. She watches over the nests. Feed her enough and she goes west, to Cihuatlampa.": "Ika tlamanalli iwan yankwik mikistli motlakwaltia. Kimokwitlawia in tapasolli. Intla senka tlamanalli tikmakas, ompa yas in Siwatlampa, in tonatiw ikalakiyampa.",
+ "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on.": "Se wewe tekaxitl ika nextli, kopalli iwan wakki xochitl. In mikkatsitsin in amo mosewiaj ika motlakwaltiaj in tlein nikan kikawaj. Xikkawa kopalli, sempowalxochitl noso tlakwalli, aw tewatl tikintlakwaltis. In tlamanalli no inextlawal in mikkakalli, aw in mikke in kintlakwaltia ayokmo senka kipiyaj in intlapiyayan; intla senka motlakwaltiaj, sekintin yaske."
 }

@@ -2346,7 +2346,6 @@
  "Black, still water full of small blind fish. Water creatures hunt here; the fish come back.": "Black, still water full of small blind fish. Water creatures hunt here; the fish come back.",
  "Fish the pool": "Fish the pool",
  "Offering bowl": "Offering bowl",
- "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself.": "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself.",
  "Nest": "Nest",
  "Take eggs": "Take eggs",
  "Carcass": "Carcass",
@@ -2381,8 +2380,6 @@
  "Hunts the warm-blooded and drinks the life from the dying.": "Hunts the warm-blooded and drinks the life from the dying.",
  "Fed by offerings, like a god. A well-fed serpent can be passed.": "Fed by offerings, like a god. A well-fed serpent can be passed.",
  "Eats whatever it can take: food left out, and the tomb's own kills.": "Eats whatever it can take: food left out, and the tomb's own kills.",
- "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you.": "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you.",
- "Fed by offerings and by fresh deaths. She watches over the nests.": "Fed by offerings and by fresh deaths. She watches over the nests.",
  "Drawn to fresh deaths and old offerings.": "Drawn to fresh deaths and old offerings.",
  "An owl in a man: hunts bats and insects, and feeds on shrines.": "An owl in a man: hunts bats and insects, and feeds on shrines.",
  "Fed by offerings and the dying.": "Fed by offerings and the dying.",
@@ -3153,5 +3150,8 @@
  "Old sentries still keep their posts, spears pointed at the stair below. A few of them turn, slowly, and look up at you.": "Old sentries still keep their posts, spears pointed at the stair below. A few of them turn, slowly, and look up at you.",
  "A nest of soft roots and old feathers. The young in it were just born. The ones guarding them are very old.": "A nest of soft roots and old feathers. The young in it were just born. The ones guarding them are very old.",
  "Tribute from the four quarters of the world lies in heaps, forgotten: shells from both seas, feathers, gold, and stone from places no map in Chiltomatlan names.": "Tribute from the four quarters of the world lies in heaps, forgotten: shells from both seas, feathers, gold, and stone from places no map in Chiltomatlan names.",
- "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly.": "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly."
+ "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly.": "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly.",
+ "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you; feed it enough and it lets go of its post and sets out for Mictlan.": "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you; feed it enough and it lets go of its post and sets out for Mictlan.",
+ "Fed by offerings and by fresh deaths. She watches over the nests. Feed her enough and she goes west, to Cihuatlampa.": "Fed by offerings and by fresh deaths. She watches over the nests. Feed her enough and she goes west, to Cihuatlampa.",
+ "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on.": "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on."
 }

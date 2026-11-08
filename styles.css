@@ -4917,6 +4917,11 @@ body.dark-mode .enemy-combatant[data-tone="calm"] .enemy-rank { color: var(--jad
 .status-chip.condition-unrested { background: #6b5a8e; color: #fff7e4; }
 .status-chip.condition-unrested.unrested-2 { background: #54406f; }
 .status-chip.condition-unrested.unrested-3 { background: #3a2a52; box-shadow: inset 0 0 0 2px var(--red); }
+/* The tomb's mood (systems/tomb-body.js): warm reds as it hungers, a cool green at rest. */
+.status-chip.tomb-mood { background: #7a4a2c; color: #fff7e4; }
+.status-chip.tomb-hungry { background: #8e3a24; }
+.status-chip.tomb-ravenous { background: #6e1c14; box-shadow: inset 0 0 0 2px #e0a050; }
+.status-chip.tomb-at-rest { background: #2f6b5a; }
 .character-conditions { margin-top: 8px; }
 .character-conditions .status-chip { font-size: 13px; padding: 3px 9px; }
 

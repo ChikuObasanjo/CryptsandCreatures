@@ -37,7 +37,7 @@ window.CryptsEcology = {
     },
     offering: {
       name: "Offering bowl", token: "offering", food: "tonalli", max: 6, regrowTicks: 30,
-      description: "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself."
+      description: "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on."
     },
     nest: {
       name: "Nest", token: "nest", food: "", max: 3, regrowTicks: 72,
@@ -359,13 +359,13 @@ window.CryptsEcology = {
     },
     mictlaneca: {
       role: "spirit", is: [], eats: ["tonalli"], temperament: "hostile",
-      appetite: 0.15, size: 0,
-      note: "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you."
+      appetite: 0.15, size: 0, passesOn: "mictlan",
+      note: "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you; feed it enough and it lets go of its post and sets out for Mictlan."
     },
     cihuateotl: {
       role: "spirit", is: [], eats: ["tonalli"], temperament: "hostile",
-      appetite: 0.2, size: 0,
-      note: "Fed by offerings and by fresh deaths. She watches over the nests."
+      appetite: 0.2, size: 0, passesOn: "cihuatlampa",
+      note: "Fed by offerings and by fresh deaths. She watches over the nests. Feed her enough and she goes west, to Cihuatlampa."
     },
     yohualtepoztli: {
       role: "spirit", is: [], eats: ["tonalli"], temperament: "hostile",

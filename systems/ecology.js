@@ -57,7 +57,9 @@ function ecoPoolCap(eco) {
 }
 
 function ecoPoolInflow(eco) {
-  return (eco.floorFlux || 0) / 720;
+  // The tomb's mood reaches its plants: a hungry tomb holds back, a tomb at rest gives
+  // freely (systems/tomb-body.js).
+  return (eco.floorFlux || 0) / 720 * (typeof tombBreath === "function" ? tombBreath() : 1);
 }
 
 function ecoProductivity(floor = state.run?.dungeonFloor || 1) {
@@ -786,7 +788,11 @@ function ecoEatCache(creature, species, cache) {
   cache.items = cache.items.filter((entry) => entry.quantity > 0);
   if (!cache.items.length && !cache.gold) state.run.treasures = state.run.treasures.filter((entry) => entry !== cache);
   ecoFeed(creature, 55, 3);
-  if (cache.dropped && typeof mindFedBy === "function") mindFedBy(creature);
+  if (cache.dropped) {
+    if (typeof mindFedBy === "function") mindFedBy(creature);
+    // Food left for the tomb's creatures goes back to the tomb.
+    if (typeof tombGive === "function") tombGive("food");
+  }
   ecoWitness(creature, creature.templateId, "eats:provisions");
   ecoLog(creature, `${creature.name} finds the ${itemDetails(item.id).name} you left and eats it.`);
 }
@@ -1081,7 +1087,7 @@ function ecologyWorldTick() {
       }
     }
     if (feature.kind === "carcass") ecoAgeCarcass(feature, 1);
-    if (feature.kind === "mouth") feature.hunger = Math.min(100, (feature.hunger || 0) + 0.4);
+    if (feature.kind === "mouth") feature.hunger = Math.min(100, (feature.hunger || 0) + 0.4 * (typeof tombMouthAppetite === "function" ? tombMouthAppetite() : 1));
   }
   ecoMouthsFeed(eco);
   ecoTidyBones(eco, 1);
@@ -1463,7 +1469,7 @@ function ecologySettle(ticks) {
         if (feature.amount >= resource.max) feature.timer = 0;
       }
       if (feature.kind === "carcass") ecoAgeCarcass(feature, ECO_CENSUS_EVERY);
-      if (feature.kind === "mouth") feature.hunger = Math.min(100, (feature.hunger || 0) + 2.4);
+      if (feature.kind === "mouth") feature.hunger = Math.min(100, (feature.hunger || 0) + 2.4 * (typeof tombMouthAppetite === "function" ? tombMouthAppetite() : 1));
     }
     // Creatures eat from what's around, abstractly: plenty keeps them fed, scarcity doesn't.
     for (const creature of ecoLivingCreatures()) {
@@ -1748,6 +1754,8 @@ function appeaseGuardian(keeper) {
     if (feature.room === keeper.eco.home && ECO.resources[feature.kind]?.max) feature.amount = ECO.resources[feature.kind].max;
   }
   ecoRemoveCondition("susto");
+  if (typeof mindFedBy === "function") mindFedBy(keeper);
+  if (typeof tombGive === "function") tombGive("guardian");
   addLog(shown
     ? `You set the ${itemDetails(itemId).name} down for the chaneque. It takes it, grins, and points out ${shown} hidden ${shown === 1 ? "trap" : "traps"} you hadn't seen. Its garden is full again.`
     : `You set the ${itemDetails(itemId).name} down for the chaneque. It takes it and grins. Its garden is full again.`);
@@ -1763,7 +1771,9 @@ function appeaseAlux(house) {
     alux.eco.offended = false;
     alux.alerted = false;
     alux.provoked = false;
+    if (typeof mindFedBy === "function") mindFedBy(alux);
   }
+  if (typeof tombGive === "function") tombGive("guardian");
   ecoObserve("alux", "appeased");
   addLog(`You leave ${itemDetails(itemId).name} at the alux house. Something inside it clicks, like clay settling. What it guards is yours to take.`);
   finishPlayerTurn();
@@ -1802,6 +1812,7 @@ function feedMouth(mouth) {
   const itemId = ecoMeatItem();
   if (!itemId || !removeInventoryItem(itemId)) return;
   mouth.hunger = 0;
+  if (typeof tombGive === "function") tombGive("mouth");
   const eco = ecoState();
   eco.rich[mouth.room] = (eco.rich[mouth.room] || 0) + 2;
   for (const feature of eco.features) {
@@ -1972,12 +1983,16 @@ function leaveOffering(bowl) {
   if (!itemId || !removeInventoryItem(itemId)) return;
   const resource = ECO.resources.offering;
   bowl.amount = resource.max;
+  // A payment to the tomb (systems/tomb-body.js), and, for the dead, a loosening of their
+  // hold on their posts (systems/minds.js).
+  const worth = ECO.offerings[itemId] || 1;
+  if (typeof tombGive === "function") tombGive("offeringPerPoint", worth);
   let fed = 0;
   for (const creature of [...state.run.enemies, ...(state.run.lurkers || [])]) {
     if (!creature.alive || !ecoSpecies(creature)?.eats.includes("tonalli")) continue;
     ecoCreature(creature).sat = 100;
     // It remembers who fed it.
-    if (typeof mindFedBy === "function") mindFedBy(creature);
+    if (typeof mindFedBy === "function") mindFedBy(creature, { offering: worth });
     if (ecoSpecies(creature).role !== "spirit") continue;
     if (creature.alerted && !creature.provoked) creature.alerted = false;
     fed += 1;
@@ -2106,6 +2121,7 @@ function ecologyMoodLabel(creature) {
   const hunger = ecoHungerState(creature);
   if (hunger === "starving") return "starving";
   if (creature.mind?.intent === "watch") return "watching you";
+  if (creature.mind?.intent === "follow") return "following you";
   if (creature.mind?.intent === "flee") return "afraid of you";
   if (!creature.alerted && ecologyIgnoresPlayer(creature)) return hunger === "gorged" ? "sluggish" : "minding its own business";
   return "";
