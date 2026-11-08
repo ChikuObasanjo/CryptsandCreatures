@@ -715,7 +715,7 @@ function ecoCanOpenDoors(creature) {
 }
 
 function ecoSeen(spot) {
-  return state.run?.location === "dungeon" && distanceInSquares(spot, state.run.player) <= 8 && hasLineOfSight(state.run.player, spot);
+  return state.run?.location === "dungeon" && playerSees(spot);
 }
 
 function ecoLog(spot, text) {
@@ -1644,7 +1644,7 @@ function naturalistKnows(id) {
 function ecologyObserveSurroundings() {
   if (state.run?.location !== "dungeon" || !state.run.progress) return;
   const book = naturalist();
-  const seeing = (spot) => distanceInSquares(spot, state.run.player) <= 6 && hasLineOfSight(state.run.player, spot);
+  const seeing = (spot) => playerSees(spot);
   for (const creature of state.run.enemies) {
     if (!creature.alive || creature.friendly || !seeing(creature)) continue;
     const entry = book[creature.templateId] ||= { seen: 0, facts: [] };
@@ -1976,6 +1976,8 @@ function leaveOffering(bowl) {
   for (const creature of [...state.run.enemies, ...(state.run.lurkers || [])]) {
     if (!creature.alive || !ecoSpecies(creature)?.eats.includes("tonalli")) continue;
     ecoCreature(creature).sat = 100;
+    // It remembers who fed it.
+    if (typeof mindFedBy === "function") mindFedBy(creature);
     if (ecoSpecies(creature).role !== "spirit") continue;
     if (creature.alerted && !creature.provoked) creature.alerted = false;
     fed += 1;

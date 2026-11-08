@@ -271,7 +271,7 @@ const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
 // The build replaces this with a fingerprint of all the art; no need to bump it by hand.
-const SPRITE_RESOURCE_VERSION = "4d913c2f4e";
+const SPRITE_RESOURCE_VERSION = "b8ca0c5034";
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
@@ -2508,7 +2508,10 @@ function distanceInSquares(a, b) {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }
 
+// Sight lines are the same both ways: the line is always traced from the same end (the
+// westmost, then northmost), so if you can see a creature it can see you, and the reverse.
 function hasLineOfSight(from, to) {
+  if (to.x < from.x || (to.x === from.x && to.y < from.y)) [from, to] = [to, from];
   let x = from.x;
   let y = from.y;
   const deltaX = to.x - x;
@@ -2720,6 +2723,9 @@ function enemiesTakeTurn() {
 }
 
 function showCombatFeedback(kind, message, target = {}) {
+  // Something hurt out of your sight: no flash, no number, no sound (you'd hear about it
+  // through reportAt, if it was close).
+  if (state.run?.location === "dungeon" && target.actor === "enemy" && Number.isInteger(target.x) && !playerSees(target)) return;
   sfxForCombatFeedback(kind, target);
   const feedback = elements["combat-feedback"];
   feedback.className = `combat-feedback ${kind}`;
@@ -2780,6 +2786,7 @@ function enemyAttack(enemy, opportunity = false, automaticDodge = state.run.dodg
       damage = heroDamageAfterAbilities(damage);
       state.run.hp = Math.max(0, state.run.hp - damage);
       showCombatFeedback("player-hit", `−${damage} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
+      if (typeof mindDrinksFrom === "function") mindDrinksFrom(enemy, damage);
       checkDefeat();
       maybeInflictCondition(enemy);
     } else {
@@ -4060,11 +4067,8 @@ function renderMap() {
     if (!featuresAt.has(key)) featuresAt.set(key, []);
     featuresAt.get(key).push(feature);
   }
-  const enemiesInSight = new Set(state.run.enemies.filter((enemy) =>
-    enemy.alive &&
-    distanceInSquares(enemy, state.run.player) <= 7 &&
-    hasLineOfSight(state.run.player, enemy)
-  ).map((enemy) => tileIndex(enemy.x, enemy.y)));
+  const enemiesInSight = new Set(state.run.enemies.filter((enemy) => enemy.alive && playerSees(enemy))
+    .map((enemy) => tileIndex(enemy.x, enemy.y)));
   const threatTiles = threatenedTiles();
   const hazardsAt = new Map(state.run.hazards.filter((hazard) => !hazard.triggered && hazard.revealed)
     .map((hazard) => [tileIndex(hazard.x, hazard.y), hazard]));
@@ -4084,7 +4088,10 @@ function renderMap() {
         entry.kind === "strike" && entry.x === x && entry.y === y && entry.until > Date.now());
       const sensed = inBounds && ((enemiesAt.has(index) && knackRevealsCreature(enemiesAt.get(index))) ||
         (treasuresAt.has(index) && treasuresAt.get(index).some(knackRevealsTreasure)) || starChartShows(x, y));
-      const seen = inBounds && (state.run.seen[index] || Boolean(effect) || enemiesInSight.has(index) || sensed);
+      // In view now (systems/sight.js), or remembered from before: remembered squares are
+      // drawn dimmer, and creatures only appear where you can see them (or sense them).
+      const inView = inBounds && playerSees({ x, y });
+      const seen = inBounds && (state.run.seen[index] || (Boolean(effect) && inView) || enemiesInSight.has(index) || sensed);
       const visibleWall = state.run.mapId === GTFL_MAP_ID && type === "wall";
       const terrainVisible = seen || visibleWall;
       let tileLabel = !terrainVisible ? "Unexplored" : ({
@@ -4096,6 +4103,7 @@ function renderMap() {
       }[type] || "Stone ground");
       tile.className = `map-tile ${terrainVisible ? type : "unseen"}${!inBounds ? " map-edge" : ""}`;
       if (inBounds && threatTiles.has(index)) tile.classList.add("threat-tile");
+      if (terrainVisible && !inView) tile.classList.add("out-of-view");
       if (terrainVisible && type === "floor") {
         const habitat = state.run.rooms[roomIndexAt(x, y)]?.habitat;
         if (habitat) tile.classList.add(`habitat-${habitat}`);
@@ -4223,7 +4231,7 @@ function renderMap() {
           addLayer(`Treasure: ${formatCurrency(treasure.gold)}${itemNames ? ` · ${itemNames}` : ""}`, lootSprite, "treasure", treasure.id, treasureIndex);
           });
         }
-        if (enemiesAt.has(index)) {
+        if (enemiesAt.has(index) && (enemiesInSight.has(index) || knackRevealsCreature(enemiesAt.get(index)))) {
           const enemy = enemiesAt.get(index);
           const enemySprite = createSprite(enemySpriteId(enemy), "tile-sprite");
           if (effect?.enemyId === enemy.id) enemySprite.classList.add(effect.kind === "heal" ? "heal-flash" : "hurt-flash");

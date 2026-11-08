@@ -1083,14 +1083,17 @@ function revealAroundPlayer() {
   const { x, y } = state.run.player;
   const currentRoomIndex = roomIndexAt(x, y);
   if (currentRoomIndex >= 0) state.run.rooms[currentRoomIndex].visited = true;
-  // Deepsight (summit cap tea) lets you see two squares farther in the dark.
-  const reach = typeof activeBuff === "function" && state.run.progress && activeBuff("deepsight") ? 6 : 4;
+  // What your light reaches (farther with deepsight) goes on your map, but only what you
+  // can actually see: not through walls (systems/sight.js).
+  const reach = lightReach();
   for (let dy = -reach; dy <= reach; dy += 1) {
     for (let dx = -reach; dx <= reach; dx += 1) {
       if (dx * dx + dy * dy > reach * reach) continue;
       const tx = x + dx;
       const ty = y + dy;
-      if (tx >= 0 && tx < MAP_TILE_SIZE && ty >= 0 && ty < MAP_TILE_SIZE) state.run.seen[tileIndex(tx, ty)] = true;
+      if (tx >= 0 && tx < MAP_TILE_SIZE && ty >= 0 && ty < MAP_TILE_SIZE && hasLineOfSight(state.run.player, { x: tx, y: ty })) {
+        state.run.seen[tileIndex(tx, ty)] = true;
+      }
     }
   }
   const passivePerception = 10 + skillBonus("perception");

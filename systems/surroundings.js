@@ -12,7 +12,6 @@
 // ring, the card that opens, and the attack all agree on which creature is which. (They used
 // to pick separately, which is how the card could show one animal and open another.)
 
-const NEARBY_RANGE = 7;
 const NEARBY_CHIP_LIMIT = 6;
 
 // The same rule the map uses to draw a creature: in line of sight within 7 squares, or
@@ -23,8 +22,7 @@ function nearbyCreatures() {
   if (!run || run.location !== "dungeon") return [];
   const player = run.player;
   const seen = run.enemies.filter((creature) => creature.alive && (
-    (distanceInSquares(creature, player) <= NEARBY_RANGE && hasLineOfSight(player, creature)) ||
-    (typeof knackRevealsCreature === "function" && knackRevealsCreature(creature))));
+    playerSees(creature) || (typeof knackRevealsCreature === "function" && knackRevealsCreature(creature))));
   const rank = (creature) => {
     const distance = distanceInSquares(creature, player);
     const threat = !creature.friendly && creatureIsThreat(creature);

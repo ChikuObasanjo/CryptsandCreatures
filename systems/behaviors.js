@@ -318,15 +318,18 @@ function moveCreature(enemy, step, { forced = false } = {}) {
   const hazard = state.run.hazards.find((item) => !item.triggered && item.x === step.x && item.y === step.y);
   if (hazard) {
     hazard.triggered = true;
-    hazard.revealed = true;
-    sfx("trap");
+    const seen = playerSees(step);
+    if (seen) {
+      hazard.revealed = true;
+      sfx("trap");
+    }
     const save = randomInt(20) + Math.floor((enemy.attackBonus || 0) / 2);
     if (save >= hazard.dc) {
-      addLog(`${enemy.name} springs ${hazard.name} but twists free.`);
+      reportAt(step, `${enemy.name} springs ${hazard.name} but twists free.`, "Somewhere close, a trap snaps.");
     } else {
       const damage = Math.max(1, rollDice(hazard.damage).total * 2);
       enemy.hp = Math.max(0, enemy.hp - damage);
-      addLog(`${enemy.name} blunders into ${hazard.name} and takes ${damage} damage.`);
+      reportAt(step, `${enemy.name} blunders into ${hazard.name} and takes ${damage} damage.`, "Somewhere close, a trap snaps and something cries out.");
       showCombatFeedback("hit", `−${damage} HP`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
       if (enemy.hp <= 0) resolveEnemyDefeat(enemy);
     }
@@ -359,13 +362,13 @@ function creatureNotices(enemy, distance) {
   if (enemy.vanishGrace > 0) return false;
   // A fed creature, a wary one, or a spirit that's been given its offering minds its own business.
   if (typeof ecologyIgnoresPlayer === "function" && ecologyIgnoresPlayer(enemy, distance)) return false;
-  if (habit === "territorial") {
-    return distance <= creatureNoticeRange(enemy) ||
-      (enemy.roomIndex >= 0 && roomIndexAt(state.run.player.x, state.run.player.y) === enemy.roomIndex);
-  }
-  if (distance <= creatureNoticeRange(enemy)) return true;
+  // Seen in a clear line, or heard through the stone when you're close (systems/sight.js).
+  const senses = creatureSensesPlayer(enemy, creatureNoticeRange(enemy));
+  const sameRoom = enemy.roomIndex >= 0 && roomIndexAt(state.run.player.x, state.run.player.y) === enemy.roomIndex;
+  if (habit === "territorial") return senses || sameRoom;
+  if (senses) return true;
   if (habit === "sentinel") return false;
-  return enemy.roomIndex >= 0 && enemy.roomIndex === state.run.currentRoom &&
+  return sameRoom && enemy.roomIndex === state.run.currentRoom && hasLineOfSight(enemy, state.run.player) &&
     (state.run.character?.class !== "rogue" || distance <= 4);
 }
 
@@ -514,6 +517,8 @@ function stealFrom(enemy) {
   loot.gold = roundGold(loot.gold - amount);
   enemy.stolen = amount;
   enemy.fleeing = true;
+  // Got what it wanted: its greed is fed for a while (systems/minds.js).
+  if (typeof mindSated === "function") mindSated(enemy, 60);
   sfx("miss");
   addLog(`${enemy.name} snatches ${formatCurrency(amount)} from your pouch and runs, giggling!`);
   return true;
@@ -638,7 +643,7 @@ function creatureAct(enemy, distance) {
     enemy.fleeTurns = 5;
     enemy.windup = null;
     ecoCreature(enemy).fledOnce = true;
-    addLog(`${enemy.name} breaks off and runs, badly hurt.`);
+    reportAt(enemy, `${enemy.name} breaks off and runs, badly hurt.`);
   }
   if (enemy.fleeTurns > 0) {
     enemy.fleeTurns -= 1;
@@ -702,7 +707,7 @@ function creatureAct(enemy, distance) {
     if (!inRoom && distance > 2) {
       const home = enemy.post || enemy;
       if (enemy.x === home.x && enemy.y === home.y) {
-        if (enemy.alerted) addLog(`${enemy.name} watches you go and settles back into its chamber.`);
+        if (enemy.alerted) reportAt(enemy, `${enemy.name} watches you go and settles back into its chamber.`);
         enemy.alerted = false;
       } else {
         moveCreature(enemy, creatureStepToward(enemy, home));
@@ -744,7 +749,7 @@ function creatureIdle(enemy) {
       enemy.alive = false;
       enemy.gone = true;
       enemy.lootDropped = true;
-      if (distanceInSquares(enemy, state.run.player) <= 7) addLog(`${enemy.name} trots up the stairs toward the light and is gone.`);
+      reportAt(enemy, `${enemy.name} trots up the stairs toward the light and is gone.`);
       return;
     }
     const step = creatureStepToward(enemy, goal, { throughDoors: true });

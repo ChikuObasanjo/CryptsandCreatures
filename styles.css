@@ -4944,3 +4944,7 @@ body.dark-mode .enemy-combatant[data-tone="calm"] .enemy-rank { color: var(--jad
 .portrait-button[data-rest="unrested-2"]::after { content: "zz"; width: 24px; font-size: 10.5px; background: #54406f; }
 .portrait-button[data-rest="unrested-3"]::after { content: "zzz"; width: 28px; font-size: 9.5px; background: #3a2a52; border-color: var(--red); }
 .status-chip[role="button"] { cursor: pointer; touch-action: manipulation; }
+
+/* Squares you remember but can't see right now (systems/sight.js): dimmer, and no creatures. */
+.map-tile.out-of-view { filter: brightness(0.72) saturate(0.6); }
+body.dark-mode .map-tile.out-of-view { filter: brightness(0.6) saturate(0.55); }
