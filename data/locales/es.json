@@ -2681,7 +2681,6 @@
  "Lay on Hands": "Imposición de manos",
  "Heal from a pool of 5 hit points per level, refilled when you rest.": "Cura usando una reserva de 5 puntos de golpe por nivel, que se rellena al descansar.",
  "Tracker": "Rastreador",
- "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.": "Las criaturas a 8 casillas aparecen en tu mapa, incluso a través de los muros, y nada escondido te tiende emboscadas.",
  "Sneak Attack": "Ataque furtivo",
  "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.": "Las criaturas te notan 2 casillas más tarde. Los golpes contra una criatura que no te ha notado, o que un compañero flanquea, infligen 2d6 de daño adicional.",
  "Overchannel": "Sobrecanalizar",
@@ -3723,5 +3722,13 @@
  "Tomb: stirring": "Tumba: despierta",
  "Tomb: at rest": "Tumba: en reposo",
  "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on.": "Un viejo cuenco de piedra con ceniza, copal y flores secas. Los muertos inquietos se alimentan de lo que se deja aquí. Deja copal, una guirnalda de cempasúchil o comida para alimentarlos tú. Una ofrenda también es un pago a la tumba, y los muertos que alimenta aflojan su apego a sus puestos; alimentados lo suficiente, algunos siguen su camino.",
- "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you; feed it enough and it lets go of its post and sets out for Mictlan.": "El soldado muerto mantiene su puesto con ofrendas. Alimenta el santuario y se olvida de ti; aliméntalo lo suficiente y deja su puesto y parte hacia Mictlan."
+ "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you; feed it enough and it lets go of its post and sets out for Mictlan.": "El soldado muerto mantiene su puesto con ofrendas. Alimenta el santuario y se olvida de ti; aliméntalo lo suficiente y deja su puesto y parte hacia Mictlan.",
+ "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you.": "Oyes a las criaturas que se mueven a 8 casillas, incluso a través de los muros (tu mapa marca dónde, no qué), y nada escondido te tiende emboscadas.",
+ "delving": "explorando",
+ "heading home": "volviendo a casa",
+ "going deeper": "bajando más",
+ "fighting": "luchando",
+ "called below": "llamado abajo",
+ "lord of the mouth": "señor de la boca",
+ "delver": "explorador"
 }

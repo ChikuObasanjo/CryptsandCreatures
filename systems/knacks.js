@@ -11,7 +11,7 @@ const KNACKS = {
   fighter: { name: "Cleave", text: "When your weapon drops a creature, you swing at another one beside you for free." },
   monk: { name: "Flurry", text: "When your weapon attack misses, you strike again at once." },
   paladin: { name: "Lay on Hands", action: true, text: "Heal from a pool of 5 hit points per level, refilled when you rest." },
-  ranger: { name: "Tracker", text: "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you." },
+  ranger: { name: "Tracker", text: "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you." },
   rogue: { name: "Sneak Attack", text: "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage." },
   sorcerer: { name: "Overchannel", text: "With no spell slots left, you can still cast your slot spells by paying 1d6 hit points." },
   warlock: { name: "Patron's Due", text: "Once per floor, defeating a creature returns a spell slot." },
@@ -158,7 +158,7 @@ function payOverchannel() {
   addLog(`You overchannel, burning ${cost} hit point${cost === 1 ? "" : "s"} to power the spell.`);
 }
 
-// Map extras: rangers see creatures through walls, wizards see treasure.
+// Map extras: rangers hear creatures through walls (a mark, not the creature), wizards see treasure.
 function knackRevealsCreature(enemy) {
   return state.run.character?.class === "ranger" && distanceInSquares(enemy, state.run.player) <= 8;
 }

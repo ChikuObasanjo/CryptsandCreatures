@@ -14,15 +14,14 @@
 
 const NEARBY_CHIP_LIMIT = 6;
 
-// The same rule the map uses to draw a creature: in line of sight within 7 squares, or
-// revealed by a knack. Order: whatever is beside you and hostile, then beside you, then
+// The same rule the map uses to draw a creature: in line of sight within 7 squares (a
+// ranger's knack only marks where something moves; it doesn't show what). Order: whatever is beside you and hostile, then beside you, then
 // anything coming for you, then other threats, then the rest by distance.
 function nearbyCreatures() {
   const run = state.run;
   if (!run || run.location !== "dungeon") return [];
   const player = run.player;
-  const seen = run.enemies.filter((creature) => creature.alive && (
-    playerSees(creature) || (typeof knackRevealsCreature === "function" && knackRevealsCreature(creature))));
+  const seen = run.enemies.filter((creature) => creature.alive && playerSees(creature));
   const rank = (creature) => {
     const distance = distanceInSquares(creature, player);
     const threat = !creature.friendly && creatureIsThreat(creature);
@@ -104,6 +103,16 @@ function renderTargetFrame(frame, enemy) {
   frame.dataset.tone = tone;
   elements["enemy-name"].textContent = creatureDisplayName(enemy);
   const mood = creatureStateLabel(enemy);
+  // Another delver (systems/delvers.js): who they are instead of a creature's habits.
+  if (enemy.delver && typeof delverDescription === "function") {
+    elements["enemy-rank"].textContent = enemy.lord ? t("GREAT GUARDIAN") : t(mood || "delver").toUpperCase();
+    frame.classList.toggle("is-elite", false);
+    frame.classList.toggle("is-guardian", Boolean(enemy.lord));
+    elements["enemy-description"].textContent = delverDescription(enemy);
+    elements["enemy-strikes"].replaceChildren();
+    renderTargetFrameBody(frame, enemy, distance);
+    return;
+  }
   elements["enemy-rank"].textContent = enemy.greatGuardian ? t("GREAT GUARDIAN") : enemy.guardian ? t("GUARDIAN")
     : mood ? t(mood).toUpperCase() : enemy.elite ? t("ELITE") : t("HOSTILE");
   frame.classList.toggle("is-elite", Boolean(enemy.elite));
@@ -114,6 +123,11 @@ function renderTargetFrame(frame, enemy) {
   const habitText = !habitNote ? "" : knowsCreatureHabit(enemy) ? ` ${t(habitNote)}` : ` ${t("Its habits are still a mystery to you. Defeat one to learn them.")}`;
   elements["enemy-description"].textContent = `${t(enemy.description || "Keep your guard up.")}${inflicts}${habitText}${studied && studied.kills >= 5 ? ` ${studied.title}: ${studied.description}` : ""}`;
   renderStrikeChips(elements["enemy-strikes"], enemy);
+  renderTargetFrameBody(frame, enemy, distance);
+}
+
+// Health, where it is, and its picture: the same for creatures and delvers.
+function renderTargetFrameBody(frame, enemy, distance) {
   elements["enemy-health"].textContent = `${enemy.hp} / ${enemy.maxHp} HP`;
   elements["enemy-health-fill"].style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
   const flanker = flankingCompanion(enemy);
@@ -121,9 +135,10 @@ function renderTargetFrame(frame, enemy) {
   const where = distance === 1 ? t("beside you") : t("{0} squares", { 0: distance });
   elements["enemy-distance"].textContent = `${SURROUNDINGS_ARROWS[direction] || ""} ${where}${flanker ? ` · ${t("{0} flanks", { 0: flanker.name })}` : ""}`.trim();
   const art = elements["enemy-portrait"];
-  if (art.dataset.sprite !== enemySpriteId(enemy)) {
-    art.dataset.sprite = enemySpriteId(enemy);
-    art.replaceChildren(createSprite(enemySpriteId(enemy), "combatant-sprite"));
+  const key = typeof creatureSpriteKey === "function" ? creatureSpriteKey(enemy) : enemySpriteId(enemy);
+  if (art.dataset.sprite !== key) {
+    art.dataset.sprite = key;
+    art.replaceChildren(typeof creatureSprite === "function" ? creatureSprite(enemy, "combatant-sprite") : createSprite(enemySpriteId(enemy), "combatant-sprite"));
   }
   frame.setAttribute("aria-label", `${creatureDisplayName(enemy)}, ${elements["enemy-rank"].textContent.toLowerCase()}, ${enemy.hp} of ${enemy.maxHp} HP, ${where}. ${t("Show the full creature card")}`);
 }
@@ -150,7 +165,7 @@ function renderNearbyStrip(strip, list, target) {
     chip.setAttribute("aria-label", chip.title);
     const art = document.createElement("span");
     art.className = "nearby-chip-art";
-    art.append(createSprite(enemySpriteId(creature), "nearby-chip-sprite"));
+    art.append(typeof creatureSprite === "function" ? creatureSprite(creature, "nearby-chip-sprite") : createSprite(enemySpriteId(creature), "nearby-chip-sprite"));
     const bar = document.createElement("span");
     bar.className = "nearby-chip-health";
     const fill = document.createElement("span");
@@ -173,7 +188,16 @@ function renderNearbyStrip(strip, list, target) {
 
 function openTargetCard() {
   const target = currentTarget();
-  if (target) openCreatureCard(target.templateId, target);
+  if (target) openCreatureOrDelverCard(target);
+}
+
+// A creature's card, or for a delver, who they are.
+function openCreatureOrDelverCard(creature) {
+  if (creature.delver && typeof delverDescription === "function") {
+    showRpgMessage(creature.lord ? `${creature.name}, ${creature.lordTitle}` : creature.name, delverDescription(creature));
+    return;
+  }
+  openCreatureCard(creature.templateId, creature);
 }
 
 function connectSurroundings() {
@@ -184,7 +208,7 @@ function connectSurroundings() {
     const creature = state.run?.enemies.find((entry) => String(entry.id) === chip.dataset.creatureId && entry.alive);
     if (!creature) return;
     if (state.targetId === creature.id && state.targetPinned) {
-      openCreatureCard(creature.templateId, creature);
+      openCreatureOrDelverCard(creature);
       return;
     }
     selectTarget(creature);

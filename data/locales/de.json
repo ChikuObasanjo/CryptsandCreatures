@@ -2681,7 +2681,6 @@
  "Lay on Hands": "Handauflegen",
  "Heal from a pool of 5 hit points per level, refilled when you rest.": "Heile aus einem Vorrat von 5 Trefferpunkten pro Stufe, der sich bei einer Rast auffüllt.",
  "Tracker": "Fährtenleser",
- "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.": "Kreaturen im Umkreis von 8 Feldern erscheinen auf deiner Karte, sogar durch Wände, und nichts Verstecktes überfällt dich.",
  "Sneak Attack": "Hinterhältiger Angriff",
  "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.": "Kreaturen bemerken dich 2 Felder später. Treffer gegen eine Kreatur, die dich nicht bemerkt hat oder die ein Gefährte flankiert, verursachen 2W6 zusätzlichen Schaden.",
  "Overchannel": "Überkanalisieren",
@@ -3703,5 +3702,13 @@
  "What you carry out of the tomb makes it hungry. Offerings, meat for its mouths, food left for its creatures, and the dead you help go on let it rest.": "Was du aus dem Grab trägst, macht es hungrig. Opfergaben, Fleisch für seine Mäuler, Essen für seine Geschöpfe und die Toten, denen du weiterhilfst, lassen es ruhen.",
  "At rest: the dead are calm, creatures settle, and the ground grows thick.": "In Ruhe: Die Toten sind still, die Geschöpfe beruhigen sich, und der Boden wächst dicht.",
  "Hungry: the dead and the wardens hunger with it, creatures are on edge, and its mouths open sooner.": "Hungrig: Die Toten und die Wächter hungern mit ihm, die Geschöpfe sind gereizt, und seine Mäuler öffnen sich früher.",
- "following you": "folgt dir"
+ "following you": "folgt dir",
+ "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you.": "Du hörst Kreaturen, die sich im Umkreis von 8 Feldern bewegen, sogar durch Wände (deine Karte zeigt wo, nicht was), und nichts Verstecktes überfällt dich.",
+ "delving": "auf Erkundung",
+ "heading home": "auf dem Heimweg",
+ "going deeper": "geht tiefer",
+ "fighting": "kämpft",
+ "called below": "nach unten gerufen",
+ "lord of the mouth": "Herr des Schlunds",
+ "delver": "Grabgänger"
 }

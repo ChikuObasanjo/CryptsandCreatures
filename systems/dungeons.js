@@ -1301,6 +1301,8 @@ function copyDungeonValue(value) {
 
 function saveDungeonFloorState() {
   const floor = state.run.dungeonFloor;
+  // Delvers live in their own records, never in a floor's snapshot (systems/delvers.js).
+  if (typeof delversDematerializeAll === "function") delversDematerializeAll();
   if (typeof ecologyLeaveFloor === "function") ecologyLeaveFloor();
   state.run.dungeonFloors ||= {};
   state.run.dungeonFloors[String(floor)] = {
@@ -1494,6 +1496,7 @@ function beginNewDelve() {
   const room = travelToFloor(1, "surface-entrance");
   state.run.location = "dungeon";
   state.run.hasEnteredDungeon = true;
+  if (typeof delversSync === "function") delversSync();
   state.run.log.unshift(`You leave Chiltomatlan and enter ${room.name}.`);
   state.run.log = state.run.log.slice(0, 30);
   render();

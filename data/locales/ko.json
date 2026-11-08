@@ -2681,7 +2681,6 @@
  "Lay on Hands": "치유의 손길",
  "Heal from a pool of 5 hit points per level, refilled when you rest.": "레벨당 5HP의 저장량으로 치유하며, 휴식하면 다시 찬다.",
  "Tracker": "추적자",
- "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.": "8칸 안의 크리처는 벽 너머라도 지도에 보이며, 숨은 것에게 기습당하지 않는다.",
  "Sneak Attack": "급습",
  "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.": "크리처가 당신을 2칸 늦게 알아차린다. 당신을 알아차리지 못한 크리처나 동료가 협공하는 크리처에게 명중하면 피해가 2d6 증가한다.",
  "Overchannel": "과잉 시전",
@@ -3703,5 +3702,13 @@
  "What you carry out of the tomb makes it hungry. Offerings, meat for its mouths, food left for its creatures, and the dead you help go on let it rest.": "무덤에서 가지고 나가는 것이 무덤을 굶주리게 한다. 제물, 입에 던져 주는 고기, 생물에게 남긴 음식, 길을 떠나도록 도운 망자가 무덤을 쉬게 한다.",
  "At rest: the dead are calm, creatures settle, and the ground grows thick.": "안식: 망자들은 잠잠하고, 생물들은 차분해지며, 땅은 무성하게 자란다.",
  "Hungry: the dead and the wardens hunger with it, creatures are on edge, and its mouths open sooner.": "굶주림: 망자와 수호자도 함께 굶주리고, 생물들은 예민해지며, 무덤의 입이 더 일찍 열린다.",
- "following you": "당신을 따라온다"
+ "following you": "당신을 따라온다",
+ "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you.": "8칸 안에서 움직이는 크리처의 소리를 벽 너머로도 듣는다(지도에는 무엇이 아니라 어디인지만 표시된다). 숨은 것에게 기습당하지 않는다.",
+ "delving": "탐사 중",
+ "heading home": "귀환 중",
+ "going deeper": "더 깊이",
+ "fighting": "전투 중",
+ "called below": "아래로 부름받음",
+ "lord of the mouth": "입의 군주",
+ "delver": "탐사자"
 }

@@ -961,6 +961,7 @@ function traverseDungeonStair(stair) {
   recordFloorReached(targetFloor);
   state.run.log.unshift(`You ${targetFloor > currentFloor ? "descend" : "ascend"} to floor ${targetFloor} of ${DUNGEON_FLOOR_COUNT}.`);
   state.run.log = state.run.log.slice(0, 30);
+  if (typeof delversSync === "function") delversSync();
   render();
 }
 
@@ -978,6 +979,7 @@ function returnToChiltomatlan() {
     turnInTempleTreasure();
     clearConditions();
     claimReadyBounties();
+    if (typeof delversSync === "function") delversSync();
     render();
     return;
   }
@@ -1042,6 +1044,7 @@ function recoverInChiltomatlan() {
   renewTombPassages();
   travelToFloor(1, "surface-entrance");
   state.run.location = "city";
+  if (typeof delversSync === "function") delversSync();
   state.run.lost = false;
   state.run.won = false;
   const recoveryText = canHeal()
@@ -1895,6 +1898,7 @@ function collectTreasureAt(x, y, auto = false) {
   const leftBehind = [];
   for (const treasure of treasures) {
     if (!treasure.dropped && typeof ecologyTreasureTaken === "function") ecologyTreasureTaken(treasure);
+    if (treasure.remains && typeof delverRemainsFound === "function") delverRemainsFound(treasure);
     const goldCollected = addGoldWithinCapacity(treasure.gold);
     treasure.gold = roundGold(treasure.gold - goldCollected);
     const remainingItems = [];
@@ -1902,9 +1906,12 @@ function collectTreasureAt(x, y, auto = false) {
     for (const entry of treasure.items) {
       const collected = addInventoryItemsAsPossible(entry.id, entry.quantity);
       itemsCollected += collected;
+      // A dead delver's things from outside were never the tomb's; the lord's regalia was.
+      if (entry.outside && collected && typeof delverMarkOutside === "function") delverMarkOutside(entry.id, collected);
+      if (String(entry.id).includes("--lordly") && collected && state.run.delvers?.throne) state.run.delvers.throne.regalia = "taken";
       if (collected) collectedNames.push(`${itemDetails(entry.id).name}${collected > 1 ? ` ×${collected}` : ""}`);
       if (collected < entry.quantity) {
-        remainingItems.push({ id: entry.id, quantity: entry.quantity - collected });
+        remainingItems.push({ ...entry, quantity: entry.quantity - collected });
         leftBehind.push(itemDetails(entry.id).name);
       }
     }
@@ -2036,6 +2043,7 @@ function finishPlayerTurn(elapsedMinutes = 10, movementMode = null) {
     if (!state.run.lost) alliesTakeTurn();
     if (!state.run.lost) summonsTakeTurn();
     state.run.dodging = currentStance() === "guard";
+    if (!state.run.lost && typeof delversSync === "function") delversSync();
     if (!state.run.lost && typeof tombNotice === "function") tombNotice();
     if (!state.run.lost) enemiesTakeTurn();
     if (!state.run.lost && typeof ecologyAdvance === "function") ecologyAdvance();
@@ -2169,6 +2177,11 @@ function movePlayer(dx, dy) {
     const blocker = state.run.enemies.find((enemy) => enemy.alive && enemy.x === nx && enemy.y === ny);
     if (blocker) {
       if (moved) break;
+      // Walking into a delver talks to them; into any other friend, nothing.
+      if (blocker.friendly) {
+        if (blocker.delver && typeof talkToDelver === "function") talkToDelver(blocker);
+        return false;
+      }
       if (distanceInSquares(blocker, { x, y }) === 1) attackEnemy(blocker);
       return false;
     }
@@ -2465,6 +2478,12 @@ function creatureArmorClass(enemy) {
 
 function resolveEnemyDefeat(enemy) {
   if (!enemy?.alive || enemy.hp > 0) return;
+  // The Lord of the Mouth (systems/delvers.js): when he falls, she comes out of him.
+  if (enemy.delver && typeof delverDefeated === "function") {
+    delverDefeated(enemy);
+    return;
+  }
+  if (enemy.templateId === "tzitzimitl" && typeof delverSpiritSlain === "function") delverSpiritSlain();
   enemy.alive = false;
   completeOptionalQuest(enemy);
   onCreatureDefeated(enemy);
@@ -2696,10 +2715,18 @@ function enemiesTakeTurn() {
   for (const enemy of [...state.run.enemies]) {
     if (!enemy.alive || state.run.lost || state.run.won) continue;
     if (enemy.friendly) {
+      // Other delvers go about their own business (systems/delvers.js).
+      if (enemy.delver) {
+        if (typeof delverAct === "function") delverAct(enemy);
+        continue;
+      }
       if (typeof duendeFriendAct === "function") duendeFriendAct(enemy);
       continue;
     }
     const distance = distanceInSquares(enemy, state.run.player);
+    // The Lord of the Mouth heals himself once and smites; anything after a delver goes for them.
+    if (enemy.lord && typeof delverLordTurn === "function" && delverLordTurn(enemy, distance)) continue;
+    if (!enemy.asleep && typeof creatureFightsDelver === "function" && creatureFightsDelver(enemy, distance)) continue;
     // Animals decide for themselves what you are to them (systems/minds.js); the rest notice
     // you by their habits.
     if (typeof mindThink === "function" && !enemy.asleep && mindThink(enemy, distance)) continue;
@@ -4091,8 +4118,9 @@ function renderMap() {
         entry.kind === "spell" && entry.x === x && entry.y === y && entry.until > Date.now());
       const strike = state.combatEffects.find((entry) =>
         entry.kind === "strike" && entry.x === x && entry.y === y && entry.until > Date.now());
-      const sensed = inBounds && ((enemiesAt.has(index) && knackRevealsCreature(enemiesAt.get(index))) ||
-        (treasuresAt.has(index) && treasuresAt.get(index).some(knackRevealsTreasure)) || starChartShows(x, y));
+      const sensed = inBounds && ((treasuresAt.has(index) && treasuresAt.get(index).some(knackRevealsTreasure)) || starChartShows(x, y));
+      // A ranger hears something moving through the wall: a mark, not the creature.
+      const heard = inBounds && enemiesAt.has(index) && !enemiesInSight.has(index) && knackRevealsCreature(enemiesAt.get(index));
       // In view now (systems/sight.js), or remembered from before: remembered squares are
       // drawn dimmer, and creatures only appear where you can see them (or sense them).
       const inView = inBounds && playerSees({ x, y });
@@ -4108,6 +4136,10 @@ function renderMap() {
       }[type] || "Stone ground");
       tile.className = `map-tile ${terrainVisible ? type : "unseen"}${!inBounds ? " map-edge" : ""}`;
       if (inBounds && threatTiles.has(index)) tile.classList.add("threat-tile");
+      if (heard) {
+        tile.classList.add("creature-heard");
+        tileLabel += " · Something moves here";
+      }
       if (terrainVisible && !inView) tile.classList.add("out-of-view");
       if (terrainVisible && type === "floor") {
         const habitat = state.run.rooms[roomIndexAt(x, y)]?.habitat;
@@ -4236,9 +4268,9 @@ function renderMap() {
           addLayer(`Treasure: ${formatCurrency(treasure.gold)}${itemNames ? ` · ${itemNames}` : ""}`, lootSprite, "treasure", treasure.id, treasureIndex);
           });
         }
-        if (enemiesAt.has(index) && (enemiesInSight.has(index) || knackRevealsCreature(enemiesAt.get(index)))) {
+        if (enemiesAt.has(index) && enemiesInSight.has(index)) {
           const enemy = enemiesAt.get(index);
-          const enemySprite = createSprite(enemySpriteId(enemy), "tile-sprite");
+          const enemySprite = typeof creatureSprite === "function" ? creatureSprite(enemy, "tile-sprite") : createSprite(enemySpriteId(enemy), "tile-sprite");
           if (effect?.enemyId === enemy.id) enemySprite.classList.add(effect.kind === "heal" ? "heal-flash" : "hurt-flash");
           if (enemy.elite || enemy.guardian) {
             tile.classList.add(enemy.guardian ? "has-guardian" : "has-elite");
@@ -4249,7 +4281,7 @@ function renderMap() {
             tile.classList.add("is-target");
             tile.dataset.targetTone = creatureTone(enemy);
           }
-          addLayer(`${enemy.guardian ? "Guardian" : enemy.elite ? "Elite creature" : "Creature"}: ${enemy.name}${mood ? ` (${mood})` : ""}`, enemySprite, "creature", enemy.id);
+          addLayer(`${enemy.delver && enemy.friendly ? "Delver" : enemy.guardian ? "Guardian" : enemy.elite ? "Elite creature" : "Creature"}: ${enemy.name}${mood ? ` (${mood})` : ""}`, enemySprite, "creature", enemy.id);
         }
         if (effect?.kind === "death" && effect.actor === "enemy" && !enemiesAt.has(index)) {
           const enemy = state.run.enemies.find((candidate) => candidate.id === effect.enemyId);
@@ -4407,6 +4439,9 @@ function inspectMapTile(tile) {
           entry.gold ? formatCurrency(entry.gold) : "",
           ...entry.items.map((item) => `${itemDetails(item.id).name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`)
         ].filter(Boolean).join(", ")).join("; ")}.`;
+    } else if (enemy?.delver && tile.classList.contains("creature") && typeof delverDescription === "function") {
+      title = enemy.lord ? `${enemy.name}, ${enemy.lordTitle}` : enemy.name;
+      description = delverDescription(enemy);
     } else if (enemy && tile.classList.contains("creature")) {
       title = enemy.name;
       const condition = enemy.hp / enemy.maxHp > 0.7 ? "It appears steady and uninjured."
@@ -6176,6 +6211,8 @@ function parseSavedRun(saved, pack) {
   if (saved.dodging === undefined) saved.dodging = false;
   // The tomb's mood (systems/tomb-body.js); older saves start it still.
   if (typeof normalizeTombBody === "function") normalizeTombBody(saved);
+  // The other delvers (systems/delvers.js): their figures are rebuilt from their records.
+  if (typeof normalizeDelvers === "function") normalizeDelvers(saved);
   if (!["guard", "run", "disengage"].includes(saved.stance)) saved.stance = "guard";
   if (typeof saved.dodging !== "boolean") return null;
   if (saved.needs === undefined) saved.needs = createNeeds();

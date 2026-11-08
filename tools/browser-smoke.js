@@ -93,6 +93,38 @@ const { createGameServer } = require("../scripts/static-server");
     problems.push(`tomb mood: ${error.message.split("\n")[0]}`);
   }
 
+  // Another delver beside you: drawn like you, and walking into them talks to them.
+  try {
+    const delver = await page.evaluate(() => {
+      const person = delverCreate({ culture: "nahua", cls: "fighter" });
+      person.status = "delving";
+      person.floor = state.run.dungeonFloor;
+      person.greeted = true;
+      const p = state.run.player;
+      const spot = MOVEMENT_DIRECTIONS.map((d) => ({ x: p.x + d.x, y: p.y + d.y }))
+        .find((s) => isWalkable(s.x, s.y) && !tileHasCreature(s.x, s.y));
+      const entity = delverMaterialize(person, spot);
+      render();
+      const figure = Boolean(document.querySelector(`.map-tile .codex-character`) && [...document.querySelectorAll(".map-tile")].some((tile) => tile.querySelector("img.codex-character")));
+      const talk = (typeof ecologyInteractions === "function" ? ecologyInteractions() : []).some((option) => option.label.startsWith("Talk to"));
+      const before = document.querySelector(".rpg-message, #rpg-message, dialog[open]") ? 1 : 0;
+      movePlayer(entity.x - p.x, entity.y - p.y);
+      const after = Boolean(document.querySelector("dialog[open]"));
+      document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
+      const alive = entity.alive && entity.hp === entity.maxHp;
+      state.run.enemies = state.run.enemies.filter((enemy) => enemy !== entity);
+      person.status = "retired";
+      render();
+      return { figure, talk, talked: after || before === 0, alive };
+    });
+    if (!delver.figure) problems.push("a delver isn't drawn as a figure on the map");
+    else if (!delver.talk) problems.push("no Talk option beside a delver");
+    else if (!delver.alive) problems.push("walking into a delver hurt them");
+    else console.log("ok  a delver: drawn like you, talks when you walk into them");
+  } catch (error) {
+    problems.push(`delver: ${error.message.split("\n")[0]}`);
+  }
+
   // No action button's words are cut off (the big button and its tab may use two lines).
   const clipped = await page.evaluate(() => [...document.querySelectorAll("#action-primary .button .action-label")]
     .filter((label) => label.offsetParent && label.scrollHeight > label.clientHeight + 2)

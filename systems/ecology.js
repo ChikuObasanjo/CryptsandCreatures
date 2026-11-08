@@ -1554,14 +1554,32 @@ function ecologyAdvance() {
   if (ticks > 0) {
     eco.minute += ticks * ECO_TICK_MINUTES;
     const live = Math.min(ticks, ECO_LIVE_TICK_LIMIT);
+    const before = live > 1 ? new Map(state.run.enemies.filter((creature) => creature.alive).map((creature) => [creature, { x: creature.x, y: creature.y }])) : null;
     for (let tick = 0; tick < live; tick += 1) {
       if (tick > 0) ecologyCreaturesAct();
       ecologyWorldTick();
     }
+    // A long action (searching, resting a while) lets several ticks pass at once. Nothing you
+    // can see moves more than one square in one of your turns: it would look like a jump.
+    if (before) ecoNoVisibleJumps(before);
     if (ticks > live) ecologySettle(ticks - live);
   }
   if (eco.returnedAt !== undefined) ecoReportChanges(eco);
   ecologyObserveSurroundings();
+}
+
+function ecoNoVisibleJumps(before) {
+  for (const [creature, at] of before) {
+    if (!creature.alive) continue;
+    const dx = creature.x - at.x;
+    const dy = creature.y - at.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) <= 1 || !(playerSees(at) || playerSees(creature))) continue;
+    const step = { x: at.x + Math.sign(dx), y: at.y + Math.sign(dy) };
+    const open = isWalkable(step.x, step.y, creature) && !tileHasCreature(step.x, step.y, creature) &&
+      !(step.x === state.run.player.x && step.y === state.run.player.y);
+    creature.x = open ? step.x : at.x;
+    creature.y = open ? step.y : at.y;
+  }
 }
 
 // A delver who falls stays where they fell, and feeds the floor like anything else that dies:
@@ -1712,6 +1730,7 @@ function ecologyInteractions() {
   if (patch) add(`${ECO.resources[patch.kind].harvestVerb} · ${patch.amount}`, () => harvestFeature(patch), "supplies",
     { fungus: "tokens/fungus-patch", pool: "tokens/pool", plants: "tokens/root-tangle" }[patch.kind] || "");
   if (typeof duendeInteractions === "function") list.unshift(...duendeInteractions());
+  if (typeof delverInteractions === "function") list.unshift(...delverInteractions());
   return list;
 }
 

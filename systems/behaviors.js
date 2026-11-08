@@ -581,7 +581,8 @@ function heavyBlowTiles(enemy, shape) {
 function threatenedTiles() {
   const tiles = new Set();
   for (const enemy of state.run.enemies) {
-    if (!enemy.alive || !enemy.windup) continue;
+    // Only the blows you can see coming (systems/sight.js).
+    if (!enemy.alive || !enemy.windup || (typeof playerSees === "function" && !playerSees(enemy))) continue;
     for (const spot of enemy.windup.tiles) tiles.add(tileIndex(spot.x, spot.y));
   }
   return tiles;
@@ -778,6 +779,7 @@ function beginCreaturePhase() {
 // ---------- Display ----------
 
 function creatureStateLabel(enemy) {
+  if (enemy.delver && typeof delverMood === "function") return delverMood(enemy);
   if (enemy.windup) return "winding up";
   if (enemy.asleep) return "asleep";
   if (enemy.discord > 0) return "spellbound";

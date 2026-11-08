@@ -2681,7 +2681,6 @@
  "Lay on Hands": "Imposition des mains",
  "Heal from a pool of 5 hit points per level, refilled when you rest.": "Soigne à partir d'une réserve de 5 points de vie par niveau, remplie à chaque repos.",
  "Tracker": "Pisteur",
- "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.": "Les créatures à 8 cases ou moins apparaissent sur ta carte, même à travers les murs, et rien de caché ne te tend d'embuscade.",
  "Sneak Attack": "Attaque sournoise",
  "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.": "Les créatures te remarquent 2 cases plus tard. Les coups contre une créature qui ne t'a pas vu, ou qu'un compagnon prend à revers, infligent 2d6 dégâts supplémentaires.",
  "Overchannel": "Surcanalisation",
@@ -3703,5 +3702,13 @@
  "What you carry out of the tomb makes it hungry. Offerings, meat for its mouths, food left for its creatures, and the dead you help go on let it rest.": "Ce que tu emportes hors du tombeau l'affame. Les offrandes, la viande pour ses bouches, la nourriture laissée à ses créatures et les morts que tu aides à partir l'apaisent.",
  "At rest: the dead are calm, creatures settle, and the ground grows thick.": "Apaisé : les morts sont calmes, les créatures se tranquillisent et le sol devient épais.",
  "Hungry: the dead and the wardens hunger with it, creatures are on edge, and its mouths open sooner.": "Affamé : les morts et les gardiens ont faim avec lui, les créatures sont nerveuses et ses bouches s'ouvrent plus tôt.",
- "following you": "te suit"
+ "following you": "te suit",
+ "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you.": "Tu entends les créatures bouger à 8 cases ou moins, même à travers les murs (ta carte indique où, pas quoi), et rien de caché ne te tend d'embuscade.",
+ "delving": "en exploration",
+ "heading home": "rentre chez lui",
+ "going deeper": "descend plus bas",
+ "fighting": "se bat",
+ "called below": "appelé en bas",
+ "lord of the mouth": "seigneur de la bouche",
+ "delver": "explorateur"
 }

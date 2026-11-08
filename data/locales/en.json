@@ -2144,7 +2144,6 @@
  "Lay on Hands": "Lay on Hands",
  "Heal from a pool of 5 hit points per level, refilled when you rest.": "Heal from a pool of 5 hit points per level, refilled when you rest.",
  "Tracker": "Tracker",
- "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.": "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.",
  "Sneak Attack": "Sneak Attack",
  "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.": "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.",
  "Overchannel": "Overchannel",
@@ -3153,5 +3152,6 @@
  "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly.": "A great guardian stands before a sealed door. A man is carved on the door, and his face has been chiseled off. On the other side, something breathes, slowly.",
  "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you; feed it enough and it lets go of its post and sets out for Mictlan.": "The dead soldier keeps its post on offerings. Feed the shrine and it forgets you; feed it enough and it lets go of its post and sets out for Mictlan.",
  "Fed by offerings and by fresh deaths. She watches over the nests. Feed her enough and she goes west, to Cihuatlampa.": "Fed by offerings and by fresh deaths. She watches over the nests. Feed her enough and she goes west, to Cihuatlampa.",
- "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on.": "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on."
+ "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on.": "An old stone bowl with ash, copal, and dried flowers. The restless dead feed on what is left here. Leave copal, a marigold garland, or food to feed them yourself. An offering is also a payment to the tomb, and the dead it feeds loosen their hold on their posts; fed enough, some of them go on.",
+ "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you.": "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you."
 }

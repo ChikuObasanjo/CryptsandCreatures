@@ -2681,7 +2681,6 @@
  "Lay on Hands": "Cura pelas mãos",
  "Heal from a pool of 5 hit points per level, refilled when you rest.": "Cure a partir de uma reserva de 5 pontos de vida por nível, que se renova ao descansar.",
  "Tracker": "Rastreador",
- "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.": "Criaturas a até 8 casas aparecem no seu mapa, mesmo através das paredes, e nada escondido embosca você.",
  "Sneak Attack": "Ataque furtivo",
  "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.": "As criaturas notam você 2 casas mais tarde. Golpes contra uma criatura que não notou você, ou que um companheiro flanqueia, causam 2d6 de dano extra.",
  "Overchannel": "Sobrecanalizar",
@@ -3703,5 +3702,13 @@
  "What you carry out of the tomb makes it hungry. Offerings, meat for its mouths, food left for its creatures, and the dead you help go on let it rest.": "O que você leva para fora da tumba lhe dá fome. Oferendas, carne para suas bocas, comida deixada para suas criaturas e os mortos que você ajuda a seguir caminho a deixam em repouso.",
  "At rest: the dead are calm, creatures settle, and the ground grows thick.": "Em repouso: os mortos ficam calmos, as criaturas sossegam e o chão cresce espesso.",
  "Hungry: the dead and the wardens hunger with it, creatures are on edge, and its mouths open sooner.": "Faminta: os mortos e os guardiões têm fome com ela, as criaturas ficam inquietas e suas bocas se abrem mais cedo.",
- "following you": "seguindo você"
+ "following you": "seguindo você",
+ "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you.": "Você ouve criaturas se movendo a até 8 casas, mesmo através das paredes (seu mapa marca onde, não o quê), e nada escondido embosca você.",
+ "delving": "explorando",
+ "heading home": "voltando para casa",
+ "going deeper": "descendo mais",
+ "fighting": "lutando",
+ "called below": "chamado para baixo",
+ "lord of the mouth": "senhor da boca",
+ "delver": "explorador"
 }

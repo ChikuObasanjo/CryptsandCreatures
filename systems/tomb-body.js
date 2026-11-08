@@ -84,23 +84,26 @@ let tombCarriedCache = { key: "", value: 0 };
 function tombCarried() {
   const loot = state.run?.unsecuredLoot;
   if (!loot) return 0;
-  const key = `${state.run.steps || 0}:${loot.gold}:${loot.items.map((item) => `${item.id}${item.quantity}`).join(",")}`;
+  const key = `${state.run.steps || 0}:${loot.gold}:${loot.items.map((item) => `${item.id}${item.quantity}`).join(",")}:${JSON.stringify(loot.foreign || {})}`;
   if (tombCarriedCache.key === key) return tombCarriedCache.value;
   let value = Math.max(0, loot.gold || 0);
   for (const item of loot.items) {
     const details = typeof itemDetails === "function" ? itemDetails(item.id) : null;
     const worth = TOMB_ITEM_WORTH[details?.categoryId] || TOMB_ITEM_WORTH.other;
-    value += Math.min(worth.cap, (details?.price || 0) * worth.share) * (item.quantity || 0);
+    // What another delver brought in from outside was never hers (systems/delvers.js).
+    const quantity = Math.max(0, (item.quantity || 0) - (loot.foreign?.[item.id] || 0));
+    value += Math.min(worth.cap, (details?.price || 0) * worth.share) * quantity;
   }
   tombCarriedCache = { key, value };
   return value;
 }
 
-// Given minus owed. Below zero she hungers; above, she rests.
+// Given minus owed. Below zero she hungers; above, she rests. The other delvers' packs
+// count too (systems/delvers.js): she feels everyone who takes from her.
 function tombBalance() {
   const tomb = tombBody();
   if (!tomb) return 0;
-  const carried = state.run.location === "dungeon" ? tombCarried() : 0;
+  const carried = (state.run.location === "dungeon" ? tombCarried() : 0) + (typeof delversCarried === "function" ? delversCarried() : 0);
   return tomb.given - tomb.owed - carried;
 }
 
@@ -133,6 +136,13 @@ function tombRemembersLoot() {
   const tomb = tombBody();
   if (!tomb) return;
   tomb.owed += tombCarried() * TOMB_HOME_MEMORY;
+}
+
+// Someone else carried this much out of her (another delver going home).
+function tombRemembersValue(value) {
+  const tomb = tombBody();
+  if (!tomb || !(value > 0)) return;
+  tomb.owed += value * TOMB_HOME_MEMORY;
 }
 
 // You fell. What you carried goes back to her with you (the loot is lost), and she has eaten.

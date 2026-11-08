@@ -2681,7 +2681,6 @@
  "Lay on Hands": "圣手疗伤",
  "Heal from a pool of 5 hit points per level, refilled when you rest.": "从每级5点生命值的储备中治疗，休息后补满。",
  "Tracker": "追踪者",
- "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.": "8格内的生物即使隔着墙也会显示在地图上，藏着的东西无法伏击你。",
  "Sneak Attack": "偷袭",
  "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.": "生物察觉你的距离缩短2格。命中尚未察觉你、或被同伴夹击的生物时，额外造成2d6伤害。",
  "Overchannel": "超限引导",
@@ -3703,5 +3702,13 @@
  "What you carry out of the tomb makes it hungry. Offerings, meat for its mouths, food left for its creatures, and the dead you help go on let it rest.": "你从陵墓带走的东西会让它饥饿。供品、喂给它的口的肉、留给它的生灵的食物，以及你帮助离去的亡者，会让它安息。",
  "At rest: the dead are calm, creatures settle, and the ground grows thick.": "安息：亡者平静，生灵安定，地面长得茂密。",
  "Hungry: the dead and the wardens hunger with it, creatures are on edge, and its mouths open sooner.": "饥饿：亡者和守护者随它一同饥饿，生灵不安，它的口张开得更早。",
- "following you": "跟着你"
+ "following you": "跟着你",
+ "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you.": "你能听见8格内移动的生物，即使隔着墙（地图只标出位置，不显示是什么），藏着的东西无法伏击你。",
+ "delving": "探索中",
+ "heading home": "返程中",
+ "going deeper": "继续深入",
+ "fighting": "战斗中",
+ "called below": "被召唤向下",
+ "lord of the mouth": "深口之主",
+ "delver": "探险者"
 }

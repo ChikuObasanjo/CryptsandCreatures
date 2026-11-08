@@ -2681,7 +2681,6 @@
  "Lay on Hands": "癒しの手",
  "Heal from a pool of 5 hit points per level, refilled when you rest.": "レベルごとに5HPの蓄えから回復する。蓄えは休息で満ちる。",
  "Tracker": "追跡者",
- "Creatures within 8 squares show on your map, even through walls, and nothing hidden ambushes you.": "8マス以内のクリーチャーは壁越しでも地図に映り、隠れたものに奇襲されることはない。",
  "Sneak Attack": "急所攻撃",
  "Creatures notice you 2 squares later. Hits against a creature that hasn't noticed you, or one a companion flanks, deal 2d6 extra damage.": "クリーチャーに気づかれる距離が2マス縮む。こちらに気づいていない相手か、仲間が挟んでいる相手への命中はダメージ+2d6。",
  "Overchannel": "過剰詠唱",
@@ -3703,5 +3702,13 @@
  "What you carry out of the tomb makes it hungry. Offerings, meat for its mouths, food left for its creatures, and the dead you help go on let it rest.": "墓所から持ち出すものが墓所を飢えさせる。供物、口へ与える肉、生き物に残す食べ物、旅立ちを助けた死者が墓所を安らがせる。",
  "At rest: the dead are calm, creatures settle, and the ground grows thick.": "安らぎ：死者は穏やかになり、生き物は落ち着き、地面は豊かに茂る。",
  "Hungry: the dead and the wardens hunger with it, creatures are on edge, and its mouths open sooner.": "飢え：死者と番人も共に飢え、生き物は気が立ち、その口は早く開く。",
- "following you": "あなたについてくる"
+ "following you": "あなたについてくる",
+ "You hear creatures moving within 8 squares, even through walls (your map marks where, not what), and nothing hidden ambushes you.": "8マス以内で動くクリーチャーの音が壁越しでも聞こえ（地図には場所だけが記され、正体はわからない）、隠れたものに奇襲されることはない。",
+ "delving": "探索中",
+ "heading home": "帰還中",
+ "going deeper": "さらに深く",
+ "fighting": "戦闘中",
+ "called below": "下へ呼ばれている",
+ "lord of the mouth": "口の主",
+ "delver": "探索者"
 }

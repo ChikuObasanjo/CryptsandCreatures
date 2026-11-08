@@ -753,6 +753,7 @@ function descendByLift(floor) {
   travelToFloor(floor, "warden-lift");
   state.run.location = "dungeon";
   state.run.hasEnteredDungeon = true;
+  if (typeof delversSync === "function") delversSync();
   state.run.log.unshift(`The wardens lower you by rope to floor ${floor}. The lift waits here to carry you home.`);
   state.run.log = state.run.log.slice(0, 30);
   render();
