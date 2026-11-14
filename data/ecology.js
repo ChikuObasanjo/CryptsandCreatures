@@ -7,7 +7,8 @@
 // colonies   life too small and too many to follow one by one (grasshoppers, ants, beetles,
 //            water bugs): a count on a tile that grows with its food and is eaten from
 // habitats   what a chamber is, from its surroundings (prefers: elev, moist, warm, shelter,
-//            magic, each [center, tolerance] on 0–1), what grows there, who lives there
+//            magic, each [center, tolerance] on 0–1) and from what it was sited and shaped
+//            for (purposes, see systems/forms.js), what grows there, who lives there
 // species    every creature: its role in the food web, what it eats, how it treats you, how
 //            it breeds, where it lives, and what it's good for afterwards
 //
@@ -91,14 +92,14 @@ window.CryptsEcology = {
   // (rootbound, fortress, living-rock, mouth). Ground letters: see systems/biome.js.
   habitats: {
     "fungal-garden": {
-      name: "Fungal garden", depth: [1, 13], weight: 2.2,
+      name: "Fungal garden", purposes: ["garden"], depth: [1, 13], weight: 2.2,
       prefers: { moist: [0.75, 0.3], shelter: [0.55, 0.45] }, likesNear: { "bat-roost": 1.5 },
       resources: { fungus: [2, 4] }, colonies: { chapolin: [1, 1] },
       residents: { "maztican-cave-locust": 2, chaneque: 0.6 , "cave-turkey": 1.6, "giant-turkey": 1.3, "turkey-raptor": 0.9, "black-turkey-raptor": 0.6, dungeonrabbit: 0.9, dungeonrabbit2: 0.7, mapachin: 0.5}, population: [0, 1], peaceful: true, ground: "y",
       text: "The floor is soft with rot and glowcaps. Things graze here."
     },
     "insect-cavern": {
-      name: "Root gallery", depth: [1, 8], weight: 2,
+      name: "Root gallery", purposes: ["garden", "trail"], depth: [1, 8], weight: 2,
       names: { fortress: "Overgrown hall" },
       prefers: { moist: [0.55, 0.35], elev: [0.65, 0.4] },
       resources: { plants: [2, 3], fungus: [0, 1] }, colonies: { chapolin: [0, 1], chicatana: [0, 1] },
@@ -107,7 +108,7 @@ window.CryptsEcology = {
       texts: { fortress: "Pale roots have come up through the floor from below and split the old lords' paving. Grazers browse them; hunters follow the grazers." }
     },
     "damp-cavern": {
-      name: "Damp cavern", depth: [1, 13], weight: 1.6,
+      name: "Damp cavern", purposes: ["garden", "trail", "crossing"], depth: [1, 13], weight: 1.6,
       names: { fortress: "Weeping hall", "living-rock": "Shell cavern" },
       prefers: { moist: [0.6, 0.25], elev: [0.45, 0.35] },
       resources: { plants: [1, 2] }, colonies: {},
@@ -116,7 +117,7 @@ window.CryptsEcology = {
       texts: { "living-rock": "The rock here is pink and ridged like the inside of a shell, and damp to the touch. Moss grows in every ridge. The room is quiet." }
     },
     "flooded-chamber": {
-      name: "Flooded chamber", depth: [1, 13], weight: 3, water: "basin",
+      name: "Flooded chamber", purposes: ["basin"], depth: [1, 13], weight: 3, water: "basin",
       names: { fortress: "Flooded cistern", "living-rock": "Underground pool", mouth: "The first water" },
       resources: { pool: [1, 2] }, colonies: { ahuauhtli: [0, 1] },
       residents: { axolocatl: 2, "cenote-stalker": 1.4, cipactli: 0.7 , mapachin: 1.2, hueymapachin: 0.6}, population: [1, 2], ground: "w",
@@ -124,38 +125,38 @@ window.CryptsEcology = {
       texts: { fortress: "The old lords' cistern has filled to the brim with water from below. It is black, still, and deep." }
     },
     "bat-roost": {
-      name: "Bat roost", depth: [1, 13], weight: 1.6, fertile: true,
+      name: "Bat roost", purposes: ["roost"], depth: [1, 13], weight: 1.6, fertile: true,
       prefers: { elev: [0.75, 0.35], shelter: [0.55, 0.4], moist: [0.4, 0.35] }, likesNear: { "fungal-garden": 1.5 },
       resources: {}, colonies: {},
       residents: { "tomb-bat": 3 }, population: [1, 2], peaceful: true, ground: "g",
       text: "The ceiling rustles. Droppings carpet the floor, and the glowcaps in the next chambers grow fat on them."
     },
     "predator-den": {
-      name: "Predator den", depth: [2, 13], weight: 2.2, water: "dry",
+      name: "Predator den", purposes: ["den"], depth: [2, 13], weight: 2.2, water: "dry",
       names: { fortress: "Barracks den" },
       prefers: { shelter: [0.85, 0.3] },
-      needsNear: { habitats: ["fungal-garden", "insect-cavern", "flooded-chamber", "overgrown-ruins", "bat-roost"], reach: 2, otherwise: null },
+      needsNear: { habitats: ["fungal-garden", "insect-cavern", "flooded-chamber", "overgrown-ruins", "bat-roost", "damp-cavern"], reach: 3, otherwise: null },
       resources: { bones: [1, 2] }, colonies: {},
       residents: { tlacoocelotl: 1.6, "jungle-jaguar": 2, "black-jaguar": 1.6, "huay-chivo": 0.8, mazacoatl: 1 , mapachin: 0.8, hueymapachin: 0.8, "elder-mapachin": 0.6}, population: [1, 1], territory: true, ground: "b",
       text: "It smells of musk and old meat. A large hunter sleeps here between hunts, close to where its prey feeds.",
       texts: { fortress: "The old lords' soldiers slept here. Now a hunter does, on a bed of their shields, with bones around it." }
     },
     "nesting-chamber": {
-      name: "Nesting chamber", depth: [2, 13], weight: 1.8, water: "dry",
+      name: "Nesting chamber", purposes: ["nest"], depth: [2, 13], weight: 1.8, water: "dry",
       prefers: { shelter: [0.85, 0.3], warm: [0.6, 0.35] },
       resources: { nest: [1, 1] }, colonies: {},
       residents: { colotl: 2, axolocatl: 0.8, cihuateotl: 0.5 }, population: [1, 1], ground: "",
       text: "A warm, sheltered corner with eggs in it. The creature that laid them stays close."
     },
     "bone-yard": {
-      name: "Bone yard", depth: [2, 13], weight: 1.2,
+      name: "Bone yard", purposes: ["trail", "crossing"], depth: [2, 13], weight: 1.2,
       needsNear: { habitats: ["predator-den", "earth-mouth", "shrine"], reach: 2, otherwise: "damp-cavern" },
       resources: { bones: [2, 3] }, colonies: { pinacate: [1, 1] },
       residents: { "xolo-hound": 2, "huay-chivo": 0.8, mictlaneca: 0.6 , mapachin: 1.5, hueymapachin: 1.2, "elder-mapachin": 0.8}, population: [0, 1], ground: "b",
       text: "Gnawed bones lie scattered everywhere, and beetles work through them. Scavengers feed here."
     },
     "dry-chamber": {
-      name: "Dry chamber", depth: [3, 13], weight: 1.6, water: "dry",
+      name: "Dry chamber", purposes: ["vent"], depth: [3, 13], weight: 1.6, water: "dry",
       names: { "living-rock": "Vent chamber" },
       prefers: { warm: [0.8, 0.25], moist: [0.15, 0.25] },
       resources: { plants: [0, 1] }, colonies: {},
@@ -164,7 +165,7 @@ window.CryptsEcology = {
       texts: { "living-rock": "The rock is hot to the touch and the air shimmers over a crack in the floor. The mouth below is breathing." }
     },
     shrine: {
-      name: "Old shrine", depth: [1, 13], weight: 1.4,
+      name: "Old shrine", purposes: ["shrine"], depth: [1, 13], weight: 1.4,
       prefers: { magic: [0.65, 0.35] },
       resources: { offering: [1, 1] }, colonies: {},
       residents: { mictlaneca: 2, yohualtepoztli: 1.4, cihuateotl: 1, tlacatecolotl: 1, duende: 0.8, itzpapalotl: 0.6, "feathered-serpent": 0.5 },
@@ -172,7 +173,7 @@ window.CryptsEcology = {
       text: "Someone kept offerings here once. The dead still come to what's left."
     },
     "overgrown-ruins": {
-      name: "Overgrown ruins", depth: [3, 9], weight: 2,
+      name: "Overgrown ruins", purposes: ["store", "garden"], depth: [3, 9], weight: 2,
       prefers: { moist: [0.5, 0.35], magic: [0.45, 0.35] },
       resources: { plants: [1, 2], fungus: [0, 1] }, colonies: { chicatana: [0, 1] },
       features: { "alux-house": { chance: 0.45, minFloor: 5 } },
@@ -180,7 +181,7 @@ window.CryptsEcology = {
       text: "The old lords' storerooms, split open by roots growing up from the deep. Small guardians keep what's left. Ask before you take."
     },
     "earth-mouth": {
-      name: "The earth's mouth", depth: [9, 13], weight: 2.2,
+      name: "The earth's mouth", purposes: ["crossing", "shrine", "garden"], depth: [9, 13], weight: 2.2,
       prefers: { elev: [0.25, 0.3], magic: [0.55, 0.35] },
       resources: { bones: [1, 2] }, colonies: { pinacate: [0, 1] },
       features: { mouth: { chance: 1 } },
@@ -188,7 +189,7 @@ window.CryptsEcology = {
       text: "The rock here is red and wet and breathes. A mouth opens in the floor. This is Tlaltecuhtli's body, and the dead go back into it."
     },
     "star-hollow": {
-      name: "Star hollow", depth: [8, 13], weight: 1.9,
+      name: "Star hollow", purposes: ["shrine", "roost"], depth: [8, 13], weight: 1.9,
       prefers: { magic: [0.85, 0.25] },
       resources: { fungus: [1, 2] }, colonies: {},
       residents: { itzpapalotl: 1, "feathered-serpent": 0.8, tlacatecolotl: 0.8, maquizcoatl: 0.4, "black-jaguar": 0.5, "black-turkey-raptor": 0.6, dungeonrabbit: 0.8, dungeonrabbit2: 0.6}, population: [0, 1], ground: "c",
@@ -375,7 +376,7 @@ window.CryptsEcology = {
     tlacatecolotl: {
       role: "predator", upkeep: 2.5, is: ["small"], eats: ["insects", "small", "tonalli"], temperament: "hostile",
       appetite: 0.5, size: 2,
-      note: "An owl in a man: hunts bats and insects, and feeds on shrines."
+      note: "An owl in a man: hunts bats and insects, and feeds on shrines. It feeds on fright too, and makes trouble to get it."
     },
     itzpapalotl: {
       role: "spirit", is: [], eats: ["tonalli", "small"], temperament: "hostile",
@@ -399,12 +400,12 @@ window.CryptsEcology = {
     },
     chaneque: {
       role: "guardian", is: [], eats: ["tonalli"], temperament: "neutral", offended: "susto",
-      appetite: 0.1, size: 0, flees: 0.8,
+      appetite: 0.1, size: 0, flees: 0.8, wards: true, levelBonus: 3,
       note: "A small guardian of wild places with an old face on a child's body, from the Nahua tellings of the Gulf coast. It keeps the springs and gardens. Ask it (tobacco, sweets, a drink) before you take from what it keeps, or it will frighten your soul out of you."
     },
     alux: {
       role: "guardian", is: [], eats: ["tonalli"], temperament: "neutral", offended: "stones",
-      appetite: 0.1, size: 0,
+      appetite: 0.1, size: 0, wards: true, levelBonus: 3,
       note: "A little guardian of the Yucatec Maya, made of clay by a priest and bound to a field or a house. The old lords carried these away as tribute. Feed it corn or honey and it keeps watch for you; rob what it guards and it throws stones. Break it and it reforms."
     }
   },

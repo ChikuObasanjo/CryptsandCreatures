@@ -11,12 +11,7 @@ window.CryptsEnemies = {
     "mapachin", "mapachin2", "mapachin3", "ocelot", "black-jaguar"
   ],
   // A sprite id that reuses another sprite's art with a CSS filter, for variants with no art of their own.
-  spriteAliases: {
-    mapachin2: { base: "mapachin", filter: "hue-rotate(-14deg) saturate(0.85) brightness(0.9)" },
-    mapachin3: { base: "mapachin", filter: "grayscale(0.75) brightness(0.78) contrast(1.15)" },
-    ocelot: { base: "jungle-jaguar", filter: "sepia(0.35) saturate(0.8) brightness(1.12)" },
-    "black-jaguar": { base: "jungle-jaguar", filter: "grayscale(0.6) brightness(0.42) contrast(1.35)" }
-  },
+  spriteAliases: {},
   starter: [
     { id: "cave-turkey", name: "Cave Turkey", description: "A blue-feathered turkey the height of a man's hip. It scratches glowcap beds for roots and snaps up grasshoppers, and it stays with its flock.", sprite: "raptor1", edible: true, hp: 9, ac: 12, attackBonus: 3, damage: "1d4+1", initiativeBonus: 3, xp: 20 },
     { id: "giant-turkey", name: "Giant Turkey", description: "A green-feathered turkey as tall as a man, with a foot-claw it uses on anything that crowds its flock. The Mexica raised turkeys for meat; these are a larger line of them.", sprite: "raptor2", edible: true, hp: 16, ac: 13, attackBonus: 4, damage: "1d6+2", initiativeBonus: 3, xp: 45 },

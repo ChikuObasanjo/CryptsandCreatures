@@ -17,7 +17,7 @@
 // Two ways a delver lives:
 //   On your floor (while you're in the tomb), a delver is a figure on the map, drawn like you,
 //   moving and fighting turn by turn (delverAct). They're neutral: you can't attack them,
-//   and walking into one talks to them.
+//   walking into one trades places with them, and the interact button talks to them.
 //   Everywhere else, hour by hour (delverHour): encounters, treasure, rest, meals, going
 //   down, climbing out. The same rules decide both.
 //
@@ -244,7 +244,7 @@ function delverOpenSpot(data, near = null) {
     for (let tries = 0; tries < 12; tries += 1) {
       const x = room.mapX + randomInt(room.mapW) - 1;
       const y = room.mapY + randomInt(room.mapH) - 1;
-      if (free(x, y) && (data !== state.run || distanceInSquares({ x, y }, state.run.player) >= 8)) return { x, y };
+      if (free(x, y) && (data !== state.run || distanceInSquares({ x, y }, state.run.player) >= gridReach(8))) return { x, y };
     }
   }
   return null;
@@ -587,8 +587,8 @@ function creatureHostileToDelver(creature) {
 
 function delverFoes(entity) {
   return state.run.enemies.filter((creature) => creature.alive && !creature.delver && !creature.friendly &&
-    distanceInSquares(creature, entity) <= 6 && hasLineOfSight(creature, entity) &&
-    (creature.delverFoe === entity.id || (creature.lord ? false : creatureHostileToDelver(creature) && distanceInSquares(creature, entity) <= 4)));
+    distanceInSquares(creature, entity) <= gridReach(6) && hasLineOfSight(creature, entity) &&
+    (creature.delverFoe === entity.id || (creature.lord ? false : creatureHostileToDelver(creature) && distanceInSquares(creature, entity) <= gridReach(4))));
 }
 
 function delverStepAwayFrom(entity, from) {
@@ -659,7 +659,7 @@ function creatureFightsDelver(creature, distanceToYou) {
       .sort((a, b) => distanceInSquares(a, creature) - distanceInSquares(b, creature))[0] || null;
     if (foe) creature.delverFoe = foe.id;
   }
-  if (!foe || distanceInSquares(foe, creature) > 8) {
+  if (!foe || distanceInSquares(foe, creature) > gridReach(8)) {
     if (creature.delverFoe && !foe) creature.delverFoe = null;
     return false;
   }
@@ -691,7 +691,7 @@ function delverAct(entity) {
   if (turns % 6 === 0) delver.hoursOnFloor += 1;
   const share = entity.hp / entity.maxHp;
   // Seeing you.
-  if (playerSees(entity) && distanceInSquares(entity, state.run.player) <= 6) {
+  if (playerSees(entity) && distanceInSquares(entity, state.run.player) <= gridReach(6)) {
     if (!delver.greeted) {
       delver.greeted = true;
       delverSay(delver, entity, delver.known > 0 ? "again" : "greet");
@@ -746,7 +746,7 @@ function delverAct(entity) {
       delverTakesCache(delver, entity, here);
       return;
     }
-    const cache = state.run.treasures.filter((entry) => !entry.dropped && !entry.mainGoal && distanceInSquares(entry, entity) <= 7 &&
+    const cache = state.run.treasures.filter((entry) => !entry.dropped && !entry.mainGoal && distanceInSquares(entry, entity) <= gridReach(7) &&
       hasLineOfSight(entity, entry) && !(entry.x === state.run.player.x && entry.y === state.run.player.y))
       .sort((a, b) => distanceInSquares(a, entity) - distanceInSquares(b, entity))[0];
     if (cache) {
@@ -948,6 +948,7 @@ function delverLordFalls(entity, delver) {
       alerted: true, guardian: true, greatGuardian: true, emerged: true, roomIndex: roomIndexAt(spot.x, spot.y),
       inflicts: PROGRESSION.creatureConditions.tzitzimitl ? { ...PROGRESSION.creatureConditions.tzitzimitl } : undefined
     };
+    if (typeof growCreature === "function") growCreature(spirit, DUNGEON_FLOOR_COUNT);
     if (typeof ecoCreature === "function") ecoCreature(spirit);
     state.run.enemies.push(spirit);
     if (state.run.rooms[spirit.roomIndex]) state.run.rooms[spirit.roomIndex].optionalQuest = true;
@@ -1021,7 +1022,7 @@ function delverCrownVessel(delver, entity = null, spirit = null) {
 
 // ---------- You and them ----------
 
-// The talk action, and walking into one.
+// The talk action (on the interact button; walking into a delver trades places instead).
 function talkToDelver(entity) {
   const delver = delverOf(entity);
   if (!delver) return;

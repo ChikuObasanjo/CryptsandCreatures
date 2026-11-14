@@ -79,11 +79,11 @@ const CREATURE_HABITS = {
   },
   chaneque: {
     habit: "skirmisher",
-    note: "Habit: leaves you be unless you take from what it keeps without a gift. Attacked, it nips and darts away."
+    note: "Habit: leaves you be unless you take from what it keeps without a gift. Angered, it shrieks the soul out of you, turns you around so you lose your way, and slips out of sight when it's hurt. Ordinary weapons only half harm it."
   },
   alux: {
     habit: "caster",
-    note: "Habit: leaves you be unless you rob what it guards without a gift. Then it throws stones from up to 5 squares away."
+    note: "Habit: leaves you be unless you rob what it guards without a gift. Then it throws stones from up to 5 squares away, and whistles down a rain of stones on wherever you stand. Ordinary weapons only half harm it, and when it breaks it is made again at its house."
   },
   tlacoocelotl: {
     habit: "skirmisher",
@@ -123,7 +123,7 @@ const CREATURE_HABITS = {
   },
   tlacatecolotl: {
     habit: "caster",
-    note: "Habit: hoots from up to 5 squares away. Close the distance or break its line of sight."
+    note: "Habit: plays tricks from the dark. It makes the sounds of other animals, or of someone calling for help, to draw you off or onto a trap, and its hoot is an ill omen. In a fight it hoots from up to 5 squares away: close the distance or break its line of sight."
   },
   "huay-chivo": {
     habit: "charger",
@@ -246,7 +246,7 @@ function tileHasCreature(x, y, except = null) {
 function creatureStepToward(enemy, target, { adjacent = false, throughDoors = false } = {}) {
   const queue = [{ x: enemy.x, y: enemy.y, first: null }];
   const visited = new Set([tileIndex(enemy.x, enemy.y)]);
-  for (let cursor = 0; cursor < queue.length && cursor < 2500; cursor += 1) {
+  for (let cursor = 0; cursor < queue.length && cursor < 2500 * MAP_SCALE * MAP_SCALE; cursor += 1) {
     const current = queue[cursor];
     const reached = adjacent
       ? distanceInSquares(current, target) <= 1 && current.first
@@ -352,7 +352,7 @@ function creatureNoticeRange(enemy) {
   if (stance === "disengage") range -= 1;
   if (typeof activeBuff === "function" && activeBuff("hushed")) range -= 1;
   if (typeof ecologyNoticeModifier === "function") range += ecologyNoticeModifier(enemy);
-  return Math.max(1, range);
+  return gridReach(Math.max(1, range));
 }
 
 function creatureNotices(enemy, distance) {
@@ -369,7 +369,7 @@ function creatureNotices(enemy, distance) {
   if (senses) return true;
   if (habit === "sentinel") return false;
   return sameRoom && enemy.roomIndex === state.run.currentRoom && hasLineOfSight(enemy, state.run.player) &&
-    (state.run.character?.class !== "rogue" || distance <= 4);
+    (state.run.character?.class !== "rogue" || distance <= gridReach(4));
 }
 
 // Hidden ambushers: noticed by a sharp eye, or they spring when you come close.
@@ -384,7 +384,7 @@ function stirLurkers() {
     // for something at the water's edge.
     if (lurker.templateId === "cenote-stalker" && typeof deepWaterAt === "function" && deepWaterAt(lurker.x, lurker.y)) {
       const hungry = typeof ecoHungerState === "function" && ["hungry", "starving"].includes(ecoHungerState(lurker));
-      if (hungry && distance <= 8 && (state.run.steps || 0) - (lurker.criedAt ?? -99) > 30) {
+      if (hungry && distance <= gridReach(8) && (state.run.steps || 0) - (lurker.criedAt ?? -99) > 30) {
         lurker.criedAt = state.run.steps || 0;
         addLog("From the water comes a sound like a baby crying.");
         if (typeof ecoObserve === "function") ecoObserve("cenote-stalker", "cries");
@@ -392,20 +392,20 @@ function stirLurkers() {
       if (distance <= 1) {
         revealLurker(lurker, true);
         addLog(`A hand on the end of a tail closes on your ankle: an ${lurker.name} comes up out of the water!`);
-      } else if (distance <= 2 && passive >= lurker.stealthDc + 2 && hasLineOfSight(state.run.player, lurker)) {
+      } else if (distance <= gridReach(2) && passive >= lurker.stealthDc + 2 && hasLineOfSight(state.run.player, lurker)) {
         revealLurker(lurker, false);
         addLog(`Something dark moves under the fish: an ${lurker.name} (passive Perception ${passive}).`);
       }
       continue;
     }
-    if (distance > 5) continue;
+    if (distance > gridReach(5)) continue;
     const inSight = hasLineOfSight(state.run.player, lurker);
-    if ((tracker && distance <= 5) || (inSight && distance <= 4 && passive >= lurker.stealthDc)) {
+    if ((tracker && distance <= gridReach(5)) || (inSight && distance <= gridReach(4) && passive >= lurker.stealthDc)) {
       revealLurker(lurker, false);
       addLog(tracker
         ? `Fresh tracks give it away: a ${lurker.name} lies in wait ahead.`
         : `You spot a ${lurker.name} lying in wait (passive Perception ${passive}).`);
-    } else if (distance <= 2) {
+    } else if (distance <= gridReach(2)) {
       revealLurker(lurker, true);
       addLog(`A ${lurker.name} bursts from hiding!`);
     } else if (lurker.templateId === "yohualtepoztli" && !lurker.heard) {
@@ -427,7 +427,7 @@ function revealLurker(lurker, ambush) {
 function searchForLurkers() {
   let found = 0;
   for (const lurker of [...(state.run.lurkers || [])]) {
-    if (distanceInSquares(lurker, state.run.player) > 4 || !hasLineOfSight(state.run.player, lurker)) continue;
+    if (distanceInSquares(lurker, state.run.player) > gridReach(4) || !hasLineOfSight(state.run.player, lurker)) continue;
     if (randomInt(20) + skillBonus("perception") >= lurker.stealthDc) {
       revealLurker(lurker, false);
       addLog(`Your search turns up a ${lurker.name} lying in wait.`);
@@ -441,7 +441,7 @@ function searchForLurkers() {
 function makeNoise(origin, radius = 4) {
   for (const enemy of state.run.enemies) {
     if (!enemy.alive || !enemy.deepSleep || !enemy.asleep) continue;
-    if (distanceInSquares(enemy, origin) <= radius && randomInt(2) === 1) wakeSleeper(enemy, "The noise wakes");
+    if (distanceInSquares(enemy, origin) <= gridReach(radius) && randomInt(2) === 1) wakeSleeper(enemy, "The noise wakes");
   }
 }
 
@@ -456,7 +456,7 @@ function wakeSleeper(enemy, reason) {
 function checkSleepers() {
   for (const enemy of state.run.enemies) {
     if (!enemy.alive || !enemy.deepSleep || !enemy.asleep) continue;
-    if (distanceInSquares(enemy, state.run.player) > 2) continue;
+    if (distanceInSquares(enemy, state.run.player) > gridReach(2)) continue;
     const dc = 10 + Math.floor((state.run.dungeonFloor || 1) / 2);
     const quiet = state.run.character?.class === "rogue" || (typeof currentStance === "function" && currentStance() === "disengage");
     const loud = (typeof currentStance === "function" && currentStance() === "run") || armorIsNoisy();
@@ -469,7 +469,7 @@ function checkSleepers() {
 
 function foodCacheNear(enemy, reach) {
   return state.run.treasures.find((treasure) => treasure.dropped &&
-    distanceInSquares(treasure, enemy) <= reach &&
+    distanceInSquares(treasure, enemy) <= gridReach(reach) &&
     treasure.items.some((item) => FOOD_ITEMS[item.id] && item.quantity > 0)) || null;
 }
 
@@ -505,6 +505,23 @@ function swarmFeeds(enemy) {
 function stealFrom(enemy) {
   const loot = expeditionLoot();
   const purse = Math.min(state.run.gold, loot.gold);
+  // What it loves comes before gold (systems/cherish.js).
+  const wanted = typeof cherishWanted === "function" && !enemy.mind?.gifted ? cherishWanted(enemy) : null;
+  if (wanted && !enemy.stolen && !enemy.carrying) {
+    const dc = 11 + Math.floor((state.run.dungeonFloor || 1) / 2);
+    const save = randomInt(20) + savingThrowBonus("dex");
+    if (save >= dc) {
+      addLog(`${enemy.name} grabs at your pack, but you pull it away (Dexterity save ${save} vs. ${dc}).`);
+      return true;
+    }
+    removeInventoryItem(wanted);
+    enemy.carrying = { gold: 0, items: [{ id: wanted, quantity: 1 }] };
+    enemy.fleeing = true;
+    if (typeof mindSated === "function") mindSated(enemy, 60);
+    sfx("miss");
+    addLog(`${enemy.name} snatches ${itemDetails(wanted).name} from your pack and runs, hugging it!`);
+    return true;
+  }
   if (purse < 1 || enemy.stolen) return false;
   const dc = 11 + Math.floor((state.run.dungeonFloor || 1) / 2);
   const save = randomInt(20) + savingThrowBonus("dex");
@@ -528,7 +545,7 @@ function thiefEscapes(enemy) {
   const options = [];
   for (let y = 0; y < MAP_TILE_SIZE; y += 1) {
     for (let x = 0; x < MAP_TILE_SIZE; x += 1) {
-      if (isWalkable(x, y) && !tileHasCreature(x, y, enemy) && distanceInSquares({ x, y }, state.run.player) >= 14) options.push({ x, y });
+      if (isWalkable(x, y) && !tileHasCreature(x, y, enemy) && distanceInSquares({ x, y }, state.run.player) >= gridReach(14)) options.push({ x, y });
     }
   }
   if (!options.length) return;
@@ -625,6 +642,8 @@ function resolveHeavyBlow(enemy) {
 function creatureAct(enemy, distance) {
   const habit = creatureHabit(enemy);
   const heavy = heavyBlowFor(enemy);
+  // A power of its own: the chaneque's fright, the alux's stones (systems/wiles.js).
+  if (!enemy.fleeTurns && !enemy.windup && typeof wilesAct === "function" && wilesAct(enemy, distance)) return true;
   if (heavy && enemy.windup) {
     resolveHeavyBlow(enemy);
     return true;
@@ -652,7 +671,7 @@ function creatureAct(enemy, distance) {
     if (away) moveCreature(enemy, away);
     else if (distance === 1) enemyAttack(enemy);
     // Far enough away and out of sight, a frightened animal gives up the fight.
-    if (enemy.fleeTurns <= 0 && enemy.eco?.fledOnce && distanceInSquares(enemy, state.run.player) >= 5 &&
+    if (enemy.fleeTurns <= 0 && enemy.eco?.fledOnce && distanceInSquares(enemy, state.run.player) >= gridReach(5) &&
       !hasLineOfSight(state.run.player, enemy)) {
       enemy.alerted = false;
       enemy.provoked = false;
@@ -662,9 +681,9 @@ function creatureAct(enemy, distance) {
   if (habit === "grazer") {
     // A grazer wants away from you; it only fights when it's cornered.
     const away = creatureStepAway(enemy);
-    if (away && distance <= 4) moveCreature(enemy, away);
+    if (away && distance <= gridReach(4)) moveCreature(enemy, away);
     else if (distance === 1) enemyAttack(enemy);
-    if (distance >= 5 && !hasLineOfSight(state.run.player, enemy)) enemy.alerted = false;
+    if (distance >= gridReach(5) && !hasLineOfSight(state.run.player, enemy)) enemy.alerted = false;
     return true;
   }
   if (habit === "swarm") {
@@ -687,7 +706,7 @@ function creatureAct(enemy, distance) {
       if (away) moveCreature(enemy, away);
       else if (distance === 1) enemyAttack(enemy);
       const now = distanceInSquares(enemy, state.run.player);
-      if (enemy.alive && now >= 8 && !hasLineOfSight(state.run.player, enemy)) thiefEscapes(enemy);
+      if (enemy.alive && now >= gridReach(8) && !hasLineOfSight(state.run.player, enemy)) thiefEscapes(enemy);
       return true;
     }
     if (distance === 1 && randomInt(100) <= 70) return stealFrom(enemy);
@@ -695,7 +714,7 @@ function creatureAct(enemy, distance) {
   }
   if (habit === "sentinel") {
     const fromPost = distanceInSquares(state.run.player, enemy.post || enemy);
-    if (fromPost > 4 && distance > 1) {
+    if (fromPost > gridReach(4) && distance > 1) {
       const home = enemy.post || enemy;
       if (enemy.x === home.x && enemy.y === home.y) enemy.alerted = false;
       else moveCreature(enemy, creatureStepToward(enemy, home));
@@ -705,7 +724,7 @@ function creatureAct(enemy, distance) {
   }
   if (habit === "territorial") {
     const inRoom = roomIndexAt(state.run.player.x, state.run.player.y) === enemy.roomIndex;
-    if (!inRoom && distance > 2) {
+    if (!inRoom && distance > gridReach(2)) {
       const home = enemy.post || enemy;
       if (enemy.x === home.x && enemy.y === home.y) {
         if (enemy.alerted) reportAt(enemy, `${enemy.name} watches you go and settles back into its chamber.`);
@@ -750,12 +769,13 @@ function creatureIdle(enemy) {
       enemy.alive = false;
       enemy.gone = true;
       enemy.lootDropped = true;
+      if (typeof richesCarriedUp === "function") richesCarriedUp(enemy);
       reportAt(enemy, `${enemy.name} trots up the stairs toward the light and is gone.`);
       return;
     }
     const step = creatureStepToward(enemy, goal, { throughDoors: true });
     if (step && state.run.terrain[tileIndex(step.x, step.y)] === "door" && !state.run.openDoors.includes(tileIndex(step.x, step.y))) {
-      state.run.openDoors.push(tileIndex(step.x, step.y));
+      openDoorway(tileIndex(step.x, step.y));
       return;
     }
     if (!step) {
@@ -774,6 +794,8 @@ function creatureIdle(enemy) {
 function beginCreaturePhase() {
   stirLurkers();
   checkSleepers();
+  // Sounds from out of sight, and the owl-man's tricks (systems/wiles.js).
+  if (typeof wilesTurn === "function") wilesTurn();
 }
 
 // ---------- Display ----------

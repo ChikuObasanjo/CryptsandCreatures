@@ -160,7 +160,7 @@ function payOverchannel() {
 
 // Map extras: rangers hear creatures through walls (a mark, not the creature), wizards see treasure.
 function knackRevealsCreature(enemy) {
-  return state.run.character?.class === "ranger" && distanceInSquares(enemy, state.run.player) <= 8;
+  return state.run.character?.class === "ranger" && distanceInSquares(enemy, state.run.player) <= gridReach(8);
 }
 
 function knackRevealsTreasure(treasure) {

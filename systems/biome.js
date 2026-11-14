@@ -66,15 +66,25 @@ function makeFloorTerrain(depth) {
   // The whole floor tilts one way, so water has somewhere to run.
   const angle = Math.random() * Math.PI * 2;
   const tilt = (x, y) => 0.5 + 0.5 * (((x / MAP_TILE_SIZE) - 0.5) * Math.cos(angle) + ((y / MAP_TILE_SIZE) - 0.5) * Math.sin(angle));
+  // Every floor also leans to the four quarters, the same way on every floor, so the tomb
+  // has a compass you can learn (the top of the map is north):
+  //   north  Mictlampa, the quarter of the dead: colder, and old power lies thicker
+  //   south  Huitztlampa, the dry quarter: warmer and drier
+  //   east   where the sun comes up and the tomb's galleries face: wetter, greener
+  //   west   Cihuatlampa, the quarter of women: where nests are kept (systems/forms.js)
+  const span = MAP_TILE_SIZE - 1;
+  const lean = (value) => Math.min(1, Math.max(0, value));
   return {
     depth,
     band: tombBand(depth),
     sample(x, y) {
+      const north = 1 - 2 * (y / span);   // 1 at the top of the map, −1 at the bottom
+      const east = 2 * (x / span) - 1;
       return {
         elev: Math.min(1, Math.max(0, 0.45 * broad(x, y) + 0.25 * fine(x, y) + 0.3 * tilt(x, y))),
-        moist: damp(x, y),
-        warm: heat(x, y),
-        magic: power(x, y)
+        moist: lean(damp(x, y) + 0.16 * east + 0.08 * north),
+        warm: lean(heat(x, y) - 0.2 * north),
+        magic: lean(power(x, y) + 0.2 * north)
       };
     }
   };
@@ -100,7 +110,7 @@ function roomHops(rooms, origin) {
 
 // Fills room.env = { elev, moist, warm, shelter, magic, water } (all 0–1, water is
 // "basin", "stream", or "") and returns the floor's water courses.
-function computeRoomEnvironments(rooms, terrain) {
+function computeRoomEnvironments(rooms, terrain, tiles = null) {
   const depth = terrain.depth;
   const band = terrain.band;
   const raw = rooms.map((room) => terrain.sample(room.anchorX, room.anchorY));
@@ -113,9 +123,13 @@ function computeRoomEnvironments(rooms, terrain) {
   });
   // Water pools where a chamber sits lower than everything it connects to.
   const eligible = (index) => index > 0 && rooms[index].type !== "boss" && !rooms[index].mainTreasure;
-  const basins = rooms.map((room, index) => index).filter((index) => eligible(index) &&
+  // The chambers sited and shaped to hold water come first (systems/forms.js).
+  const sited = rooms.map((room, index) => index).filter((index) => eligible(index) && rooms[index].purpose === "basin");
+  const holdsWater = (room) => !room.purpose || ["garden", "trail", "crossing"].includes(room.purpose);
+  const lowest = rooms.map((room, index) => index).filter((index) => eligible(index) && !sited.includes(index) && !rooms[index].leaf && holdsWater(rooms[index]) &&
     (rooms[index].links || []).every((link) => rank[link] > rank[index]) && rank[index] < 0.6)
     .sort((a, b) => rank[a] - rank[b]);
+  const basins = [...sited.sort((a, b) => rank[a] - rank[b]), ...lowest];
   const wetBand = band === "living-rock" ? 3 : band === "rootbound" ? 2 : 2;
   const chosen = basins.slice(0, wetBand);
   // Every floor keeps at least one pool, so something can drink.
@@ -156,9 +170,13 @@ function computeRoomEnvironments(rooms, terrain) {
   // Warmth rises from the mouth below; deeper floors have vents.
   const vents = [];
   if (depth >= 5) {
-    const candidates = rooms.map((room, index) => index).filter((index) => eligible(index) && !rooms[index].env.water);
+    // The chambers made for the heat (a sweat bath, a heart of hot rock) are the vents;
+    // failing those, any dry chamber.
+    const made = rooms.map((room, index) => index).filter((index) => eligible(index) && rooms[index].purpose === "vent" && !rooms[index].env.water);
+    const candidates = rooms.map((room, index) => index).filter((index) => eligible(index) && !rooms[index].env.water && !made.includes(index));
     const ventCount = depth >= 9 ? 2 : 1;
-    for (let n = 0; n < ventCount && candidates.length; n += 1) {
+    vents.push(...made.slice(0, ventCount));
+    for (let n = vents.length; n < ventCount && candidates.length; n += 1) {
       const pick = candidates.splice(randomInt(candidates.length) - 1, 1)[0];
       vents.push(pick);
     }
@@ -173,8 +191,13 @@ function computeRoomEnvironments(rooms, terrain) {
     room.env.warm = clamp01(warm);
     room.env.vent = vents.includes(index);
   });
-  // Shelter: dead ends and small rooms are snug; great halls and crossroads are not.
+  // Shelter: dead ends and small rooms are snug; great halls and crossroads are not. Read
+  // from the chamber as it was dug (how much floor, how many ways in) when that's known.
   rooms.forEach((room) => {
+    if (tiles) {
+      room.env.shelter = clamp01(formShelter(room, tiles) + (Math.random() - 0.5) * 0.08);
+      return;
+    }
     const degree = (room.links || []).length;
     const shapeBonus = { cell: 0.2, ell: 0.12, round: 0.05, hall: -0.05, cross: -0.12, pillared: -0.15 }[room.shape] || 0;
     room.env.shelter = clamp01(1.05 - 0.27 * degree + shapeBonus + (Math.random() - 0.5) * 0.12);
@@ -182,8 +205,11 @@ function computeRoomEnvironments(rooms, terrain) {
   // Old power: the Lords' works, the deep rock, and the mouth.
   rooms.forEach((room, index) => {
     const bandMagic = { rootbound: 0.05, fortress: 0.2, "living-rock": 0.3, mouth: 0.6 }[band];
-    room.env.magic = clamp01(bandMagic + 0.45 * raw[index].magic + (room.shape === "pillared" ? 0.12 : 0));
+    room.env.magic = clamp01(bandMagic + 0.45 * raw[index].magic + (room.shape === "pillared" || room.purpose === "shrine" ? 0.12 : 0));
   });
+  // Nepantla, the middle: how unlike each chamber is to the ones it opens onto. Where the
+  // wet meets the dry and the warm meets the cold, more grows (systems/laws.js).
+  rooms.forEach((room) => { room.env.edge = Math.round(lawEdge(room, rooms) * 100) / 100; });
   return { streams, vents };
 }
 
@@ -194,12 +220,15 @@ function clamp01(value) {
 // ---------- Habitats ----------
 
 // How well a habitat suits a chamber: its preferred surroundings, minus how far off they are.
-function habitatFit(habitat, env) {
+function habitatFit(habitat, env, purpose = "") {
   let score = habitat.weight || 1;
+  // How far the chamber is from where this habitat rests, on each thing it cares about
+  // (systems/laws.js: the middle).
   for (const [key, [center, tolerance]] of Object.entries(habitat.prefers || {})) {
-    const off = ((env[key] ?? 0.5) - center) / tolerance;
-    score -= off * off;
+    score -= lawMiddle(env[key] ?? 0.5, center, tolerance);
   }
+  // A chamber sited and shaped for a purpose suits the habitats that are that purpose.
+  if (purpose && habitat.purposes) score += habitat.purposes.includes(purpose) ? 2.4 : -0.8;
   if (habitat.water === "basin" && env.water !== "basin") return -Infinity;
   if (habitat.water === "dry" && env.water) score -= 3;
   if (habitat.water !== "basin" && env.water === "basin") score -= 4;
@@ -225,13 +254,18 @@ function assignHabitatsFromEnvironment(rooms, floor = state.run.dungeonFloor || 
   let bare = Math.round(eligible.length * bareShare);
   for (const index of ordered) {
     const env = rooms[index].env || { elev: 0.5, moist: 0.5, warm: 0.5, shelter: 0.5, magic: 0.3, water: "" };
-    if (bare > 0 && env.water !== "basin" && Math.random() < 0.5) {
+    // (Only chambers with no purpose of their own, or the ones you pass through, stay bare.)
+    const passing = !rooms[index].purpose || ["trail", "crossing", "store"].includes(rooms[index].purpose);
+    if (bare > 0 && passing && env.water !== "basin" && Math.random() < 0.5) {
       assigned.set(index, null);
       bare -= 1;
       continue;
     }
     const scored = habitats.map(([id, habitat]) => {
-      let score = habitatFit(habitat, env) - 1.4 * (counts[id] || 0) + (Math.random() - 0.5) * 1.1;
+      // Nothing dens or nests on a stair: the ways between floors are everyone's road, and
+      // you can always catch your breath where you come in.
+      if (rooms[index].planned && (habitat.territory || id === "nesting-chamber")) return { id, score: -Infinity };
+      let score = habitatFit(habitat, env, rooms[index].purpose) - 1.4 * (counts[id] || 0) + (Math.random() - 0.5) * 1.1;
       // Gardens grow fat beside a roost; roosts like gardens to forage over.
       const neighborIds = (rooms[index].links || []).map((link) => assigned.get(link)).filter(Boolean);
       for (const [other, bonus] of Object.entries(habitat.likesNear || {})) {
@@ -261,12 +295,14 @@ function assignHabitatsFromEnvironment(rooms, floor = state.run.dungeonFloor || 
   const swap = (ids, fallbackPool) => {
     const options = eligible.filter((index) => rooms[index].env?.water !== "basin" && fallbackPool(rooms[index]));
     if (!options.length) return;
-    const pick = options.sort((a, b) => (rooms[b].env?.moist || 0) - (rooms[a].env?.moist || 0))[0];
+    // A chamber made for it first; failing that, the dampest.
+    const made = (index) => (BIOME.habitats[ids[0]]?.purposes?.includes(rooms[index].purpose) ? 1 : 0);
+    const pick = options.sort((a, b) => made(b) - made(a) || (rooms[b].env?.moist || 0) - (rooms[a].env?.moist || 0))[0];
     rooms[pick].habitat = ids[0];
   };
   const grazing = ["fungal-garden", "insect-cavern", "overgrown-ruins"].filter((id) => habitatAllowed(BIOME.habitats[id], floor));
   if (!has(grazing)) swap(grazing, (room) => !room.habitat || ["damp-cavern"].includes(room.habitat));
-  if (floor >= 2 && !has(["shrine"])) swap(["shrine"], (room) => !room.habitat);
+  if (floor >= 2 && !has(["shrine"])) swap(["shrine"], (room) => !room.habitat || room.purpose === "shrine");
   for (const room of rooms) {
     if (room.habitat && !BIOME.habitats[room.habitat]) room.habitat = null;
   }
@@ -299,7 +335,15 @@ function dressFloorGround(rooms, terrain, courses) {
     const tiles = floorTiles(room);
     const habitat = BIOME.habitats[room.habitat];
     const dress = habitat?.ground || "";
-    if (room.env?.water === "basin" || room.habitat === "flooded-chamber") {
+    if (room.shape === "chinampa") {
+      // Raised beds between channels: every other row (or column) of the hall is shallow
+      // water, and the beds between are black with rot and mycelium.
+      const across = room.mapW >= room.mapH;
+      for (const tile of tiles) {
+        const along = across ? tile.y - room.mapY : tile.x - room.mapX;
+        ground[tileIndex(tile.x, tile.y)] = along % 2 === 0 ? "w" : "y";
+      }
+    } else if (room.env?.water === "basin" || room.habitat === "flooded-chamber") {
       laySpringPool(room, tiles, terrain, ground);
     }
     for (const char of dress) {

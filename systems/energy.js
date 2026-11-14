@@ -25,7 +25,11 @@
 
 // Tuning can be overridden before load (tools/tune.js does this to test settings).
 const ECO_TUNE = window.CryptsEcoTuning || {};
-const ECO_BUDGET_TOP = ECO_TUNE.budgetTop ?? 100;       // upkeep points floor 13 can carry
+const ECO_BUDGET_TOP = ECO_TUNE.budgetTop ?? 150;       // upkeep points floor 13 can carry, per chamber-sized share of floor
+// Floors are lived on a grid twice as fine as they're planned (systems/grid.js): four times
+// the ground, so twice the life. The kinds a floor can feed are still judged per share of
+// floor (a jaguar needs the same range it always did), so this changes how many, not which.
+const ECO_ROOMINESS = ECO_TUNE.roominess ?? 2;
 const ECO_HERB_FILL = ECO_TUNE.herbFill ?? 0.45;        // share of the budget a new floor's herb layer is filled to
 const ECO_HERB_CEILING = ECO_TUNE.herbCeiling ?? 0.95;  // the most grazing the plants could ever carry
 const ECO_NICHE_HIGH = ECO_TUNE.nicheHigh ?? 0.5;       // a breeding pair of grazers or scavengers has to fit in this share of its layer
@@ -47,13 +51,14 @@ const ECO_GORGED_CAP = 200;                              // a big kill can stuff
 
 const ECO_LAYER_OF_ROLE = { grazer: "herb", omnivore: "herb", predator: "pred", scavenger: "scav" };
 
-// Share of the mouth's energy that reaches a floor: 1 at the mouth, falling toward the surface.
+// Share of the mouth's energy that reaches a floor: 1 on floor 13, falling toward the
+// surface as one over the distance to the mouth (systems/growth.js).
 function ecoFloorShare(floor = state.run?.dungeonFloor || 1) {
-  return Math.pow(ECO_ENERGY_DECAY, Math.max(0, DUNGEON_FLOOR_COUNT - floor));
+  return mouthShare(floor);
 }
 
 function ecoFloorBudget(floor = state.run?.dungeonFloor || 1) {
-  return ECO_BUDGET_TOP * ecoFloorShare(floor);
+  return ECO_BUDGET_TOP * ECO_ROOMINESS * ecoFloorShare(floor);
 }
 
 function ecoLayer(species) {
@@ -141,7 +146,8 @@ function ecoCanFeed(id, floor) {
   const species = ECO.species[id];
   const layer = ecoLayer(species);
   if (!layer) return true;
-  const capacity = ecoLayerCapacity(floor)[layer];
+  // (Judged per share of floor: see ECO_ROOMINESS.)
+  const capacity = ecoLayerCapacity(floor)[layer] / ECO_ROOMINESS;
   const need = ecoUpkeep(species) * ecoMinimumPopulation(species);
   if (need > capacity * (layer === "pred" ? ECO_NICHE_HIGH_PRED : ECO_NICHE_HIGH)) return false;
   if (species.rank && need < capacity * (layer === "pred" ? ECO_NICHE_LOW_PRED : ECO_NICHE_LOW) && ecoHasBiggerKin(id, floor)) return false;
@@ -152,7 +158,7 @@ function ecoCanFeed(id, floor) {
 function ecoHasBiggerKin(id, floor) {
   const species = ECO.species[id];
   const layer = ecoLayer(species);
-  const capacity = ecoLayerCapacity(floor)[layer];
+  const capacity = ecoLayerCapacity(floor)[layer] / ECO_ROOMINESS;
   return Object.entries(ECO.species).some(([other, kin]) => other !== id && kin.rank && ecoLayer(kin) === layer &&
     ecoUpkeep(kin) > ecoUpkeep(species) &&
     ecoUpkeep(kin) * ecoMinimumPopulation(kin) <= capacity * (layer === "pred" ? ECO_NICHE_HIGH_PRED : ECO_NICHE_HIGH));
@@ -306,7 +312,7 @@ function ecoFedCount() {
 
 // How many of an untiered species a floor holds at most.
 function ecoSpeciesCap(species) {
-  return species.breeds?.cap ?? 3;
+  return Math.round((species.breeds?.cap ?? 3) * ECO_ROOMINESS);
 }
 
 // ---------- Hunting off screen ----------
@@ -315,7 +321,8 @@ function ecoSpeciesCap(species) {
 // luck falls with the herd, and the herd recovers.
 function ecoHuntOdds(floor = state.run.dungeonFloor || 1) {
   const pressure = ecoHerbPressure(floor);
-  return Math.max(0.03, Math.min(1.4, pressure * pressure));
+  // On the south's days, the dry quarter, hunters range farther.
+  return Math.max(0.03, Math.min(1.4, pressure * pressure)) * (lawLeans("south") ? 1.2 : 1);
 }
 
 // A starving animal leaves by the nearest stair for a floor that can feed its kind. The
@@ -371,12 +378,14 @@ function ecoBreed(eco, cap) {
     const count = counts[id];
     if (count < 2 && ecoMinimumPopulation(species) >= 2) continue;
     const parents = state.run.enemies.filter((enemy) => enemy.alive && enemy.templateId === id && !enemy.alerted &&
-      !enemy.guardian && ecoCreature(enemy).sat >= 55);
+      !enemy.guardian && ecoCreature(enemy).sat >= 55 && !ecoIsSick(enemy));
     if (!parents.length) continue;
     let chance = Math.min(0.9, parents.length * ECO_CENSUS_EVERY / species.breeds.every);
     // A herd breeds more slowly as it nears what the plants can feed (a little past the
     // crowding line, so a herd no one hunts does get crowded).
     if (layer === "herb") chance *= Math.max(0, 1 - ecoHerbPressure(floor) / 1.75);
+    // On the west's days, the quarter of women and of birth, more young are born.
+    if (lawLeans("west")) chance *= 1.25;
     if (Math.random() >= chance) continue;
     if (ecoFedCount() >= cap) return;
     if (layer) {
@@ -393,6 +402,9 @@ function ecoBreed(eco, cap) {
     const young = ecoNewCreature(id, spot, ecoCreature(parent).home);
     if (!young) continue;
     young.eco.sat = 50;
+    // Its parent feeds it while it is small (ecoNurse), until it has grown.
+    young.eco.parent = parent.id;
+    young.eco.born = eco.ticks || 0;
     // Born knowing some of what its parent learned about you (systems/minds.js).
     if (typeof mindInherit === "function") mindInherit(young, parent);
     state.run.enemies.push(young);
@@ -416,7 +428,10 @@ function ecoHerbPressure(floor = state.run.dungeonFloor || 1) {
 // population so nothing is made from nothing. The mouth floor has no floor below; it is
 // the source, so its migrants come up out of the mouth.
 function ecoMigrate(eco) {
-  if ((eco.ticks || 0) - (eco.lastMigrant ?? -9999) < ECO_TICKS_PER_DAY / 2) return;
+  // (In the hours before dawn, when the mouth breathes deepest, the road is busier: that is
+  // when the small things set out up it. systems/laws.js)
+  const wait = lawBreath() > 1.25 ? ECO_TICKS_PER_DAY / 4 : ECO_TICKS_PER_DAY / 2;
+  if ((eco.ticks || 0) - (eco.lastMigrant ?? -9999) < wait) return;
   const floor = state.run.dungeonFloor || 1;
   const use = ecoLayerUse();
   const capacity = ecoLayerCapacity(floor);
@@ -464,4 +479,99 @@ function ecoMigrate(eco) {
   state.run.enemies.push(migrant);
   eco.lastMigrant = eco.ticks || 0;
   ecoEvent(roomIndex, donorFloor && donorFloor < floor ? `A ${migrant.name} came down from above.` : `A ${migrant.name} climbed up from below.`, "arrived");
+}
+
+// ---------- The Bow: sickness ----------
+// Every gathering breeds its own undoing (systems/laws.js). A herd crowded into one chamber,
+// a floor with more grazers than its beds can feed, a heap of carrion left lying: each of
+// these breeds sickness. It passes between animals of a kind that share a chamber, wears
+// them thin, kills some, and leaves the rest proof against it for a while. So a herd with
+// no hunters to thin it is thinned anyway, and the scavengers and the dead eat well.
+
+const ECO_SICK_HOURS = [36, 84];        // how long a sickness lasts
+const ECO_SICK_IMMUNE_DAYS = 10;        // how long a creature that came through it is safe
+const ECO_SICK_DEATH = 0.006;           // chance an hour that a sick creature dies (three times that when starving)
+const ECO_SICK_CATCH = 0.015;            // chance an hour to catch it from each sick housemate of its kind
+
+// How many of a kind a chamber holds without crowding: a flock, or a few. (The ones that
+// keep a range to themselves settle that with their teeth: ecoDispute.)
+function ecoRoomHolds(species) {
+  return species.packs ? 4 : 3;
+}
+
+function ecoIsSick(creature) {
+  return (creature?.eco?.sick || 0) > 0;
+}
+
+function ecoSickness(eco) {
+  const floor = state.run.dungeonFloor || 1;
+  const living = ecoLivingCreatures().filter((creature) => !creature.guardian && creature.eco && ecoIsFed(ecoSpecies(creature)));
+  const housed = {};
+  const sickHoused = {};
+  for (const creature of living) {
+    const key = `${creature.templateId}@${creature.eco.home}`;
+    housed[key] = (housed[key] || 0) + 1;
+    if (ecoIsSick(creature)) sickHoused[key] = (sickHoused[key] || 0) + 1;
+  }
+  const carrion = {};
+  for (const feature of eco.features) if (feature.kind === "carcass") carrion[feature.room] = (carrion[feature.room] || 0) + (feature.meat || 0);
+  const overgrazed = lawBow(ecoHerbPressure(floor), 1.2);
+  for (const creature of living) {
+    const species = ecoSpecies(creature);
+    const data = creature.eco;
+    const key = `${creature.templateId}@${data.home}`;
+    if (ecoIsSick(creature)) {
+      data.sick -= 1;
+      // It burns through its food faster, and it may not come through.
+      data.sat = Math.max(0, data.sat - ecoBurn(species) * ECO_CENSUS_EVERY * 0.5);
+      if (Math.random() < ECO_SICK_DEATH * (data.sat < ECO_STARVING ? 3 : 1)) {
+        ecoLog(creature, `${creature.name} lies down, sick, and does not get up.`);
+        ecoEvent(roomIndexAt(creature.x, creature.y), `A ${creature.name} died of sickness here.`, "sick");
+        if ((state.run.lurkers || []).includes(creature)) state.run.lurkers = state.run.lurkers.filter((entry) => entry !== creature);
+        ecologyCreatureDied(creature, { sick: true });
+        continue;
+      }
+      if (data.sick <= 0) {
+        data.sick = 0;
+        data.immune = (eco.ticks || 0) + ECO_SICK_IMMUNE_DAYS * ECO_TICKS_PER_DAY;
+      }
+      continue;
+    }
+    if ((data.immune || 0) > (eco.ticks || 0)) continue;
+    const crowd = lawBow(housed[key] || 0, ecoRoomHolds(species));
+    const herd = ecoLayer(species) === "herb" ? overgrazed : 0;
+    // Scavengers are made for the dead; nothing else is.
+    const rot = species.role === "scavenger" ? 0 : lawBow(carrion[data.home] || 0, 6);
+    const risk = 0.002 * crowd + 0.005 * herd + 0.002 * rot + ECO_SICK_CATCH * (sickHoused[key] || 0);
+    if (risk <= 0 || Math.random() >= risk) continue;
+    data.sick = ECO_SICK_HOURS[0] + randomInt(ECO_SICK_HOURS[1] - ECO_SICK_HOURS[0]);
+    if (!sickHoused[key]) {
+      ecoEvent(data.home, `A sickness started among the ${creature.name}s here.`, "sick");
+      ecoLog(creature, `${creature.name} is off its food, and its eyes are dull. It is sick.`);
+    }
+    sickHoused[key] = (sickHoused[key] || 0) + 1;
+  }
+}
+
+// ---------- The Way: the fed give to their own ----------
+// What has too much gives to what has too little (systems/laws.js). A fed parent feeds its
+// hungry young from its own belly.
+function ecoNurse(eco) {
+  const byId = new Map(state.run.enemies.filter((enemy) => enemy.alive).map((enemy) => [enemy.id, enemy]));
+  for (const young of state.run.enemies) {
+    if (!young.alive || !young.eco?.parent) continue;
+    // It is grown in a couple of days, and feeds itself.
+    if ((eco.ticks || 0) - (young.eco.born || 0) > 2 * ECO_TICKS_PER_DAY) {
+      delete young.eco.parent;
+      continue;
+    }
+    if (young.eco.sat >= ECO_HUNGRY) continue;
+    const parent = byId.get(young.eco.parent);
+    if (!parent || parent.eco.home !== young.eco.home || ecoIsSick(parent)) continue;
+    const gift = lawGive(parent.eco.sat, 70, ECO_HUNGRY + 15 - young.eco.sat, 0.6);
+    if (gift < 2) continue;
+    parent.eco.sat -= gift;
+    young.eco.sat += gift;
+    young.eco.hungerTicks = 0;
+  }
 }

@@ -4968,3 +4968,83 @@ body.dark-mode .map-tile.out-of-view { filter: brightness(0.6) saturate(0.55); }
   pointer-events: none;
   z-index: 3;
 }
+
+/* One clock: while a long action plays out, the map shows time passing; a tap skips it. */
+body.time-passing .dungeon-map-viewport { cursor: progress; }
+body.time-passing .dungeon-map-viewport::after {
+  content: attr(data-passing);
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+  padding: 4px 12px; border-radius: 999px; z-index: 30; pointer-events: none;
+  background: rgba(32, 24, 18, 0.82); color: #f3e6cf; font: 600 13px/1.3 var(--font-ui, sans-serif);
+  letter-spacing: 0.02em; animation: time-passing-pulse 1.1s ease-in-out infinite alternate;
+}
+/* On the phone the map fills the screen behind the controls; keep the sign under the floor name. */
+body.immersive-game.time-passing .dungeon-map-viewport::after {
+  bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 150px); white-space: nowrap;
+}
+@keyframes time-passing-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* ---------- Patolli: wagers beside the board, and moves played back ---------- */
+.patolli-match-stats:has(.patolli-ledger) { padding: 8px; }
+.patolli-ledger { display: grid; gap: 3px; }
+.patolli-ledger-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); align-items: center; gap: 6px;
+  min-height: 30px; padding: 2px 6px; border-radius: 8px;
+}
+.patolli-ledger-head { min-height: 0; font: 700 12px/1.2 var(--font-caps); color: var(--text-2); letter-spacing: 0.04em; }
+.patolli-ledger-head span:last-child { text-align: right; }
+.patolli-ledger-number {
+  display: grid; place-items: center; width: 26px; height: 26px; margin: 0 auto; border: 2px solid var(--line);
+  border-radius: 50%; background: var(--card-2); font: 800 13px/1 var(--font-ui);
+}
+.patolli-ledger-stake { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.patolli-ledger-opponent { flex-direction: row-reverse; }
+.patolli-ledger-stake small { font-weight: 700; font-size: 13px; white-space: nowrap; }
+.patolli-ledger-beans { display: flex; gap: 2px; flex-wrap: wrap; min-width: 0; }
+.patolli-ledger-opponent .patolli-ledger-beans { justify-content: flex-end; }
+.patolli-ledger-beans b {
+  width: 10px; height: 13px; border: 1.5px solid var(--line); border-radius: 50%;
+  background: var(--gold); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+}
+.patolli-ledger-player .patolli-ledger-beans b { background: color-mix(in srgb, var(--red) 70%, var(--gold)); }
+.patolli-ledger-opponent .patolli-ledger-beans b { background: color-mix(in srgb, var(--jade) 70%, var(--gold)); }
+.patolli-ledger-row.is-yours { background: color-mix(in srgb, var(--red) 16%, transparent); }
+.patolli-ledger-row.is-yours .patolli-ledger-number { background: var(--red); color: var(--on-color); }
+.patolli-ledger-row.is-hers { background: color-mix(in srgb, var(--jade) 16%, transparent); }
+.patolli-ledger-row.is-hers .patolli-ledger-number { background: var(--jade-deep); color: var(--on-color); }
+.patolli-ledger-row:is(.is-yours, .is-hers, .is-void) .patolli-ledger-stake { opacity: 0.5; }
+.patolli-ledger-pot {
+  display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 2px 10px; margin-top: 4px;
+  padding: 6px 10px; border: 2px solid var(--line); border-radius: 10px; background: var(--card);
+}
+.patolli-ledger-pot span { font: 700 13px/1 var(--font-caps); letter-spacing: 0.05em; color: var(--text-2); }
+.patolli-ledger-pot strong { justify-self: end; font-size: 16px; }
+.patolli-ledger-pot small { grid-column: 1 / -1; color: var(--text-2); font-size: 12px; }
+
+.patolli-fx { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.patolli-fx-piece {
+  position: absolute; left: 0; top: 0; display: grid; place-items: center;
+  border: 2px solid #2a1c15; border-radius: 50%; color: #fff7e4;
+  font: 800 clamp(8px, 2.1cqi, 13px)/1 var(--font-ui);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+  will-change: transform;
+}
+.patolli-fx-ring {
+  position: absolute; border-radius: 50%; border: 4px solid var(--gold);
+  box-shadow: 0 0 12px 2px var(--gold);
+}
+.patolli-fx-ring.is-capture { border-color: var(--red); box-shadow: 0 0 14px 3px var(--red); }
+.patolli-fx-ring.is-penalty { border-color: #2a1c15; box-shadow: 0 0 10px 2px rgba(42, 28, 21, 0.6); }
+.patolli-fx-ring.is-home { border-color: var(--jade); box-shadow: 0 0 16px 4px var(--gold); }
+.patolli-fx-label {
+  position: absolute; padding: 3px 9px; border: 2px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--text); font: 800 13px/1.2 var(--font-ui); white-space: nowrap;
+  box-shadow: 0 2px 0 var(--line);
+}
+.patolli-fx-label.is-capture { background: var(--red); color: var(--on-color); }
+.patolli-fx-label.is-penalty { background: #2a1c15; color: #f4e7c8; }
+.patolli-fx-label.is-extra { background: var(--gold); }
+.patolli-fx-label.is-home { background: var(--jade-deep); color: var(--on-color); }
+@media (prefers-reduced-motion: reduce) { .patolli-fx-ring { display: none; } }
+/* Asleep in camp: the map dims while the night plays out. */
+body.time-sleeping .dungeon-map { filter: brightness(0.55) saturate(0.75); transition: filter 0.5s ease; }

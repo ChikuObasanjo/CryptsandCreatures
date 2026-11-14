@@ -64,6 +64,7 @@ function archPickShape(styleName, wet = false) {
 }
 
 function archRoomSize(shape) {
+  if (formIs(shape)) return formSize(shape);
   const odd = (min, max) => min + 2 * (randomInt(Math.floor((max - min) / 2) + 1) - 1);
   // A long vaulted gallery, three tiles across inside, running either way.
   if (shape === "gallery") return randomInt(2) === 1 ? { w: odd(11, 13), h: 5 } : { w: 5, h: odd(11, 13) };
@@ -112,6 +113,7 @@ function archCaveMask(room) {
 }
 
 function archRoomFloor(room, x, y) {
+  if (formIs(room.shape)) return formFloor(room, x, y);
   if (room.shape === "cave") {
     if (!room.mask) room.mask = archCaveMask(room);
     return room.mask.has((y - room.mapY) * room.mapW + (x - room.mapX));
@@ -120,6 +122,7 @@ function archRoomFloor(room, x, y) {
 }
 
 function archIsPillar(room, x, y) {
+  if (formIs(room.shape)) return formPost(room, x, y);
   if (room.shape === "court") {
     // Columns all round, two tiles in from the walls, and an inner ring at the corners of
     // the open centre.
@@ -156,7 +159,11 @@ function archProbe(style, placed, size, { westHalf = false } = {}) {
 // The mirror twin of a chamber across the floor's north–south centre line.
 function archMirror(room, size) {
   const mapX = size - room.mapX - room.mapW;
-  return { ...room, mapX, flipX: !room.flipX, mask: room.mask ? archMirrorMask(room.mask, room.mapW) : undefined, twin: true };
+  const twin = { ...room, mapX, flipX: !room.flipX, mask: room.mask ? archMirrorMask(room.mask, room.mapW) : undefined, twin: true };
+  // A form carries its columns and its middle with it.
+  if (room.posts) twin.posts = archMirrorMask(room.posts, room.mapW);
+  if (Number.isInteger(room.anchorX)) twin.anchorX = mapX + (room.mapW - 1 - (room.anchorX - room.mapX));
+  return twin;
 }
 
 function archMirrorMask(mask, width) {
@@ -421,15 +428,22 @@ function archHollow(terrain, roomFloor) {
 
 // The links to dig between chambers: a spanning tree (jittered when remaking, so the
 // routes change) plus a few loops so there's more than one way round.
+//
+// Chambers with a single way in (dens, nests, shaft tombs, sweat baths: `leaf`, or a form
+// that is one) hang off the rest: the tree and the loops are laid through the other
+// chambers, and each leaf is then joined to the nearest of those. So you never have to go
+// through a den to get anywhere, and there is always a way round.
 function archPlanEdges(rooms, { jitter = false, loops = 0.38 } = {}) {
   const distance = (a, b) => Math.hypot(rooms[a].anchorX - rooms[b].anchorX, rooms[a].anchorY - rooms[b].anchorY);
   const noise = rooms.map(() => rooms.map(() => (jitter ? 0.75 + Math.random() * 0.75 : 1)));
+  const isLeaf = (index) => index !== 0 && (rooms[index].leaf || formIsLeaf(rooms[index].shape)) && !rooms[index].planned;
+  const through = rooms.map((room, index) => index).filter((index) => !isLeaf(index));
   const edges = [];
-  const inTree = new Set([0]);
-  while (inTree.size < rooms.length) {
+  const inTree = new Set([through[0]]);
+  while (inTree.size < through.length) {
     let best = null;
     for (const a of inTree) {
-      for (let b = 0; b < rooms.length; b += 1) {
+      for (const b of through) {
         if (inTree.has(b)) continue;
         const d = distance(a, b) * noise[a][b];
         if (!best || d < best.d) best = { a, b, d };
@@ -439,12 +453,19 @@ function archPlanEdges(rooms, { jitter = false, loops = 0.38 } = {}) {
     edges.push([best.a, best.b]);
   }
   const linked = (a, b) => edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
-  rooms.forEach((room, a) => {
-    if (Math.random() > loops) return;
-    const candidates = rooms.map((other, b) => ({ b, d: distance(a, b) }))
+  for (const a of through) {
+    if (Math.random() > loops) continue;
+    const candidates = through.map((b) => ({ b, d: distance(a, b) }))
       .filter(({ b, d }) => b !== a && !linked(a, b) && d < 20)
       .sort((first, second) => first.d - second.d);
     if (candidates[0]) edges.push([a, candidates[0].b]);
-  });
+  }
+  for (let leaf = 0; leaf < rooms.length; leaf += 1) {
+    if (!isLeaf(leaf)) continue;
+    // A den opens toward where its prey feeds and drinks, when that's not much farther.
+    const draws = (b) => rooms[leaf].purpose === "den" && ["garden", "basin"].includes(rooms[b].purpose) ? 0.6 : 1;
+    const nearest = through.map((b) => ({ b, d: distance(leaf, b) * noise[leaf][b] * draws(b) })).sort((first, second) => first.d - second.d)[0];
+    if (nearest) edges.push([nearest.b, leaf]);
+  }
   return edges;
 }

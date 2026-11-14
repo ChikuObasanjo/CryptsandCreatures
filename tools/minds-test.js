@@ -8,6 +8,9 @@ const quiet = (code) => { try { return run(code); } catch (e) { if (!/setPropert
 quiet("newRun(makeLegacyCharacter())");
 quiet("beginNewDelve()");
 quiet(`(() => { travelToFloor(8, "connection-7-1"); state.run.location = "dungeon"; })()`);
+// Creatures grow with the floor (systems/growth.js): the scenes meet them as a delver of the
+// floor's own level would.
+quiet(`(() => { state.run.level = Math.round(floorVigor(8)); state.run.maxHp = 18 + 4 * (state.run.level - 1); state.run.hp = state.run.maxHp; })()`);
 
 const args = process.argv.slice(2);
 const hush = args.includes("--quiet");
@@ -19,10 +22,23 @@ let failures = 0;
 // One creature of `id`, `gap` squares from you in open floor, with the given state.
 // `expect.has` must match what it did over the turns, `expect.not` must not ("gone" = it
 // went on, the way the dead do).
-const scene = (label, id, { gap = 3, sat = 70, hp = 1, provoke = false, mind = null, turns = 3, before = "", gold = 10, food = true, guardian = false, post = null, expect = {} } = {}) => {
+// Scenes are written in the tomb's planned squares; on the fine grid (systems/grid.js) a
+// gap of more than one is MAP_SCALE times as many tiles. One square away is still beside you.
+let MAP_SCALE_IN_GAME = null;
+const scene = (label, id, { gap: planGap = 3, sat = 70, hp = 1, provoke = false, mind = null, turns = 3, before = "", gold = 10, food = true, guardian = false, post = null, hour = 9, expect = {} } = {}) => {
+  MAP_SCALE_IN_GAME ??= run("MAP_SCALE");
+  const gap = planGap <= 1 ? planGap : planGap * MAP_SCALE_IN_GAME;
+  const width = Math.max(7, gap + 2);
   if (only && !label.includes(only)) return;
   const out = run(`(() => {
     state.run.enemies = state.run.enemies.filter((e) => e.guardian);
+    // Every scene is set at the same hour (nine in the morning unless it says otherwise) on
+    // a day with no leaning of its own, so the time of day doesn't decide it by accident.
+    state.run.gameMinutes = 40 * 1440 + ${hour} * 60;
+    if (state.run.ecology) { state.run.ecology.air = {}; state.run.ecology.features = state.run.ecology.features.filter((f) => f.kind !== "carcass");
+      // (The biggest clear room is often a shrine now. Empty its bowl, so the dead in a scene
+      // are as hungry as the scene says.)
+      for (const f of state.run.ecology.features) if (f.kind === "offering") f.amount = 0; }
     state.run.lurkers = []; state.run.hp = state.run.maxHp; state.run.lost = false;
     state.run.tomb = null; state.run.unsecuredLoot = { gold: 0, items: [] };
     // A clear row in a big room: eight open squares in a line, nothing between you and the
@@ -31,8 +47,8 @@ const scene = (label, id, { gap = 3, sat = 70, hp = 1, provoke = false, mind = n
     let room = null, x0 = 0, y = 0;
     search: for (const r of state.run.rooms.filter((r) => r.mapW >= 7 && !r.planned).sort((a, b) => b.mapW * b.mapH - a.mapW * a.mapH)) {
       const index = state.run.rooms.indexOf(r);
-      for (let row = r.mapY; row < r.mapY + r.mapH; row += 1) for (let col = r.mapX; col + 6 < r.mapX + r.mapW; col += 1) {
-        if ([...Array(7).keys()].every((dx) => open(col + dx, row, index) && hasLineOfSight({ x: col, y: row }, { x: col + dx, y: row })) &&
+      for (let row = r.mapY; row < r.mapY + r.mapH; row += 1) for (let col = r.mapX; col + ${width - 1} < r.mapX + r.mapW; col += 1) {
+        if ([...Array(${width}).keys()].every((dx) => open(col + dx, row, index) && hasLineOfSight({ x: col, y: row }, { x: col + dx, y: row })) &&
           open(col + 4, row + 1, index)) { room = r; x0 = col; y = row; break search; }
       }
     }
@@ -45,10 +61,11 @@ const scene = (label, id, { gap = 3, sat = 70, hp = 1, provoke = false, mind = n
     creature.asleep = false;
     creature.hp = Math.max(1, Math.round(creature.maxHp * ${hp}));
     ${mind ? `creature.mind = Object.assign({ harmed: 0, witnessed: 0, fed: 0, met: 0, calm: 0, focus: null, intent: null, step: -1, seen: false, lastHp: creature.hp, said: null }, ${JSON.stringify(mind)});` : ""}
+    mindFor(creature).sign = -1;
     state.run.gold = ${gold};
     if (!${food}) state.run.inventory = state.run.inventory.filter((entry) => !FOOD_ITEMS[entry.id]);
     if (${guardian}) creature.guardian = true;
-    creature.post = ${post === null ? "{ x: spot.x, y: spot.y }" : `{ x: spot.x + ${post}, y: spot.y }`};
+    creature.post = ${post === null ? "{ x: spot.x, y: spot.y }" : `{ x: spot.x + ${post * MAP_SCALE_IN_GAME}, y: spot.y }`};
     state.run.enemies.push(creature);
     ${provoke ? "provokeCreature(creature);" : ""}
     ${before}
@@ -97,6 +114,33 @@ scene("jaguar, fed, long in its den, you walk right up", "jungle-jaguar", { sat:
 scene("jaguar, fed, moved into this den today, same", "jungle-jaguar", { sat: 75, gap: 2,
   before: "mindFor(creature); creature.mind.home = creature.eco.home; creature.mind.since = (ecoState().ticks || 0) - 40;",
   expect: { not: not("fight") } });
+
+print("\n-- its own kind (the Holding) --");
+const flock = (id, n, extra = "") => `for (let k = 0; k < ${n}; k += 1) { const mate = ecoNewCreature("${id}", { x: spot.x + 1 + (k % 2), y: spot.y + (k < 2 ? 0 : 1) }, roomIndex); mate.eco.sat = 70; mindFor(mate).sign = -1; state.run.enemies.push(mate); ${extra} }`;
+scene("cave turkey, you hurt its one flockmate", "cave-turkey", { gap: 3, mind: { calm: 6, met: 6 },
+  before: flock("cave-turkey", 1, "provokeCreature(mate); mate.hp = 2;"), turns: 2, expect: { has: /flee/, not: /fight/ } });
+scene("giant turkey in a flock of five, you hurt one", "giant-turkey", { gap: 3, mind: { calm: 6, met: 6 },
+  before: flock("giant-turkey", 4, "if (k === 0) { provokeCreature(mate); mate.hp = Math.ceil(mate.maxHp / 2); }"), turns: 2, expect: { has: /fight/ } });
+scene("giant turkey in the same flock, nobody hurt", "giant-turkey", { gap: 3, mind: { calm: 6, met: 6 },
+  before: flock("giant-turkey", 4), turns: 2, expect: { not: /fight|flee/ } });
+scene("jaguar feeding at its kill, you come close", "jungle-jaguar", { sat: 80, gap: 2,
+  before: "mindFor(creature); creature.mind.home = creature.eco.home; creature.mind.since = (ecoState().ticks || 0) - 10; ecoAddFeature('carcass', { x: spot.x + 1, y: spot.y }, roomIndex, { species: 'cave-turkey', meat: 3, tonalli: 2, age: 0, fresh: true, maxMeat: 4 }); creature.eco.feeding = 6;",
+  turns: 1, expect: { has: /watch|fight/ } });
+
+print("\n-- the country's own (data/xalisco.js) --");
+scene("opossum, you walk up to it", "tlacuatzin", { gap: 2, turns: 2, expect: { has: /feign/, not: /fight/ } });
+scene("opossum, you keep your distance", "tlacuatzin", { gap: 6, turns: 2, expect: { not: /feign|fight/ } });
+scene("lone coyote, fed, you come close", "coyotl", { gap: 2, hour: 19, turns: 2, expect: { not: /fight/ } });
+scene("coyote in a pack of four, you hurt one", "coyotl", { gap: 3, hour: 19, mind: { calm: 6, met: 6 },
+  before: flock("coyotl", 3, "if (k === 0) { provokeCreature(mate); mate.hp = Math.ceil(mate.maxHp / 2); }"), turns: 2, expect: { has: /fight/ } });
+scene("ash bundle, hungry, at noon, you pass at 6", "tlacanexquimilli", { sat: 40, gap: 6, hour: 12, turns: 2, expect: { not: /fight/ } });
+scene("ash bundle, hungry, at midnight, you pass at 4", "tlacanexquimilli", { sat: 40, gap: 4, hour: 0, turns: 2, expect: { has: /fight/ } });
+
+print("\n-- the hours (olin) --");
+scene("cave turkey, roosting at midnight, you pass at 6", "cave-turkey", { gap: 6, hour: 0, turns: 2, expect: { not: /flee|fight|watch/ } });
+scene("cave turkey, at noon, you pass at 6", "cave-turkey", { gap: 6, hour: 12, turns: 2, expect: { has: /flee|watch/ } });
+scene("Night Axe, hungry, at noon, you pass at 6", "yohualtepoztli", { sat: 40, gap: 6, hour: 12, turns: 2, expect: { not: /fight/ } });
+scene("Night Axe, hungry, at midnight, you pass at 6", "yohualtepoztli", { sat: 40, gap: 6, hour: 0, turns: 2, expect: { has: /fight/ } });
 
 print("\n-- what it has learned --");
 scene("cave turkey born to a hen you fed", "cave-turkey", { gap: 3,

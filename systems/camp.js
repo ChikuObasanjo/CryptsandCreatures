@@ -45,7 +45,7 @@ function atCamp() {
 }
 
 function campDangerNearby() {
-  return state.run.enemies.some((enemy) => creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= CAMP_DANGER_RADIUS);
+  return state.run.enemies.some((enemy) => creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= gridReach(CAMP_DANGER_RADIUS));
 }
 
 // Why a camp cannot go here, or "" when the spot is fine.
@@ -181,22 +181,34 @@ function campNightRisk() {
 // Sleep in camp one hour at a time. The tomb's creatures go about their night (the ecology
 // runs every hour), and a hungry one that wanders within 5 squares, or a wanderer drawn by
 // the fire, cuts the night short. Returns how many hours you slept and what woke you.
-function restThroughTheNight() {
+function restThroughTheNight(onDone) {
   const perHour = 1 - Math.pow(1 - campNightRisk(), 1 / 8);
-  for (let hour = 1; hour <= 8; hour += 1) {
-    advanceSurvivalTime(true, 60);
-    if (typeof ecologyAdvance === "function") ecologyAdvance();
-    if (state.run.lost) return { slept: hour, visitor: null };
-    const player = state.run.player;
-    const near = state.run.enemies.find((enemy) => enemy.alive && !enemy.asleep && !enemy.guardian &&
-      creatureIsThreat(enemy) && distanceInSquares(enemy, player) <= 5);
-    if (near) return { slept: hour, visitor: near };
-    if (Math.random() < perHour) {
+  const player = state.run.player;
+  const startHp = state.run.hp;
+  const turnsPerHour = 60 / WORLD_TURN_MINUTES;
+  const night = { slept: 0, visitor: null, turns: 0 };
+  const nearNow = () => state.run.enemies.find((enemy) => enemy.alive && !enemy.asleep && !enemy.guardian &&
+    creatureIsThreat(enemy) && distanceInSquares(enemy, player) <= gridReach(5));
+  // One ten-minute turn of the night. (One clock: the creatures you sleep beside keep living,
+  // and you watch them do it, as you do while cooking.) True when the night is over early.
+  const turn = () => {
+    worldTurn(WORLD_TURN_MINUTES, { resting: true });
+    revealAroundPlayer();
+    night.turns += 1;
+    night.slept = Math.ceil(night.turns / turnsPerHour);
+    if (state.run.lost) return true;
+    const near = nearNow();
+    if (near || state.run.hp < startHp) { night.visitor = near || null; return true; }
+    if (night.turns % turnsPerHour === 0 && Math.random() < perHour) {
       const wanderer = campWanderer();
-      if (wanderer) return { slept: hour, visitor: wanderer };
+      if (wanderer) { night.visitor = wanderer; return true; }
     }
-  }
-  return { slept: 8, visitor: null };
+    return false;
+  };
+  worldPassTime(8 * turnsPerHour, {
+    turn, label: "You sleep · tap to skip to morning", frameMs: 70, sleeping: true,
+    onDone: () => { if (!night.visitor && !state.run.lost) night.slept = Math.max(night.slept, 8); onDone(night); }
+  });
 }
 
 // A creature of this depth, hungry and on the move, arriving a few squares from camp.

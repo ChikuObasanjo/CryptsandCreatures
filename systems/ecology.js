@@ -45,7 +45,12 @@ function ecoState() {
 
 // The most animals (of the kinds the food feeds) a floor keeps track of, to keep turns quick.
 function ecoFloorCap(floor = state.run?.dungeonFloor || 1) {
-  return Math.min(24, 12 + floor);
+  return Math.min(48, Math.round((12 + floor) * 0.9 * ECO_ROOMINESS));
+}
+
+// What the floor's ground takes in from the mouth (more ground, more of it: ECO_ROOMINESS).
+function ecoFloorFlux(floor = state.run?.dungeonFloor || 1) {
+  return ECO_MOUTH_FLUX * ECO_ROOMINESS * ecoFloorShare(floor);
 }
 
 // The energy pool: what the floor's plants can still grow from. It fills at the floor's
@@ -56,10 +61,23 @@ function ecoPoolCap(eco) {
   return (eco.floorFlux || 0) / 720 * 6 * ECO_POOL_HOURS;
 }
 
-function ecoPoolInflow(eco) {
-  // The tomb's mood reaches its plants: a hungry tomb holds back, a tomb at rest gives
-  // freely (systems/tomb-body.js).
-  return (eco.floorFlux || 0) / 720 * (typeof tombBreath === "function" ? tombBreath() : 1);
+function ecoPoolInflow(eco, minutes = state.run?.gameMinutes || 0) {
+  // The floor's own share of the mouth's life, as the mouth breathes it out over the day
+  // (systems/laws.js); the tomb's mood reaches its plants too: a hungry tomb holds back, a
+  // tomb at rest gives freely (systems/tomb-body.js). And whatever the floor below could
+  // not hold comes up to this one.
+  const own = (eco.floorFlux || 0) / 720 * (typeof tombBreath === "function" ? tombBreath() : 1) *
+    (typeof lawBreath === "function" ? lawBreath(minutes) : 1);
+  return own + (typeof lawRiseInto === "function" ? lawRiseInto() : 0);
+}
+
+// Life flows into the floor's ground for `ticks`. What the ground can't hold rises to the
+// floor above (the first law: nothing is lost, it only changes hands).
+function ecoPoolFill(eco, ticks = 1, minutes = state.run?.gameMinutes || 0) {
+  const cap = ecoPoolCap(eco);
+  const filled = (eco.energy || 0) + ecoPoolInflow(eco, minutes) * ticks;
+  eco.energy = Math.min(cap, filled);
+  if (typeof lawRises === "function") lawRises(state.run.dungeonFloor || 1, Math.max(0, filled - cap), ticks);
 }
 
 function ecoProductivity(floor = state.run?.dungeonFloor || 1) {
@@ -225,8 +243,10 @@ function ecoNewCreature(templateId, spot, roomIndex) {
   const eco = ecoState();
   const creature = createEnemy(template, spot, roomIndex, 0);
   creature.id = `eco-creature-${eco.nextId++}`;
-  if (state.run.mapId === GTFL_MAP_ID) scaleGreatTempleEnemy(creature);
+  // It is born the size the floor grows things (systems/growth.js).
+  growCreature(creature, state.run.dungeonFloor || 1);
   creature.eco = { sat: 60 + randomInt(30), home: roomIndex };
+  ecoCreature(creature);
   return creature;
 }
 
@@ -250,7 +270,7 @@ function initializeEcology({ life = true } = {}) {
     ticks: 0, events: [], ground: typeof preset?.ground === "string" ? preset.ground : null
   };
   const eco = state.run.ecology;
-  eco.floorFlux = ECO_MOUTH_FLUX * ecoFloorShare(floor);
+  eco.floorFlux = ecoFloorFlux(floor);
   eco.energy = ecoPoolCap(eco) * 0.5;
   if (state.run.rooms.some((room) => room.habitat === undefined)) assignHabitats(state.run.rooms, floor);
   if (!eco.ground && typeof dressFloorGround === "function") {
@@ -261,8 +281,9 @@ function initializeEcology({ life = true } = {}) {
   state.run.rooms.forEach((room, index) => {
     const habitat = ecoHabitat(room);
     if (!habitat) return;
+    // (The chambers are lived on a finer grid than they're planned: more ground, more beds.)
     for (const [kind, [low, high]] of Object.entries(habitat.resources || {})) {
-      const count = low + randomInt(high - low + 1) - 1;
+      const count = Math.round((low + randomInt(high - low + 1) - 1) * (kind === "nest" ? 1 : ECO_ROOMINESS));
       for (let n = 0; n < count; n += 1) {
         const spot = ecoFreeTile(room, taken, { water: kind === "pool" });
         if (!spot) break;
@@ -278,7 +299,7 @@ function initializeEcology({ life = true } = {}) {
       ecoAddFeature(kind, spot, index, kind === "mouth" ? { hunger: 30 + randomInt(40) } : { appeased: false });
     }
     for (const [id, [low, high]] of Object.entries(habitat.colonies || {})) {
-      const count = low + randomInt(high - low + 1) - 1;
+      const count = Math.floor((low + randomInt(high - low + 1) - 1) * (1 + (ECO_ROOMINESS - 1) * 0.5) + Math.random());
       for (let n = 0; n < count; n += 1) {
         const spot = ecoFreeTile(room, taken, { water: id === "ahuauhtli" });
         if (!spot) break;
@@ -290,7 +311,7 @@ function initializeEcology({ life = true } = {}) {
   // Everything grows too fast down here: the richer the floor, the more beds its gardens hold.
   const gardens = state.run.rooms.map((room, index) => ({ room, index }))
     .filter(({ room }) => ecoHabitat(room)?.resources?.fungus);
-  for (let n = Math.round(ecoFloorShare(floor) * 6); n > 0 && gardens.length; n -= 1) {
+  for (let n = Math.round(ecoFloorShare(floor) * 6 * ECO_ROOMINESS); n > 0 && gardens.length; n -= 1) {
     const { room, index } = gardens[randomInt(gardens.length) - 1];
     const spot = ecoFreeTile(room, taken);
     if (!spot) continue;
@@ -340,6 +361,8 @@ function ecoSeedAndEquilibrate() {
 function ecoEquilibrateFloor() {
   const eco = ecoState();
   if (!eco || eco.equilibrated) return;
+  // The old offerings, hoards, and what the ground has given up (systems/riches.js).
+  if (typeof richesSeedFloor === "function") richesSeedFloor();
   ecologySettle((120 + randomInt(181)) * ECO_CENSUS_EVERY);
   ecoSetScenes();
   eco.equilibrated = true;
@@ -357,6 +380,8 @@ function ecoCreature(creature) {
     creature.eco = { sat: 55 + randomInt(35), home };
   }
   if (!Number.isFinite(creature.eco.sat)) creature.eco.sat = 70;
+  // What it loves, and its keepsake if it has one (systems/cherish.js).
+  if (creature.mind?.loves === undefined && window.CryptsRiches?.cherish?.[creature.templateId] && typeof cherishLoves === "function") cherishLoves(creature);
   return creature.eco;
 }
 
@@ -369,6 +394,8 @@ function ensureEcology() {
   } else if (eco.version === 1) {
     ecoUpgradeFromV1(eco);
   }
+  // (What the mouth gives each floor is worked out fresh: older floors take the current share.)
+  if (state.run.ecology) state.run.ecology.floorFlux = ecoFloorFlux();
   return state.run.ecology;
 }
 
@@ -400,7 +427,7 @@ function ecoUpgradeFromV1(eco) {
 function ecoSetScenes() {
   const taken = ecoOccupiedTiles();
   const hunters = state.run.enemies.filter((enemy) => enemy.alive && !enemy.guardian &&
-    ecoSpecies(enemy)?.role === "predator" && ecoSpecies(enemy).size >= 2 && distanceInSquares(enemy, state.run.player) > 8);
+    ecoSpecies(enemy)?.role === "predator" && ecoSpecies(enemy).size >= 2 && distanceInSquares(enemy, state.run.player) > gridReach(8));
   // A fresh kill.
   if (hunters.length && Math.random() < 0.7) {
     const hunter = hunters[randomInt(hunters.length) - 1];
@@ -461,6 +488,13 @@ function ecoHungerState(creature) {
   return "fed";
 }
 
+// Is it the time of day this creature drowses? (Not while something has its attention.)
+function ecoDrowsing(creature) {
+  const species = ecoSpecies(creature);
+  if (!species || creature.alerted || creature.guardian || creature.provoked) return false;
+  return lawWake(species) < 0.6;
+}
+
 // True when a creature isn't interested in you right now (it may still fight back).
 function ecoIsCrowded(creature) {
   return Boolean(creature?.eco?.crowded);
@@ -499,15 +533,17 @@ function ecologyNoticeModifier(creature) {
   const hunger = ecoHungerState(creature);
   let modifier = hunger === "starving" ? 1 : hunger === "gorged" ? -2 : 0;
   if (typeof hasCondition === "function" && hasCondition("ill-omened")) modifier += 1;
+  // At the hours its kind sleeps, you can come much closer before it notices (systems/laws.js).
+  if (ecoDrowsing(creature)) modifier -= 3;
   return modifier;
 }
 
 function ecologyAttackModifier(creature) {
-  return (ecoHungerState(creature) === "starving" ? -2 : 0) + (ecoIsCrowded(creature) ? 2 : 0);
+  return (ecoHungerState(creature) === "starving" ? -2 : 0) + (ecoIsCrowded(creature) ? 2 : 0) + (ecoIsSick(creature) ? -1 : 0);
 }
 
 function ecologyAcModifier(creature) {
-  return ecoHungerState(creature) === "starving" ? -1 : 0;
+  return (ecoHungerState(creature) === "starving" ? -1 : 0) + (ecoIsSick(creature) ? -1 : 0);
 }
 
 function ecologyDamageBonus(creature) {
@@ -518,7 +554,7 @@ function ecoDefendsNest(creature) {
   const eco = ecoState();
   if (!eco || !creature?.eco) return false;
   return eco.features.some((feature) => feature.kind === "nest" && feature.disturbed &&
-    feature.owner === creature.templateId && distanceInSquares(feature, creature) <= 6);
+    feature.owner === creature.templateId && distanceInSquares(feature, creature) <= gridReach(6));
 }
 
 // In a fight, animals don't fight to the death: below their limit they break off and run,
@@ -538,7 +574,7 @@ function ecoTargetValid(creature, target) {
   if (!target) return false;
   if (target.creature) {
     const prey = state.run.enemies.find((enemy) => enemy.id === target.creature);
-    return Boolean(prey && prey.alive && !prey.alerted && distanceInSquares(prey, creature) <= ECO_SEARCH_RADIUS + 2);
+    return Boolean(prey && prey.alive && !prey.alerted && distanceInSquares(prey, creature) <= gridReach(ECO_SEARCH_RADIUS + 2));
   }
   if (target.feature) {
     const feature = ecoState().features.find((entry) => entry.id === target.feature);
@@ -603,12 +639,12 @@ function ecoAtWater(spot) {
   return false;
 }
 
-function ecoFindFood(creature, species, radius = ECO_SEARCH_RADIUS) {
+function ecoFindFood(creature, species, radius = gridReach(ECO_SEARCH_RADIUS)) {
   const eco = ecoState();
   const near = (spot) => distanceInSquares(spot, creature) <= radius;
   const options = [];
   // The smell of death carries: scavengers and the restless dead find bodies from much farther off.
-  const scentRange = species.role === "scavenger" || species.role === "spirit" ? 22 : ECO_SEARCH_RADIUS;
+  const scentRange = species.role === "scavenger" || species.role === "spirit" ? gridReach(22) : gridReach(ECO_SEARCH_RADIUS);
   for (const feature of eco.features) {
     const range = feature.kind === "carcass" ? Math.max(scentRange, radius) : radius;
     if (distanceInSquares(feature, creature) <= range && ecoFeatureFeeds(feature, species)) {
@@ -651,7 +687,7 @@ function ecoRoute(creature, target, catchUp) {
       const closedDoor = state.run.terrain[index] === "door" && !state.run.openDoors.includes(index);
       if (closedDoor ? (!doors || Math.abs(direction.x) + Math.abs(direction.y) !== 1) : !canStepBetween(current, spot, creature)) continue;
       if (spot.x === player.x && spot.y === player.y) continue;
-      if (catchUp && distanceInSquares(spot, player) <= 4) continue;
+      if (catchUp && distanceInSquares(spot, player) <= gridReach(4)) continue;
       visited.add(index);
       queue.push({ ...spot, previous: current });
     }
@@ -663,13 +699,30 @@ function ecoTakeStep(creature, spot) {
   const index = tileIndex(spot.x, spot.y);
   if (state.run.terrain[index] === "door" && !state.run.openDoors.includes(index)) {
     // Shouldering a door open takes the turn.
-    state.run.openDoors.push(index);
+    openDoorway(index);
     return true;
   }
   return moveCreature(creature, spot);
 }
 
-function ecoStep(creature, target, { catchUp = false, away = false } = {}) {
+// On the fine grid (systems/grid.js) a creature you can't see covers MAP_SCALE tiles in ten
+// minutes along its route, the pace the food web was set for; one in your sight steps one
+// tile, as you do, and it never takes the extra step into view.
+function ecoStep(creature, target, options = {}) {
+  // (One you could see when its turn began steps once: from where you saw it, a second step
+  // would look like a jump.)
+  const watched = ecoSeen(creature);
+  const moved = ecoStepOnce(creature, target, options);
+  if (!moved || options.away || !creature.alive || watched) return moved;
+  for (let extra = 1; extra < MAP_SCALE; extra += 1) {
+    const next = creature.eco?.route?.[0];
+    if (!next || ecoSeen(creature) || ecoSeen(next)) break;
+    if (!ecoStepOnce(creature, target, options)) break;
+  }
+  return moved;
+}
+
+function ecoStepOnce(creature, target, { catchUp = false, away = false } = {}) {
   const player = state.run.player;
   const data = creature.eco;
   if (!away) {
@@ -688,7 +741,7 @@ function ecoStep(creature, target, { catchUp = false, away = false } = {}) {
     }
     if (!next) return false;
     if (tileHasCreature(next.x, next.y, creature) || (next.x === player.x && next.y === player.y) ||
-      (catchUp && distanceInSquares(next, player) <= 4)) {
+      (catchUp && distanceInSquares(next, player) <= gridReach(4))) {
       data.route = null;
       return false;
     }
@@ -701,7 +754,7 @@ function ecoStep(creature, target, { catchUp = false, away = false } = {}) {
     const spot = { x: creature.x + direction.x, y: creature.y + direction.y };
     if (!canStepBetween(creature, spot) || tileHasCreature(spot.x, spot.y, creature) ||
       (spot.x === player.x && spot.y === player.y)) continue;
-    if (catchUp && distanceInSquares(spot, player) <= 4 && distanceInSquares(creature, player) > 4) continue;
+    if (catchUp && distanceInSquares(spot, player) <= gridReach(4) && distanceInSquares(creature, player) > gridReach(4)) continue;
     const score = distanceInSquares(spot, target);
     if (score > bestScore) {
       best = spot;
@@ -830,11 +883,13 @@ function ecoHunt(creature, species, prey) {
 
 // A creature died (to you, to something else, to hunger, or to a trap). It leaves a body
 // that feeds scavengers and, while fresh, the restless dead.
-function ecologyCreatureDied(creature, { eaten = false, killer = null, starved = false } = {}) {
+function ecologyCreatureDied(creature, { eaten = false, killer = null, starved = false, sick = false } = {}) {
   const eco = ecoState();
   if (!eco) return;
   creature.alive = false;
   creature.lootDropped = eaten ? true : creature.lootDropped;
+  // What it carried falls where it fell.
+  if (typeof richesFall === "function") richesFall(creature);
   const species = ecoSpecies(creature);
   if (creature.templateId === "alux") {
     // Clay doesn't die: it crumbles and is made again at its house.
@@ -852,8 +907,12 @@ function ecologyCreatureDied(creature, { eaten = false, killer = null, starved =
   ecoAddFeature("carcass", { x: creature.x, y: creature.y }, roomIndexAt(creature.x, creature.y), {
     species: creature.templateId, meat: species.size * 2, tonalli: 3, age: 0, fresh: true,
     maxMeat: species.size * 2,
-    edible: Boolean(creature.edible && species.meat), drowned: killer?.templateId === "cenote-stalker"
+    // What died of sickness (or was killed while sick) is no good to eat.
+    edible: Boolean(creature.edible && species.meat) && !sick && !ecoIsSick(creature), sick: sick || ecoIsSick(creature),
+    drowned: killer?.templateId === "cenote-stalker"
   });
+  // Those that held it as their own feel it go (systems/minds.js).
+  if (typeof mindKinDied === "function") mindKinDied(creature, killer);
 }
 
 // ---------- A creature's turn when it isn't after you ----------
@@ -886,7 +945,7 @@ function ecologyIdle(creature, { catchUp = false } = {}) {
   }
   const player = state.run.player;
   const toPlayer = distanceInSquares(creature, player);
-  if (!catchUp && species.temperament === "wary" && toPlayer <= 2 && !creature.provoked) {
+  if (!catchUp && species.temperament === "wary" && toPlayer <= gridReach(2) && !creature.provoked) {
     ecoStep(creature, player, { away: true });
     return true;
   }
@@ -917,8 +976,8 @@ function ecologyIdle(creature, { catchUp = false } = {}) {
       // Scavengers wait their turn while a bigger hunter is still at the kill.
       if (spot?.kind === "carcass" && species.role === "scavenger" && ecoHunterAtKill(spot, creature)) {
         eco.waiting = true;
-        if (distanceInSquares(spot, creature) < 3) ecoStep(creature, spot, { catchUp, away: true });
-        else if (distanceInSquares(spot, creature) > 4) ecoStep(creature, spot, { catchUp });
+        if (distanceInSquares(spot, creature) < gridReach(3)) ecoStep(creature, spot, { catchUp, away: true });
+        else if (distanceInSquares(spot, creature) > gridReach(4)) ecoStep(creature, spot, { catchUp });
         return true;
       }
       eco.waiting = false;
@@ -933,6 +992,8 @@ function ecologyIdle(creature, { catchUp = false } = {}) {
   }
   eco.hunting = false;
   eco.waiting = false;
+  // Fed, a carrier sees to the things it keeps (systems/riches.js).
+  if (typeof richesIdle === "function" && richesIdle(creature, species, eco, { catchUp })) return true;
   // Wanderers keep their own errands; everyone else stays near home and potters about.
   if (typeof creatureHabit === "function" && creatureHabit(creature) === "wanderer") return false;
   const homeRoom = state.run.rooms[eco.home];
@@ -944,7 +1005,7 @@ function ecologyIdle(creature, { catchUp = false } = {}) {
   if (hunger !== "gorged" && Math.random() < (species.role === "grazer" ? 0.35 : 0.15)) {
     const step = creatureRandomStep(creature);
     if (step && roomIndexAt(step.x, step.y) === roomIndexAt(creature.x, creature.y) &&
-      !(catchUp && distanceInSquares(step, player) <= 4)) moveCreature(creature, step);
+      !(catchUp && distanceInSquares(step, player) <= gridReach(4))) moveCreature(creature, step);
   }
   return true;
 }
@@ -998,9 +1059,17 @@ function ecoNearbyHome(creature, fromIndex) {
   const hops = typeof roomHops === "function" && rooms[fromIndex] ? roomHops(rooms, fromIndex) : rooms.map(() => 1);
   const options = rooms.map((room, index) => ({ room, index }))
     .filter(({ index }) => index !== fromIndex && index !== 0 && hops[index] <= 3)
-    .map(({ room, index }) => ({ index, score: (ecoResidents(ecoHabitat(room))[creature.templateId] ? 3 : 0) - hops[index] + Math.random() }))
+    // (What is hunted keeps away from a hunter's musk and from the smell of fear: mindAir.)
+    .map(({ room, index }) => ({ index, score: (ecoResidents(ecoHabitat(room))[creature.templateId] ? 3 : 0) - hops[index] + Math.random() - ecoAirAvoided(creature, index) }))
     .sort((a, b) => b.score - a.score);
   return options[0]?.index ?? null;
+}
+
+function ecoAirAvoided(creature, roomIndex) {
+  const species = ecoSpecies(creature);
+  if (!species || species.role === "predator" || typeof mindAir !== "function") return 0;
+  const air = mindAir(roomIndex);
+  return 2.5 * air.musk + 1.5 * air.fear + air.sick;
 }
 
 // The hueychapolin band strips gardens one after another until it's fed, then scatters.
@@ -1036,6 +1105,9 @@ function ecoGrowthRate(feature, context) {
   if (feature.kind === "fungus" && context.fertileRooms.has(feature.room)) rate *= 1.6;
   if (feature.kind === "fungus" && context.farmedRooms.has(feature.room)) rate *= 1.5;
   if (context.rich[feature.room]) rate *= 1 + Math.min(0.8, context.rich[feature.room] * 0.15);
+  // Where two unlike places meet, more grows (the middle: systems/laws.js).
+  const edge = state.run.rooms[feature.room]?.env?.edge;
+  if (edge && ["fungus", "plants"].includes(feature.kind)) rate *= 1 + 0.5 * edge;
   return rate;
 }
 
@@ -1057,7 +1129,7 @@ function ecologyWorldTick() {
     state.run.wisdomPenalty.ecologyTicks -= 1;
     if (state.run.wisdomPenalty.ecologyTicks <= 0) delete state.run.wisdomPenalty;
   }
-  eco.energy = Math.min(ecoPoolCap(eco), (eco.energy || 0) + ecoPoolInflow(eco));
+  ecoPoolFill(eco, 1);
   eco.ticks = (eco.ticks || 0) + 1;
   for (const creature of ecoLivingCreatures()) {
     const species = ecoSpecies(creature);
@@ -1098,7 +1170,7 @@ function ecologyWorldTick() {
 function ecoAgeCarcass(feature, ticks) {
   feature.age = (feature.age || 0) + ticks;
   const beetles = ecoState().features.some((other) => other.kind === "colony" && other.species === "pinacate" &&
-    distanceInSquares(other, feature) <= 3 && other.count >= 4);
+    distanceInSquares(other, feature) <= gridReach(3) && other.count >= 4);
   if (feature.age > 36) {
     feature.fresh = false;
     feature.tonalli = 0;
@@ -1128,7 +1200,7 @@ function ecoTidyBones(eco, ticks) {
   for (const pile of eco.features.filter((feature) => feature.kind === "bones")) {
     pile.age = (pile.age || 0) + ticks;
     const beetles = eco.features.some((other) => other.kind === "colony" && other.species === "pinacate" &&
-      distanceInSquares(other, pile) <= 3 && other.count >= 4);
+      distanceInSquares(other, pile) <= gridReach(3) && other.count >= 4);
     if (beetles && pile.age > 96 && !ecoHabitat(state.run.rooms[pile.room])?.resources?.bones) {
       eco.features = eco.features.filter((feature) => feature !== pile);
       eco.rich[pile.room] = (eco.rich[pile.room] || 0) + 1;
@@ -1144,7 +1216,7 @@ function ecoMouthsFeed(eco) {
   for (const mouth of eco.features.filter((feature) => feature.kind === "mouth")) {
     if ((mouth.hunger || 0) < 20) continue;
     const meal = eco.features.find((feature) => (feature.kind === "carcass" || feature.kind === "bones") &&
-      feature.room === mouth.room && distanceInSquares(feature, mouth) <= 4 && feature !== mouth);
+      feature.room === mouth.room && distanceInSquares(feature, mouth) <= gridReach(4) && feature !== mouth);
     if (!meal) continue;
     eco.features = eco.features.filter((feature) => feature !== meal);
     mouth.hunger = Math.max(0, mouth.hunger - (meal.kind === "carcass" ? 45 : 20));
@@ -1249,12 +1321,16 @@ function ecoCensus(eco) {
   }
   ecoLurkersFeed();
   ecoCrowding(eco);
+  ecoSickness(eco);
+  ecoNurse(eco);
   ecoBreed(eco, cap);
   ecoMigrate(eco);
   ecoNestsTick(eco);
   ecoGardensTick(eco);
   ecoOutbreak(eco);
   ecoReform(eco);
+  // Treasure moves with the life (systems/riches.js).
+  if (typeof richesCensus === "function") richesCensus(eco);
 }
 
 // When the grazers outnumber what the floor can feed (the hunters were culled, or the
@@ -1295,7 +1371,7 @@ function ecoLurkersFeed() {
       data.hungerTicks = 0;
       continue;
     }
-    const meal = ecoState().features.find((feature) => ecoFeatureFeeds(feature, species) && distanceInSquares(feature, lurker) <= 4);
+    const meal = ecoState().features.find((feature) => ecoFeatureFeeds(feature, species) && distanceInSquares(feature, lurker) <= gridReach(4));
     if (meal) {
       if (meal.kind === "colony") meal.count = Math.max(0, meal.count - 2);
       else meal.amount = Math.max(0, meal.amount - 1);
@@ -1453,7 +1529,8 @@ function ecologySettle(ticks) {
   const hours = Math.floor(ticks / ECO_CENSUS_EVERY);
   for (let hour = 0; hour < hours; hour += 1) {
     eco.ticks = (eco.ticks || 0) + ECO_CENSUS_EVERY;
-    eco.energy = Math.min(ecoPoolCap(eco), (eco.energy || 0) + ecoPoolInflow(eco) * ECO_CENSUS_EVERY);
+    // The hours being settled are the ones that led up to now.
+    ecoPoolFill(eco, ECO_CENSUS_EVERY, (state.run.gameMinutes || 0) - (hours - hour) * 60);
     const context = ecoGrowthContext();
     for (const feature of [...eco.features]) {
       const resource = ECO.resources[feature.kind] || {};
@@ -1485,10 +1562,13 @@ function ecologySettle(ticks) {
       // 30/appetite ticks, and a bigger creature takes a bigger bite of the food each time.
       const burned = ecoBurn(species) * ECO_CENSUS_EVERY;
       const needsMeal = data.sat - burned < ECO_HUNGRY + 10;
+      // The smell of death carries, off screen as on: scavengers and the dead find a body from
+      // much farther off than anything finds a garden.
+      const scent = species.role === "scavenger" || species.role === "spirit" ? gridReach(22) : gridReach(ECO_SEARCH_RADIUS);
       const meal = needsMeal ? eco.features.find((feature) => ecoFeatureFeeds(feature, species) &&
-        (feature.room === data.home || distanceInSquares(feature, creature) <= ECO_SEARCH_RADIUS)) : null;
+        (feature.room === data.home || distanceInSquares(feature, creature) <= (feature.kind === "carcass" ? scent : gridReach(ECO_SEARCH_RADIUS)))) : null;
       // Off screen an hour is long enough for a hunter to range over much of the floor.
-      const range = species.role === "predator" ? ECO_SEARCH_RADIUS * 2.5 : ECO_SEARCH_RADIUS;
+      const range = gridReach(species.role === "predator" ? ECO_SEARCH_RADIUS * 2.5 : ECO_SEARCH_RADIUS);
       const prey = needsMeal && !meal && (species.role === "predator" || species.role === "scavenger") ? shuffle(state.run.enemies.filter((other) => other.alive && other !== creature &&
         ecoCanHunt(creature, other, species) && distanceInSquares(other, creature) <= range))[0] || null : null;
       if (meal) {
@@ -1526,11 +1606,13 @@ function ecologySettle(ticks) {
       data.route = null;
       // A creature that moved house while you were gone is there now.
       const homeRoom = state.run.rooms[data.home];
-      if (homeRoom && roomIndexAt(creature.x, creature.y) !== data.home && distanceInSquares(creature, state.run.player) > 8 &&
-        !(state.run.lurkers || []).includes(creature)) {
+      // (Only where you can't see either end: the big chambers can be seen across from farther
+      // than eight squares.)
+      if (homeRoom && roomIndexAt(creature.x, creature.y) !== data.home && distanceInSquares(creature, state.run.player) > gridReach(8) &&
+        !ecoSeen(creature) && !(state.run.lurkers || []).includes(creature)) {
         const taken = ecoOccupiedTiles();
         const spot = (species.aquatic && ecoDeepTile(data.home, taken)) || ecoFreeTile(homeRoom, taken);
-        if (spot && distanceInSquares(spot, state.run.player) > 8) {
+        if (spot && distanceInSquares(spot, state.run.player) > gridReach(8) && !ecoSeen(spot)) {
           creature.x = spot.x;
           creature.y = spot.y;
         }
@@ -1729,6 +1811,12 @@ function ecologyInteractions() {
   const patch = ecoFeatureNear((feature) => ["fungus", "plants", "pool"].includes(feature.kind) && feature.amount > 0);
   if (patch) add(`${ECO.resources[patch.kind].harvestVerb} · ${patch.amount}`, () => harvestFeature(patch), "supplies",
     { fungus: "tokens/fungus-patch", pool: "tokens/pool", plants: "tokens/root-tangle" }[patch.kind] || "");
+  // Something you carry that a creature beside you loves (systems/cherish.js).
+  if (typeof cherishGiftOptions === "function") {
+    for (const { enemy, itemId } of cherishGiftOptions()) {
+      add(`${t("Give {0}", { 0: t(itemDetails(itemId).name) })} · ${t(enemy.name)}`, () => cherishGive(enemy, itemId), "explore");
+    }
+  }
   if (typeof duendeInteractions === "function") list.unshift(...duendeInteractions());
   if (typeof delverInteractions === "function") list.unshift(...delverInteractions());
   return list;
@@ -1740,13 +1828,13 @@ function ecologyInteraction() {
 }
 
 function ecoFeatureRoomOwners(feature) {
-  return state.run.enemies.filter((enemy) => enemy.alive && enemy.templateId === feature.owner && distanceInSquares(enemy, feature) <= 8);
+  return state.run.enemies.filter((enemy) => enemy.alive && enemy.templateId === feature.owner && distanceInSquares(enemy, feature) <= gridReach(8));
 }
 
 // A chaneque keeps the garden or spring in its chamber. Taking from it unasked costs you.
 function ecoGuardianOffended(roomIndex, what) {
   const keeper = state.run.enemies.find((enemy) => enemy.alive && enemy.templateId === "chaneque" &&
-    ecoCreature(enemy).home === roomIndex && !enemy.eco.appeased && distanceInSquares(enemy, state.run.player) <= 8);
+    ecoCreature(enemy).home === roomIndex && !enemy.eco.appeased && distanceInSquares(enemy, state.run.player) <= gridReach(8));
   if (!keeper) return;
   keeper.eco.offended = true;
   ecoObserve("chaneque", "guards");
@@ -1764,7 +1852,7 @@ function appeaseGuardian(keeper) {
   // In thanks, it shows you what's hidden nearby and its garden grows back.
   let shown = 0;
   for (const hazard of state.run.hazards) {
-    if (!hazard.triggered && !hazard.revealed && distanceInSquares(hazard, keeper) <= 10) {
+    if (!hazard.triggered && !hazard.revealed && distanceInSquares(hazard, keeper) <= gridReach(10)) {
       hazard.revealed = true;
       shown += 1;
     }
@@ -1801,6 +1889,7 @@ function appeaseAlux(house) {
 // Robbing an alux's storeroom without asking: it throws stones until you leave or it breaks.
 function ecologyTreasureTaken(cache) {
   if (state.run?.location !== "dungeon" || !ecoState()) return;
+  if (typeof richesTaken === "function") richesTaken(cache);
   const roomIndex = roomIndexAt(cache.x, cache.y);
   const house = ecoState().features.find((feature) => feature.kind === "alux-house" && feature.room === roomIndex);
   if (!house || house.appeased) return;
@@ -1867,7 +1956,7 @@ function harvestFeature(feature) {
     feature.amount -= landed;
     addLog(landed ? `You fish the pool for half an hour (Survival ${check}) and land ${landed} blindfish.`
       : `You fish the pool for half an hour (Survival ${check}), but nothing bites.`);
-    if ((state.run.lurkers || []).some((enemy) => enemy.templateId === "cenote-stalker" && distanceInSquares(enemy, feature) <= 6)) {
+    if ((state.run.lurkers || []).some((enemy) => enemy.templateId === "cenote-stalker" && distanceInSquares(enemy, feature) <= gridReach(6))) {
       addLog("The fish jump all at once, the way they do when a predator is below them.");
       ecoObserve("cenote-stalker", "lure");
     }
@@ -2004,7 +2093,9 @@ function leaveOffering(bowl) {
   bowl.amount = resource.max;
   // A payment to the tomb (systems/tomb-body.js), and, for the dead, a loosening of their
   // hold on their posts (systems/minds.js).
-  const worth = ECO.offerings[itemId] || 1;
+  // On the north's days, the quarter of the dead, an offering goes further (systems/laws.js).
+  const north = lawLeans("north");
+  const worth = (ECO.offerings[itemId] || 1) * (north ? 1.25 : 1);
   if (typeof tombGive === "function") tombGive("offeringPerPoint", worth);
   let fed = 0;
   for (const creature of [...state.run.enemies, ...(state.run.lurkers || [])]) {
@@ -2019,6 +2110,7 @@ function leaveOffering(bowl) {
   addLog(fed
     ? `You leave ${itemDetails(itemId).name} in the offering bowl. The air goes still: the restless dead on this floor are fed, and for a long while they'll let you pass.`
     : `You leave ${itemDetails(itemId).name} in the offering bowl. The air goes still.`);
+  if (north) addLog("Today is a day of the north, the quarter of the dead. The offering goes further.");
   // An offering also calls back a soul frightened out of you.
   if (ecoRemoveCondition("susto")) addLog("Your frightened soul comes back to you.");
   finishPlayerTurn();
@@ -2070,9 +2162,9 @@ function ecologyFeatureDescription(feature) {
   if (feature.kind === "nest" && feature.abandoned) return "A cold nest. The creature that laid these eggs never came back.";
   let text = resource.description;
   if (feature.kind === "carcass") {
-    text = `${resource.description} ${feature.drowned ? "It has no eyes, no nails, no teeth. Something took only those." : feature.edible && feature.fresh && feature.meat > 0 ? "It's still fresh enough to butcher." : ""}`.trim();
+    text = `${resource.description} ${feature.drowned ? "It has no eyes, no nails, no teeth. Something took only those." : feature.sick ? "It died sick. The meat is no good." : feature.edible && feature.fresh && feature.meat > 0 ? "It's still fresh enough to butcher." : ""}`.trim();
   }
-  if (feature.kind === "pool" && (state.run.lurkers || []).some((enemy) => enemy.templateId === "cenote-stalker" && distanceInSquares(enemy, feature) <= 5)) {
+  if (feature.kind === "pool" && (state.run.lurkers || []).some((enemy) => enemy.templateId === "cenote-stalker" && distanceInSquares(enemy, feature) <= gridReach(5))) {
     text += " The fish here jump all at once, the way they do when a predator is below them.";
   }
   if (feature.kind === "alux-house" && feature.appeased) text += " You've fed it; it keeps watch for you now.";
@@ -2131,6 +2223,7 @@ function ecologyMoodLabel(creature) {
   const eco = creature?.eco;
   if (!eco || !ecoSpecies(creature)) return "";
   if (creature.asleep && eco.sleeping) return "sleeping off a meal";
+  if (eco.sick > 0) return "sick";
   if (eco.rival) return "disputing territory";
   if (eco.waiting) return "waiting its turn";
   if (creature.band) return "on the move";
@@ -2142,7 +2235,8 @@ function ecologyMoodLabel(creature) {
   if (creature.mind?.intent === "watch") return "watching you";
   if (creature.mind?.intent === "follow") return "following you";
   if (creature.mind?.intent === "flee") return "afraid of you";
-  if (!creature.alerted && ecologyIgnoresPlayer(creature)) return hunger === "gorged" ? "sluggish" : "minding its own business";
+  if (creature.mind?.intent === "feign") return "playing dead";
+  if (!creature.alerted && ecologyIgnoresPlayer(creature)) return hunger === "gorged" ? "sluggish" : ecoDrowsing(creature) ? "drowsing" : "minding its own business";
   return "";
 }
 

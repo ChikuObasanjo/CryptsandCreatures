@@ -89,29 +89,31 @@ function viewportSize(viewport) {
 // side. In the phone layout the map fills the whole screen behind the interface, so it draws
 // enough tiles to cover it (the edges are cut off), plus the rows the map is shifted by to
 // keep you centered between the top and bottom bars (systems/layout.js).
-function mapViewShape(viewport, margin = 0) {
+// `scale` is how many tiles fit where one did: the tomb is drawn on its fine grid (MAP_SCALE
+// tiles across each planned square, systems/grid.js), the town on its own.
+function mapViewShape(viewport, margin = 0, scale = 1) {
   const phone = document.body.classList.contains("phone-layout");
-  const across = Math.max(3, (phone || window.matchMedia("(max-width: 540px)").matches ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom);
+  const across = scale * Math.max(3, (phone || window.matchMedia("(max-width: 540px)").matches ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom) + (scale > 1 ? 1 : 0);
   const { width, height } = viewportSize(viewport);
   if (width < 60 || height < 60) return { cols: across, rows: across, tile: 0 };
   const tile = Math.floor((Math.min(width, height) - margin) / across);
   if (phone) {
     const cover = (count) => {
-      const whole = Math.max(3, Math.min(27, Math.ceil(count)));
+      const whole = Math.max(3, Math.min(27 * scale, Math.ceil(count)));
       return whole % 2 ? whole : whole + 1;
     };
     const shift = 2 * layoutMapShift();
     return { cols: cover((width + shift) / tile), rows: cover((height + shift) / tile), tile };
   }
   const odd = (count) => {
-    const whole = Math.max(3, Math.min(19, Math.floor(count)));
+    const whole = Math.max(3, Math.min(19 * scale, Math.floor(count)));
     return whole % 2 ? whole : whole - 1;
   };
   return { cols: odd(width / tile), rows: odd(height / tile), tile };
 }
 
 function dungeonViewShape() {
-  return mapViewShape(elements["dungeon-map-viewport"]);
+  return mapViewShape(elements["dungeon-map-viewport"], 0, MAP_SCALE);
 }
 const FONT_CHOICES = ["unifont", "codex"];
 function applyFontChoice(font) {
@@ -142,10 +144,13 @@ const MOVEMENT_DIRECTIONS = [
 // Menus, from anywhere in the game.
 const MENU_KEYS = { i: "gear", o: "equipment", k: "abilities", p: "info" };
 const ROOM_GRID_SIZE = 5;
-const MAP_TILE_SIZE = 45;
+// The tomb is planned on a 45-square grid and lived on one twice as fine (systems/grid.js).
+const MAP_PLAN_SIZE = 45;
+const MAP_SCALE = 2;
+let MAP_TILE_SIZE = MAP_PLAN_SIZE * MAP_SCALE;
 const DUNGEON_FLOOR_COUNT = 13;
 const LEGACY_MAP_TILE_SIZE = ROOM_GRID_SIZE * 7;
-const PROCEDURAL_MAP_OFFSET = Math.floor((MAP_TILE_SIZE - LEGACY_MAP_TILE_SIZE) / 2);
+const PROCEDURAL_MAP_OFFSET = Math.floor((MAP_PLAN_SIZE - LEGACY_MAP_TILE_SIZE) / 2);
 const GTFL_MAP_ID = "gtfl-level-1";
 const TOWN_MAP_VERSION = 5;
 const TOWN_LAYOUT = {
@@ -271,7 +276,7 @@ const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
 // The build replaces this with a fingerprint of all the art; no need to bump it by hand.
-const SPRITE_RESOURCE_VERSION = "b8ca0c5034";
+const SPRITE_RESOURCE_VERSION = "9608dc5774";
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
@@ -1139,7 +1144,7 @@ function campAndRest() {
     return;
   }
   if (state.run.location === "dungeon" && state.run.enemies.some((enemy) =>
-    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= 7
+    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= gridReach(7)
   )) {
     elements["party-message"].textContent = "Too close to danger to make camp. Find a quiet room first.";
     showToast("Too close to danger to make camp. Find a quiet room first.");
@@ -1147,14 +1152,26 @@ function campAndRest() {
   }
   const previousHours = state.run.gameHours;
   const members = partyMembers();
-  // In the tomb the night passes hour by hour, and something may come; in town it's safe.
-  let night = { slept: 8, visitor: null };
+  // In the tomb the night passes ten minutes at a time on the map, like any long action:
+  // the tomb lives on around your camp, and something may come (systems/camp.js). What the
+  // rest gives you is settled when the night is over. In town it's safe, and quick.
   if (state.run.location === "dungeon" && typeof restThroughTheNight === "function") {
-    night = restThroughTheNight();
-  } else {
-    advanceSurvivalTime(true, 8 * 60);
-    if (typeof ecologyAdvance === "function") ecologyAdvance();
+    restTransitionTimer = -1;
+    restThroughTheNight((night) => {
+      restTransitionTimer = 0;
+      finishCampRest(night, previousHours, members);
+    });
+    return;
   }
+  advanceSurvivalTime(true, 8 * 60);
+  if (typeof ecologyAdvance === "function") ecologyAdvance();
+  // (The tomb's other delvers lived through the night too.)
+  if (state.run.location === "city" && typeof delversSync === "function") delversSync();
+  finishCampRest({ slept: 8, visitor: null }, previousHours, members);
+}
+
+// What a night's rest gives you, once the night is over.
+function finishCampRest(night, previousHours, members) {
   if (state.run.lost) {
     render();
     showRestTransition(previousHours, state.run.gameHours);
@@ -1284,8 +1301,9 @@ function showRestTransition(previousHours, currentHours) {
   const hour = eventHour ?? currentHours;
   const day = Math.floor(hour / 24) + 1;
   const clock = String(hour % 24).padStart(2, "0");
+  const countName = typeof lawCount === "function" ? ` · ${lawCount(hour * 60).name}` : "";
   transition.textContent = dawn
-    ? `Dawn breaks · Day ${day} · ${clock}:00`
+    ? `Dawn breaks · Day ${day} · ${clock}:00${countName}`
     : dusk
       ? `Night falls · Day ${day} · ${clock}:00`
       : `Eight hours pass · Day ${day} · ${clock}:00`;
@@ -1342,8 +1360,11 @@ function forageIngredients() {
 
 function advanceSurvivalTime(resting = false, elapsedMinutes = 10) {
   const previousHour = Math.floor(state.run.gameMinutes / 60);
+  const previousMinutes = state.run.gameMinutes;
   state.run.gameMinutes += elapsedMinutes;
   state.run.gameHours = Math.floor(state.run.gameMinutes / 60);
+  // The count turns over at midnight (systems/laws.js).
+  if (typeof lawTurns === "function") lawTurns(previousMinutes);
   if (state.run.location !== "dungeon") return;
   const elapsedHours = state.run.gameHours - previousHour;
   for (let hour = 0; hour < elapsedHours; hour += 1) {
@@ -1870,6 +1891,15 @@ function dropEnemyTreasure(enemy) {
   // Dungeon Gourmet Guide.
   const bonus = state.run.mapId === GTFL_MAP_ID ? bonusEnemyLoot(enemy) : { items: [], gold: 0 };
   items.push(...bonus.items);
+  // What some kinds pay when you put them down (`gives` in the ecology data).
+  const gives = typeof ecoSpecies === "function" ? ecoSpecies(enemy)?.gives : null;
+  if (gives) items.push({ id: gives.id, quantity: gives.quantity[0] + randomInt(gives.quantity[1] - gives.quantity[0] + 1) - 1 });
+  // What it was carrying home (systems/riches.js).
+  const carried = typeof richesDropCarried === "function" ? richesDropCarried(enemy) : null;
+  if (carried) {
+    bonus.gold += carried.gold || 0;
+    items.push(...(carried.items || []));
+  }
   if (enemy.stolen) {
     bonus.gold += Math.ceil(enemy.stolen * 1.5);
     addLog(`${enemy.name} drops the gold it stole from you, and its own hidden stash besides.`);
@@ -1880,7 +1910,10 @@ function dropEnemyTreasure(enemy) {
     x: enemy.x,
     y: enemy.y,
     gold: gold + bonus.gold,
-    items
+    items,
+    // Left lying, it's anyone's: a mapachin's, or the earth's (systems/riches.js).
+    loose: true,
+    since: state.run.ecology?.ticks || 0
   });
   const itemText = items.map((item) => {
     const name = itemDetails(item.id).name;
@@ -1892,7 +1925,8 @@ function dropEnemyTreasure(enemy) {
 
 function collectTreasureAt(x, y, auto = false) {
   // Walking over things you dropped yourself leaves them be; pick them up on purpose.
-  const treasures = state.run.treasures.filter((entry) => entry.x === x && entry.y === y && !(auto && entry.dropped));
+  // (Nor do you sweep up a shrine's offerings by walking past: take them on purpose.)
+  const treasures = state.run.treasures.filter((entry) => entry.x === x && entry.y === y && !(auto && (entry.dropped || entry.shrine)));
   if (!treasures.length) return;
   const collectedNames = [];
   const leftBehind = [];
@@ -2037,17 +2071,14 @@ function finishPlayerTurn(elapsedMinutes = 10, movementMode = null) {
     animateAction("turn");
     return;
   }
+  // One clock: an action is ten minutes of the world's time. A longer one (cooking,
+  // searching, foraging) is that many ten-minute turns, and the tomb takes each of them:
+  // the first now, the rest played out after it (worldPassTime).
+  const turns = Math.max(1, Math.round(elapsedMinutes / WORLD_TURN_MINUTES));
   if (state.run.location === "dungeon" && !state.run.lost && !state.run.won) {
-    tickConditions();
-    advanceSurvivalTime(false, elapsedMinutes);
-    if (!state.run.lost) alliesTakeTurn();
-    if (!state.run.lost) summonsTakeTurn();
-    state.run.dodging = currentStance() === "guard";
-    if (!state.run.lost && typeof delversSync === "function") delversSync();
-    if (!state.run.lost && typeof tombNotice === "function") tombNotice();
-    if (!state.run.lost) enemiesTakeTurn();
-    if (!state.run.lost && typeof ecologyAdvance === "function") ecologyAdvance();
-    if (!state.run.lost) abilityTurnTick();
+    worldTurn(elapsedMinutes - (turns - 1) * WORLD_TURN_MINUTES);
+  } else if (state.run.location === "city") {
+    townPassTime(elapsedMinutes);
   }
   state.run.dodging = false;
   state.dashReady = false;
@@ -2055,6 +2086,124 @@ function finishPlayerTurn(elapsedMinutes = 10, movementMode = null) {
   revealAroundPlayer();
   render();
   animateAction("turn");
+  if (turns > 1 && state.run.location === "dungeon" && !state.run.lost && !state.run.won) worldPassTime(turns - 1);
+}
+
+// ---------- One clock ----------
+//
+// Everything runs on the same clock. One action is WORLD_TURN_MINUTES of game time, in the
+// tomb and in town. In the tomb every ten minutes is a full turn for everything there: you
+// get hungrier, the creatures act, the food web ticks, the delvers go about their business.
+// Anything that takes longer is that many turns, so the tomb doesn't hold still while you
+// cook. In town the clock runs the same way (the villagers keep their hours, the delvers
+// keep delving, news comes), but you don't get hungry or thirsty there.
+const WORLD_TURN_MINUTES = 10;
+// How long each ten minutes shows on screen while a long action plays out.
+const WORLD_PASS_FRAME_MS = 140;
+
+// One ten-minute turn of the tomb.
+function worldTurn(minutes = WORLD_TURN_MINUTES, { resting = false } = {}) {
+  tickConditions();
+  advanceSurvivalTime(resting, minutes);
+  if (!state.run.lost) alliesTakeTurn();
+  if (!state.run.lost) summonsTakeTurn();
+  state.run.dodging = currentStance() === "guard";
+  if (!state.run.lost && typeof delversSync === "function") delversSync();
+  if (!state.run.lost && typeof tombNotice === "function") tombNotice();
+  if (!state.run.lost) enemiesTakeTurn();
+  if (!state.run.lost && typeof ecologyAdvance === "function") ecologyAdvance();
+  if (!state.run.lost) abilityTurnTick();
+  state.run.dodging = false;
+}
+
+// What makes you stop what you're doing: you were hurt, or something that means you harm
+// has come close. `before` is what was already close when the action began.
+function worldPassWatch() {
+  const close = new Set(state.run.enemies.filter((enemy) => enemy.alive && !enemy.asleep && creatureIsThreat(enemy) &&
+    distanceInSquares(enemy, state.run.player) <= gridReach(3)).map((enemy) => enemy.id));
+  return { hp: state.run.hp, close };
+}
+
+function worldPassInterrupted(before) {
+  if (state.run.lost || state.run.won || state.run.location !== "dungeon") return "ended";
+  if (state.run.hp < before.hp) return "You stop what you're doing: you've been hurt.";
+  const threat = state.run.enemies.find((enemy) => enemy.alive && !enemy.asleep && creatureIsThreat(enemy) &&
+    distanceInSquares(enemy, state.run.player) <= gridReach(3) && !before.close.has(enemy.id) && playerSees(enemy));
+  return threat ? `You stop what you're doing: ${threat.name} is coming.` : null;
+}
+
+// The rest of a long action, ten minutes at a time. On screen each ten minutes is shown for
+// a moment, so you watch the tomb move (nothing jumps); a tap or a key finishes it at once.
+// Off screen (and in the tests) it runs straight through.
+//
+// Anything that takes several turns can use it: `turn` runs one ten-minute turn and returns
+// true to stop early (cooking stops when you're hurt or something comes for you; sleep when
+// something wakes you), `onDone` runs once it's over however it ended, `label` is the sign
+// on the map, `frameMs` how long each turn shows, and `sleeping` darkens the map.
+function worldPassTime(turns, { turn = null, onDone = null, label = "Time passes · tap to skip", frameMs = WORLD_PASS_FRAME_MS, sleeping = false } = {}) {
+  const watch = worldPassWatch();
+  const step = turn || (() => {
+    worldTurn();
+    revealAroundPlayer();
+    const stop = worldPassInterrupted(watch);
+    if (stop && stop !== "ended") addLog(stop);
+    return Boolean(stop);
+  });
+  const shown = typeof document !== "undefined" && document.visibilityState === "visible" && !state.instantTime;
+  if (!shown) {
+    for (let index = 0; index < turns; index += 1) if (step()) break;
+    render();
+    if (onDone) onDone();
+    return;
+  }
+  const pass = { left: turns };
+  state.timePassing = pass;
+  const frame = document.querySelector(".dungeon-map-viewport");
+  if (frame) frame.dataset.passing = t(label);
+  document.body.classList.add("time-passing");
+  document.body.classList.toggle("time-sleeping", sleeping);
+  const finish = () => {
+    if (state.timePassing !== pass) return;
+    state.timePassing = null;
+    document.body.classList.remove("time-passing", "time-sleeping");
+    render();
+    if (onDone) onDone();
+  };
+  // A tap or key while time passes runs the rest at once and is used up doing it.
+  pass.hurry = () => {
+    window.clearTimeout(pass.timer);
+    while (pass.left > 0) { pass.left -= 1; if (step()) break; }
+    finish();
+  };
+  const tick = () => {
+    if (state.timePassing !== pass) return;
+    pass.left -= 1;
+    const stopped = step();
+    render();
+    if (stopped || pass.left <= 0) finish();
+    else pass.timer = window.setTimeout(tick, frameMs);
+  };
+  pass.timer = window.setTimeout(tick, frameMs);
+}
+
+function worldPassHurry(event) {
+  if (!state.timePassing) return;
+  event.preventDefault();
+  event.stopPropagation();
+  state.timePassing.hurry();
+}
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  for (const kind of ["keydown", "pointerdown", "click"]) window.addEventListener(kind, worldPassHurry, true);
+}
+
+// Time in town: the clock and the tomb's other delvers move on; your body doesn't use up
+// food or water here (advanceSurvivalTime only drains in the tomb).
+function townPassTime(minutes = WORLD_TURN_MINUTES) {
+  if (state.run?.location !== "city") return;
+  const before = state.run.gameHours;
+  advanceSurvivalTime(false, minutes);
+  // The delvers live by the hour; no need to wake them every step.
+  if (state.run.gameHours !== before && typeof delversSync === "function") delversSync();
 }
 
 function facingForDelta(dx, dy) {
@@ -2177,13 +2326,16 @@ function movePlayer(dx, dy) {
     const blocker = state.run.enemies.find((enemy) => enemy.alive && enemy.x === nx && enemy.y === ny);
     if (blocker) {
       if (moved) break;
-      // Walking into a delver talks to them; into any other friend, nothing.
+      // Walking into a delver trades places with them, so they never plug a passage (talk to
+      // them with the interact button). Into any other friend, nothing.
       if (blocker.friendly) {
-        if (blocker.delver && typeof talkToDelver === "function") talkToDelver(blocker);
+        if (!blocker.delver || !moveCreature(blocker, { x, y })) return false;
+        addLog(`You squeeze past ${blocker.name}.`);
+      }
+      else {
+        if (distanceInSquares(blocker, { x, y }) === 1) attackEnemy(blocker);
         return false;
       }
-      if (distanceInSquares(blocker, { x, y }) === 1) attackEnemy(blocker);
-      return false;
     }
     const downedCompanion = state.run.party.find((companion) =>
       companion.hp <= 0 && companion.x === nx && companion.y === ny
@@ -2229,6 +2381,8 @@ function movePlayer(dx, dy) {
       enteredRoom = true;
       state.run.currentRoom = newRoomIndex;
       resolveRoomEntry(newRoomIndex);
+      // What the air of the chamber tells you (systems/minds.js).
+      if (typeof mindAirNotice === "function") mindAirNotice(newRoomIndex);
     }
     reachExitAt(nx, ny);
     if (state.run.hazards.some((hazard) => !hazard.triggered && hazard.x === nx && hazard.y === ny)) {
@@ -2293,7 +2447,80 @@ function showSpellEffect(x, y, targetX, targetY, element = "", ids = {}) {
   }, 640);
 }
 
+// ---------- Walking to a tile you tap ----------
+// On the fine grid a chamber is a dozen steps across, so a tap on any tile you've seen walks
+// you there, a step (ten minutes) at a time, by the shortest way you know. It stops when
+// something that means you harm is near, when a step can't be taken, or at any key or tap.
+let walkTimer = 0;
+let walkGoal = null;
+
+function stopWalking() {
+  window.clearTimeout(walkTimer);
+  walkTimer = 0;
+  walkGoal = null;
+}
+
+function walkDangerNear() {
+  return state.run.enemies.some((enemy) => creatureIsThreat(enemy) &&
+    (enemy.alerted || distanceInSquares(enemy, state.run.player) <= gridReach(7)));
+}
+
+// The first step of the shortest known way to `goal`, or null.
+function walkFirstStep(goal) {
+  const start = state.run.player;
+  const key = (x, y) => y * MAP_TILE_SIZE + x;
+  const known = (x, y) => x >= 0 && y >= 0 && x < MAP_TILE_SIZE && y < MAP_TILE_SIZE && state.run.seen[key(x, y)];
+  const first = new Map([[key(start.x, start.y), null]]);
+  const queue = [{ x: start.x, y: start.y }];
+  for (let cursor = 0; cursor < queue.length && cursor < 6000; cursor += 1) {
+    const at = queue[cursor];
+    for (const direction of MOVEMENT_DIRECTIONS) {
+      const next = { x: at.x + direction.x, y: at.y + direction.y };
+      const id = key(next.x, next.y);
+      if (first.has(id) || !known(next.x, next.y)) continue;
+      const door = state.run.terrain[id] === "door";
+      if (!door && !canStepBetween(at, next, state.run.player)) continue;
+      if (tileHasCreature(next.x, next.y) && !(next.x === goal.x && next.y === goal.y)) continue;
+      const step = first.get(key(at.x, at.y)) || { dx: direction.x, dy: direction.y };
+      if (next.x === goal.x && next.y === goal.y) return step;
+      first.set(id, step);
+      queue.push(next);
+    }
+  }
+  return null;
+}
+
+function walkTo(goal) {
+  stopWalking();
+  if (!state.run.seen[tileIndex(goal.x, goal.y)] || !walkFirstStep(goal)) return false;
+  if (walkDangerNear()) {
+    showToast("Not with danger this close. Move a step at a time.");
+    return true;
+  }
+  walkGoal = goal;
+  walkStep();
+  return true;
+}
+
+function walkStep() {
+  walkTimer = 0;
+  const goal = walkGoal;
+  if (!goal || state.run?.location !== "dungeon" || state.run.lost || state.run.won || state.timePassing ||
+    document.querySelector("dialog[open]") || state.utilityDrawer || state.messageBox) { stopWalking(); return; }
+  const step = walkFirstStep(goal);
+  if (!step) { stopWalking(); return; }
+  const before = { x: state.run.player.x, y: state.run.player.y };
+  const doorAhead = tileIndex(before.x + step.dx, before.y + step.dy);
+  const wasShut = state.run.terrain[doorAhead] === "door" && !state.run.openDoors.includes(doorAhead);
+  movePlayer(step.dx, step.dy);
+  // (Opening a door on the way is progress too.)
+  const moved = state.run.player.x !== before.x || state.run.player.y !== before.y || (wasShut && state.run.openDoors.includes(doorAhead));
+  if (!moved || (state.run.player.x === goal.x && state.run.player.y === goal.y) || walkDangerNear()) { stopWalking(); return; }
+  walkTimer = window.setTimeout(walkStep, HOLD_MOVE_INTERVAL_MS / 2);
+}
+
 function stopHeldMovement() {
+  stopWalking();
   window.clearTimeout(heldMoveTimer);
   heldMoveTimer = 0;
   const activeMove = heldMove;
@@ -2322,7 +2549,7 @@ function continueHeldMovement() {
   }
   const [dx, dy] = heldMove.button.dataset.move.split(",").map(Number);
   if (!movePlayer(dx, dy) || state.run.enemies.some((enemy) =>
-    creatureIsThreat(enemy) && (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7)
+    creatureIsThreat(enemy) && (enemy.alerted || distanceInSquares(enemy, state.run.player) <= gridReach(7))
   )) {
     stopHeldMovement();
     return;
@@ -2339,7 +2566,7 @@ function beginHeldMovement(button, event) {
   button.setPointerCapture(event.pointerId);
   const [dx, dy] = button.dataset.move.split(",").map(Number);
   if (!movePlayer(dx, dy) || state.run.enemies.some((enemy) =>
-    creatureIsThreat(enemy) && (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7)
+    creatureIsThreat(enemy) && (enemy.alerted || distanceInSquares(enemy, state.run.player) <= gridReach(7))
   )) {
     stopHeldMovement();
     return;
@@ -2646,7 +2873,7 @@ function searchArea() {
   if (state.run.lost || state.run.won) return;
   let found = 0;
   for (const hazard of state.run.hazards) {
-    if (hazard.triggered || hazard.revealed || distanceInSquares(state.run.player, hazard) > 4 ||
+    if (hazard.triggered || hazard.revealed || distanceInSquares(state.run.player, hazard) > gridReach(4) ||
       !hasLineOfSight(state.run.player, hazard)) continue;
     const roll = randomInt(20) + skillBonus("perception");
     if (roll >= hazard.dc) {
@@ -2856,7 +3083,7 @@ function itemUseBlocked(entry) {
   if (state.run.lost || state.run.won) return "The expedition is over.";
   if (RELIC_RITES[id]) return relicRiteBlocked(entry);
   const trapWithin = (reach, needSight) => state.run.hazards.some((hazard) => !hazard.triggered && hazard.revealed &&
-    distanceInSquares(hazard, state.run.player) <= reach && (!needSight || hasLineOfSight(state.run.player, hazard)));
+    distanceInSquares(hazard, state.run.player) <= gridReach(reach) && (!needSight || hasLineOfSight(state.run.player, hazard)));
   if (id === "healing-potion") return state.run.hp >= state.run.maxHp && !progress().conditions.length ? "You're unhurt and have no ailments." : null;
   if (id === "torch" || id === "ocote") return inDungeon ? null : "Light it inside the tomb.";
   if (id === "chili-smoke") return inDungeon && enemiesAdjacent().length ? null : "Crack it when a creature is right beside you.";
@@ -2969,7 +3196,7 @@ function useInventoryItem(itemId) {
     }
     removeInventoryItem(itemId);
     sfx("miss");
-    const radius = itemId === "ocote" ? 12 : 8;
+    const radius = gridReach(itemId === "ocote" ? 12 : 8);
     const { x, y } = state.run.player;
     for (let ty = Math.max(0, y - radius); ty <= Math.min(MAP_TILE_SIZE - 1, y + radius); ty += 1) {
       for (let tx = Math.max(0, x - radius); tx <= Math.min(MAP_TILE_SIZE - 1, x + radius); tx += 1) {
@@ -3040,7 +3267,7 @@ function useInventoryItem(itemId) {
     }
   } else if (itemId === "hempen-rope") {
     const hazard = state.run.hazards.find((item) => !item.triggered && item.revealed &&
-      distanceInSquares(item, state.run.player) <= 10 && hasLineOfSight(state.run.player, item));
+      distanceInSquares(item, state.run.player) <= gridReach(10) && hasLineOfSight(state.run.player, item));
     if (state.run.location !== "dungeon" || !hazard) {
       showToast("No revealed trap is within the rope's reach and sight.");
       return;
@@ -3346,6 +3573,7 @@ function moveTownPlayer(dx, dy) {
     enterDungeon();
     return;
   }
+  townPassTime();
   render();
 }
 
@@ -3656,19 +3884,46 @@ function nearbyDungeonDoors() {
     .filter((door) => door && distanceInSquares(door, state.run.player) === 1);
 }
 
+// A doorway is every door tile that touches another (on the fine grid a planned door is a
+// 2 × 2 block, systems/grid.js): it opens and closes as one.
+function doorwayTiles(index) {
+  const terrain = state.run.terrain;
+  if (terrain[index] !== "door") return [index];
+  const tiles = new Set([index]);
+  const queue = [index];
+  while (queue.length && tiles.size < 9) {
+    const at = queue.pop();
+    const x = at % MAP_TILE_SIZE;
+    for (const next of [at - 1, at + 1, at - MAP_TILE_SIZE, at + MAP_TILE_SIZE]) {
+      if (next < 0 || next >= terrain.length || tiles.has(next) || terrain[next] !== "door") continue;
+      if (Math.abs((next % MAP_TILE_SIZE) - x) > 1) continue;
+      tiles.add(next);
+      queue.push(next);
+    }
+  }
+  return [...tiles];
+}
+
+function openDoorway(index) {
+  for (const tile of doorwayTiles(index)) if (!state.run.openDoors.includes(tile)) state.run.openDoors.push(tile);
+}
+
 function interactWithDoor(door) {
   const isOpen = state.run.openDoors.includes(door.index);
   if (isOpen) {
-    const occupied = state.run.player.x === door.x && state.run.player.y === door.y ||
-      state.run.enemies.some((enemy) => enemy.alive && enemy.x === door.x && enemy.y === door.y) ||
-      state.run.party.some((companion) => companion.x === door.x && companion.y === door.y) ||
-      state.run.treasures.some((treasure) => treasure.x === door.x && treasure.y === door.y) ||
-      state.run.hazards.some((hazard) => !hazard.triggered && hazard.x === door.x && hazard.y === door.y);
+    const tiles = doorwayTiles(door.index).map((index) => ({ x: index % MAP_TILE_SIZE, y: Math.floor(index / MAP_TILE_SIZE) }));
+    const at = (thing) => tiles.some((tile) => tile.x === thing.x && tile.y === thing.y);
+    const occupied = at(state.run.player) ||
+      state.run.enemies.some((enemy) => enemy.alive && at(enemy)) ||
+      state.run.party.some((companion) => at(companion)) ||
+      state.run.treasures.some((treasure) => at(treasure)) ||
+      state.run.hazards.some((hazard) => !hazard.triggered && at(hazard));
     if (occupied) {
       showToast("Someone or something is in the doorway. It cannot be closed yet.");
       return;
     }
-    state.run.openDoors = state.run.openDoors.filter((index) => index !== door.index);
+    const closing = new Set(doorwayTiles(door.index));
+    state.run.openDoors = state.run.openDoors.filter((index) => !closing.has(index));
     addLog("You close the doorway.");
     sfx("doorClose");
     finishPlayerTurn();
@@ -3692,7 +3947,7 @@ function openDungeonDoor(door) {
   } else {
     addLog("You open the doorway.");
   }
-  state.run.openDoors.push(door.index);
+  openDoorway(door.index);
   sfx("door");
   return true;
 }
@@ -3779,7 +4034,7 @@ function contextualInteractions() {
     add({
       label: "Collect nearby treasure", group: "explore",
       action: () => chooseFromOptions("Choose treasure to collect", treasureTiles.map((treasure) => ({
-        label: `${treasure.items.map((item) => itemDetails(item.id).name).join(", ") || "Supplies"}${treasure.gold ? ` · ${formatCurrency(treasure.gold)}` : ""}`,
+        label: `${typeof richesCacheLabel === "function" && richesCacheLabel(treasure) ? `${richesCacheLabel(treasure)}: ` : ""}${treasure.items.map((item) => itemDetails(item.id).name).join(", ") || "Supplies"}${treasure.gold ? ` · ${formatCurrency(treasure.gold)}` : ""}`,
         action: () => {
           collectTreasureAt(treasure.x, treasure.y);
           finishPlayerTurn();
@@ -4644,10 +4899,10 @@ function renderActions() {
   elements["return-after-delving"].classList.add("hidden");
   elements["return-after-delving"].removeAttribute("data-shortcut");
   const combatActive = state.run.enemies.some((enemy) => creatureIsThreat(enemy) &&
-    (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7));
+    (enemy.alerted || distanceInSquares(enemy, state.run.player) <= gridReach(7)));
   const passivePerception = 10 + skillBonus("perception");
   const hunters = state.run.enemies.filter((enemy) => enemy.alive && enemy.alerted && !enemy.asleep &&
-    !enemy.fleeTurns && !enemy.sated && distanceInSquares(enemy, state.run.player) <= 8);
+    !enemy.fleeTurns && !enemy.sated && distanceInSquares(enemy, state.run.player) <= gridReach(8));
   elements["turn-status"].textContent = ended ? "Expedition ended"
     : enemiesAdjacent().some((enemy) => flankingCompanion(enemy)) ? "Flanked · Advantage on melee attacks"
       : hunters.length === 1 ? t("{0} is after you", { 0: t(hunters[0].name) })
@@ -4713,7 +4968,7 @@ function renderActions() {
   addButton(meal ? `Eat · ${itemDetails(meal)?.name || "meal"}` : `Eat meal · ${mealCount}`, eatBestMeal, "m", true,
     ended || !meal, elements["action-supplies"], "eat-meal-button");
   const nearbyThreat = state.run.enemies.some((enemy) => creatureIsThreat(enemy) &&
-    distanceInSquares(enemy, state.run.player) <= 7);
+    distanceInSquares(enemy, state.run.player) <= gridReach(7));
   const byCamp = atCamp();
   if (byCamp) {
     addButton("Rest at camp · 8 hours", restAtCamp, "b", true, ended || nearbyThreat,
@@ -4987,7 +5242,11 @@ function renderCharacter() {
   const day = Math.floor(elapsedMinutes / (24 * 60)) + 1;
   const clockText = `Day ${day} · ${String(clockHour).padStart(2, "0")}:${String(clockMinute).padStart(2, "0")}`;
   elements["header-clock"].textContent = clockText;
-  elements["header-clock"].parentElement.setAttribute("aria-label", `Expedition time: ${clockText}`);
+  // The day of the sacred count (systems/laws.js), for anyone who looks closer.
+  const countDay = typeof lawCount === "function" ? lawCount(elapsedMinutes) : null;
+  const countText = countDay ? `${countDay.name} (${countDay.nahuatl}), a day of the ${countDay.quarter}` : "";
+  elements["header-clock"].parentElement.title = countText;
+  elements["header-clock"].parentElement.setAttribute("aria-label", `Expedition time: ${clockText}${countText ? `. ${countText}` : ""}`);
   elements["xp-line"].textContent = state.run.level >= MAX_LEVEL
     ? `${state.run.xp} experience · Maximum level`
     : `${state.run.xp} experience · ${Math.max(0, XP_THRESHOLDS[state.run.level + 1] - state.run.xp)} to level ${state.run.level + 1}`;
@@ -5093,7 +5352,7 @@ function renderAbilityGuide(character, stats, spellAbility, spellReady) {
   const nearbyHazard = inDungeon && state.run.hazards.some((hazard) =>
     !hazard.triggered && hazard.revealed && distanceInSquares(hazard, state.run.player) <= 1);
   const nearbyThreat = inDungeon && state.run.enemies.some((enemy) =>
-    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= 7);
+    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= gridReach(7));
   const noHpNeeded = state.run.hp >= state.run.maxHp;
   const ailing = progress().conditions.length > 0;
   const canUsePotion = inventoryQuantity("healing-potion") > 0 && (!noHpNeeded || ailing);
@@ -6154,12 +6413,12 @@ function parseSavedRun(saved, pack) {
   if (saved && Array.isArray(saved.terrain) &&
     saved.terrain.length === LEGACY_MAP_TILE_SIZE * LEGACY_MAP_TILE_SIZE &&
     Array.isArray(saved.seen) && saved.seen.length === saved.terrain.length) {
-    const migratedTerrain = Array(MAP_TILE_SIZE * MAP_TILE_SIZE).fill("stone");
-    const migratedSeen = Array(MAP_TILE_SIZE * MAP_TILE_SIZE).fill(false);
+    const migratedTerrain = Array(MAP_PLAN_SIZE * MAP_PLAN_SIZE).fill("stone");
+    const migratedSeen = Array(MAP_PLAN_SIZE * MAP_PLAN_SIZE).fill(false);
     for (let y = 0; y < LEGACY_MAP_TILE_SIZE; y += 1) {
       for (let x = 0; x < LEGACY_MAP_TILE_SIZE; x += 1) {
         const oldIndex = y * LEGACY_MAP_TILE_SIZE + x;
-        const newIndex = tileIndex(x + PROCEDURAL_MAP_OFFSET, y + PROCEDURAL_MAP_OFFSET);
+        const newIndex = (y + PROCEDURAL_MAP_OFFSET) * MAP_PLAN_SIZE + x + PROCEDURAL_MAP_OFFSET;
         migratedTerrain[newIndex] = saved.terrain[oldIndex];
         migratedSeen[newIndex] = saved.seen[oldIndex];
       }
@@ -6182,6 +6441,11 @@ function parseSavedRun(saved, pack) {
       if (Number.isInteger(actor?.y)) actor.y += PROCEDURAL_MAP_OFFSET;
     }
   }
+  // Floors saved before the fine grid (systems/grid.js) are made fine: every square becomes
+  // a 2 × 2 block, and everything on them keeps its place.
+  if (typeof gridMigrateRun === "function") gridMigrateRun(saved);
+  // Creatures from before they grew with the floor (systems/growth.js) are grown now.
+  if (typeof growMigrateRun === "function") growMigrateRun(saved, pack);
   if (saved && saved.location === undefined) {
     saved.location = "city";
     saved.hasEnteredDungeon = true;
@@ -6211,6 +6475,7 @@ function parseSavedRun(saved, pack) {
   if (saved.dodging === undefined) saved.dodging = false;
   // The tomb's mood (systems/tomb-body.js); older saves start it still.
   if (typeof normalizeTombBody === "function") normalizeTombBody(saved);
+  if (typeof normalizeLaws === "function") normalizeLaws(saved);
   // The other delvers (systems/delvers.js): their figures are rebuilt from their records.
   if (typeof normalizeDelvers === "function") normalizeDelvers(saved);
   if (!["guard", "run", "disengage"].includes(saved.stance)) saved.stance = "guard";
@@ -6229,7 +6494,7 @@ function parseSavedRun(saved, pack) {
     saved.dungeonFloor > DUNGEON_FLOOR_COUNT ||
     (saved.dungeonFloor > 1 && saved.mapId !== GTFL_MAP_ID)) return null;
   if (saved.dungeonLayoutVersion === undefined) saved.dungeonLayoutVersion = 1;
-  if (![1, 2, 3].includes(saved.dungeonLayoutVersion) ||
+  if (![1, 2, 3, 4].includes(saved.dungeonLayoutVersion) ||
     (saved.dungeonLayoutVersion >= 2 && saved.mapId !== GTFL_MAP_ID)) return null;
   if (saved.dungeonFloors === undefined) saved.dungeonFloors = {};
   normalizeVillageSave(saved);
@@ -6332,7 +6597,7 @@ function parseSavedRun(saved, pack) {
   }
   if (!saved || !Array.isArray(saved.rooms) ||
     (fixedMap
-      ? (saved.dungeonLayoutVersion === 3
+      ? (saved.dungeonLayoutVersion >= 3
         ? saved.rooms.length < 11 || saved.rooms.length > 24
         : saved.dungeonLayoutVersion === 2
         ? saved.rooms.length < 17 || saved.rooms.length > 22
@@ -6343,34 +6608,36 @@ function parseSavedRun(saved, pack) {
   if (rooms.some((room) => {
     if (!room || !roomIds.has(room.id) || !Number.isInteger(room.x) || !Number.isInteger(room.y) ||
       room.x < 0 || room.x >= ROOM_GRID_SIZE || room.y < 0 || room.y >= ROOM_GRID_SIZE || !Array.isArray(room.links)) return true;
-      if (fixedMap && saved.dungeonLayoutVersion === 3) {
-        if (room.mapLayout !== GTFL_MAP_ID || !Number.isInteger(room.anchorX) || !Number.isInteger(room.anchorY) ||
-          !Number.isInteger(room.mapX) || !Number.isInteger(room.mapY) ||
-          ![5, 7, 9, 11, 13].includes(room.mapW) || ![5, 7, 9, 11, 13].includes(room.mapH) ||
-          room.mapX < 1 || room.mapY < 1 || room.mapX + room.mapW > MAP_TILE_SIZE - 1 || room.mapY + room.mapH > MAP_TILE_SIZE - 1 ||
-          room.anchorX <= room.mapX || room.anchorX >= room.mapX + room.mapW - 1 ||
-          room.anchorY <= room.mapY || room.anchorY >= room.mapY + room.mapH - 1 ||
-          !["hall", "pillared", "cross", "round", "ell", "cell", "gallery", "court", "cave"].includes(room.shape) ||
+      // (Chambers are checked as they were planned: on the fine grid they are twice the size.)
+      const plan = gridPlanRoom(room);
+      if (fixedMap && saved.dungeonLayoutVersion >= 3) {
+        if (room.mapLayout !== GTFL_MAP_ID || !Number.isInteger(plan.anchorX) || !Number.isInteger(plan.anchorY) ||
+          !Number.isInteger(plan.mapX) || !Number.isInteger(plan.mapY) ||
+          ![5, 7, 9, 11, 13].includes(plan.mapW) || ![5, 7, 9, 11, 13].includes(plan.mapH) ||
+          plan.mapX < 1 || plan.mapY < 1 || plan.mapX + plan.mapW > MAP_PLAN_SIZE - 1 || plan.mapY + plan.mapH > MAP_PLAN_SIZE - 1 ||
+          plan.anchorX <= plan.mapX || plan.anchorX >= plan.mapX + plan.mapW - 1 ||
+          plan.anchorY <= plan.mapY || plan.anchorY >= plan.mapY + plan.mapH - 1 ||
+          !(["hall", "pillared", "cross", "round", "ell", "cell", "gallery", "court", "cave"].includes(room.shape) || formIs(room.shape)) ||
           room.links.some((link) => !Number.isInteger(link) || link < 0 || link >= rooms.length)) return true;
-      } else if (![3, 5, 7, 9].includes(room.mapW) || ![3, 5, 7, 9].includes(room.mapH)) {
+      } else if (![3, 5, 7, 9].includes(plan.mapW) || ![3, 5, 7, 9].includes(plan.mapH)) {
         return true;
       } else if (fixedMap && saved.dungeonLayoutVersion === 2) {
-        if (room.mapLayout !== GTFL_MAP_ID || !Number.isInteger(room.anchorX) || !Number.isInteger(room.anchorY) ||
-          ![5, 7].includes(room.mapW) || ![5, 7].includes(room.mapH) ||
-          room.anchorX !== 4 + room.x * 9 || room.anchorY !== 4 + room.y * 9 ||
-          room.mapX !== room.anchorX - Math.floor(room.mapW / 2) ||
-          room.mapY !== room.anchorY - Math.floor(room.mapH / 2)) return true;
+        if (room.mapLayout !== GTFL_MAP_ID || !Number.isInteger(plan.anchorX) || !Number.isInteger(plan.anchorY) ||
+          ![5, 7].includes(plan.mapW) || ![5, 7].includes(plan.mapH) ||
+          plan.anchorX !== 4 + room.x * 9 || plan.anchorY !== 4 + room.y * 9 ||
+          plan.mapX !== plan.anchorX - Math.floor(plan.mapW / 2) ||
+          plan.mapY !== plan.anchorY - Math.floor(plan.mapH / 2)) return true;
       } else if (fixedMap) {
       const legacyFixedRoom = rooms.length === 3;
       const validSize = legacyFixedRoom
-        ? room.mapW === 5 && room.mapH === 5
-        : [7, 9].includes(room.mapW) && [7, 9].includes(room.mapH);
-      if (room.mapLayout !== GTFL_MAP_ID || !Number.isInteger(room.anchorX) || !Number.isInteger(room.anchorY) ||
-        !validSize || room.mapX !== room.anchorX - Math.floor(room.mapW / 2) ||
-        room.mapY !== room.anchorY - Math.floor(room.mapH / 2)) return true;
-    } else if (room.mapLayout !== undefined || room.anchorX !== undefined || room.anchorY !== undefined ||
-      room.mapX !== PROCEDURAL_MAP_OFFSET + room.x * 7 + 3 - Math.floor(room.mapW / 2) ||
-      room.mapY !== PROCEDURAL_MAP_OFFSET + room.y * 7 + 3 - Math.floor(room.mapH / 2)) return true;
+        ? plan.mapW === 5 && plan.mapH === 5
+        : [7, 9].includes(plan.mapW) && [7, 9].includes(plan.mapH);
+      if (room.mapLayout !== GTFL_MAP_ID || !Number.isInteger(plan.anchorX) || !Number.isInteger(plan.anchorY) ||
+        !validSize || plan.mapX !== plan.anchorX - Math.floor(plan.mapW / 2) ||
+        plan.mapY !== plan.anchorY - Math.floor(plan.mapH / 2)) return true;
+    } else if (room.mapLayout !== undefined || plan.anchorX !== undefined || plan.anchorY !== undefined ||
+      plan.mapX !== PROCEDURAL_MAP_OFFSET + room.x * 7 + 3 - Math.floor(plan.mapW / 2) ||
+      plan.mapY !== PROCEDURAL_MAP_OFFSET + room.y * 7 + 3 - Math.floor(plan.mapH / 2)) return true;
     if (room.unclaimedReward !== undefined && !isValidReward(room.unclaimedReward)) return true;
     return false;
   })) return null;
@@ -6384,7 +6651,7 @@ function parseSavedRun(saved, pack) {
   if (fixedMap && saved.dungeonLayoutVersion < 2 &&
     (!rooms.some((room) => room.type === "treasure" && room.mainTreasure) ||
       rooms.filter((room) => room.optionalQuest).length !== 1 ||
-      !rooms.some((room) => room.type === "entrance" && room.anchorX === 5 && room.anchorY === entranceY) ||
+      !rooms.some((room) => room.type === "entrance" && gridPlanRoom(room).anchorX === 5 && gridPlanRoom(room).anchorY === entranceY) ||
       rooms.some((room) => room.type === "exit"))) return null;
   if (!Number.isInteger(saved.currentRoom) || saved.currentRoom < 0 || saved.currentRoom >= rooms.length ||
     !saved.player || !Number.isInteger(saved.player.x) || !Number.isInteger(saved.player.y) ||
@@ -6392,7 +6659,7 @@ function parseSavedRun(saved, pack) {
     !saved.terrain.every((tile) => ["stone", "wall", "floor", "corridor", "door"].includes(tile)) ||
     !Array.isArray(saved.seen) || saved.seen.length !== MAP_TILE_SIZE * MAP_TILE_SIZE ||
     !saved.seen.every((value) => typeof value === "boolean") ||
-    !Array.isArray(saved.enemies) || saved.enemies.length > 120 ||
+    !Array.isArray(saved.enemies) || saved.enemies.length > 240 ||
     !Array.isArray(saved.treasures) || saved.treasures.length > 160 ||
     !Array.isArray(saved.wells) || saved.wells.length > 2 ||
     !Array.isArray(saved.hazards) || saved.hazards.length > 120 ||
@@ -7345,12 +7612,12 @@ function connectEvents() {
     const distance = distanceInSquares({ x: Number(tile.dataset.x), y: Number(tile.dataset.y) }, state.run.player);
     elements["turn-status"].textContent = distance === 1
       ? "Tap to move · Space or E interacts with nearby targets"
-      : "Tap a neighboring tile to move";
+      : t("Tap a tile you've seen to walk there");
   });
   elements["dungeon-map"].addEventListener("pointerleave", (event) => {
     if (event.pointerType !== "mouse" || !state.run || state.run.location !== "dungeon") return;
     const nearbyCombat = state.run.enemies.some((enemy) => creatureIsThreat(enemy) &&
-      (enemy.alerted || distanceInSquares(enemy, state.run.player) <= 7));
+      (enemy.alerted || distanceInSquares(enemy, state.run.player) <= gridReach(7)));
     elements["turn-status"].textContent = nearbyCombat
       ? "Combat · enemies respond after your action"
       : "Tap to move · one square per turn";
@@ -7405,6 +7672,8 @@ function connectEvents() {
   window.addEventListener("beforeunload", flushPendingSave);
   elements["dungeon-map"].addEventListener("click", (event) => {
     if (Date.now() < (state.suppressMapTapUntil || 0)) return;
+    // A tap while walking stops the walk (and does nothing else).
+    if (walkGoal) { stopWalking(); return; }
     const tile = event.target.closest(".map-tile");
     if (!tile || state.run?.location !== "dungeon") return;
     const x = Number(tile.dataset.x);
@@ -7441,8 +7710,10 @@ function connectEvents() {
     if (distance === 1 && (canStepBetween(state.run.player, destination) || closedDoorDestination) &&
     ["floor", "corridor", "door", "creature", "hazard"].some((name) => tile.classList.contains(name))) {
     movePlayer(x - state.run.player.x, y - state.run.player.y);
+    } else if (distance > 1 && !tapped && walkTo(destination)) {
+      // (Walking there, a step at a time.)
     } else if (tile.title) {
-    showToast(distance === 0 ? "You are standing here." : "Tap a clear neighboring tile to move one square.");
+    showToast(distance === 0 ? "You are standing here." : "There's no way you know of to get there.");
     }
   });
   let actionTooltipTimer = 0;

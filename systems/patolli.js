@@ -179,6 +179,15 @@ function applyPatolliMove(game, side, move) {
   const otherSide = side === "player" ? "opponent" : "player";
   const previousTrackIndex = piece.status === "active"
     ? patolliTrackIndex(side, piece.progress) : null;
+  // For the board to play back (patolliPlay): where it was, and every square it crosses.
+  const real = game === state.run?.patolliGame;
+  const before = real ? patolliSnapshot(game) : null;
+  const entering = piece.status !== "active";
+  const path = entering ? [move.trackIndex] : Array.from({ length: move.progress - piece.progress }, (_, step) => {
+    const progress = piece.progress + step + 1;
+    return progress >= PATOLLI_TRACK.length ? -1 : patolliTrackIndex(side, progress);
+  });
+  const shown = { capture: null, penalty: null, extra: false };
   piece.progress = move.progress;
   piece.status = move.finish ? "finished" : "active";
   state.patolliAnimation = {
@@ -200,10 +209,12 @@ function applyPatolliMove(game, side, move) {
     const resolved = resolvePatolliStake(game, captured.id, side, piece);
     captured.status = "settled";
     captured.progress = -1;
+    shown.capture = { side: otherSide, pieceId: captured.id, claimed: resolved };
     if (resolved) message += ` It captures piece ${captured.id + 1} at a crossroads, returning it to reserve and claiming its matched wager.`;
   }
   if (!move.finish && PATOLLI_EXTRA_TURN_SQUARES.includes(move.trackIndex)) {
     message += " The rounded end square grants another turn.";
+    shown.extra = true;
   }
   if (move.finish) {
     resolvePatolliStake(game, piece.id, side, piece);
@@ -214,6 +225,7 @@ function applyPatolliMove(game, side, move) {
     stake[payerKey] -= payment;
     game.pot += payment;
     if (side === "player") game.playerPotContribution += payment;
+    shown.penalty = { payment, knocked: !payment };
     if (payment) {
       message += ` The penalty triangle sends ${formatCurrency(payment)} from this wager to the pot.`;
     } else {
@@ -229,6 +241,7 @@ function applyPatolliMove(game, side, move) {
   game.selectedPiece = null;
   game.legalMoves = [];
   game.phase = "roll";
+  if (real) patolliRecord({ type: "move", side, pieceId: piece.id, entering, finish: move.finish, path, ...shown, before, after: patolliSnapshot(game) }, game);
   return message;
 }
 
@@ -379,8 +392,10 @@ function runPatolliAiTurn(game) {
   while (game.status === "active") {
     game.turn = "opponent";
     const toss = rollPatolliBeans();
+    const beforeToss = patolliSnapshot(game);
     game.lastToss = { side: "opponent", ...toss };
     animatePatolliToss();
+    patolliRecord({ type: "toss", side: "opponent", count: toss.count, before: beforeToss, after: { ...patolliSnapshot(game), message: `Ixchel tosses the beans: ${toss.count === 5 ? "five marked, ten spaces" : `${toss.count} marked`}.` } }, game);
     const moves = getPatolliLegalMoves(game, "opponent", toss.count);
     if (!moves.length) {
       game.message = toss.count
@@ -388,6 +403,7 @@ function runPatolliAiTurn(game) {
         : "Ixchel tosses no marked beans and passes; your turn.";
       game.turn = "player";
       game.phase = "roll";
+      patolliRecord({ type: "note", after: patolliSnapshot(game) }, game);
       return;
     }
     const move = choosePatolliMove(game, "opponent", moves, game.difficulty || "sharp");
@@ -420,12 +436,13 @@ function moveSelectedPatolliPiece(trackIndex) {
   if (!move) return;
   applyPatolliMove(game, "player", move);
   if (!checkPatolliEnd(game) && !PATOLLI_EXTRA_TURN_SQUARES.includes(move.trackIndex)) runPatolliAiTurn(game);
-  renderPatolli();
+  patolliPlay();
   if (state.patolliAnimationTimer) clearTimeout(state.patolliAnimationTimer);
   state.patolliAnimationTimer = setTimeout(() => {
     state.patolliAnimation = null;
     state.patolliAnimationTimer = 0;
-    if (state.run?.patolliGame?.status === "active") renderPatolli();
+    // (The playback draws the board itself; redrawing now would undo a piece mid-hop.)
+    if (state.run?.patolliGame?.status === "active" && !state.patolliPlaying) renderPatolli();
   }, 420);
   render();
   saveRun();
@@ -449,9 +466,11 @@ function schedulePatolliAutoplay(delay = 300) {
     state.patolliAutoplayTimer = 0;
     const game = state.run.patolliGame;
     if (!state.patolliAutoplay || !elements["patolli-dialog"].open || game?.status !== "active") return;
+    // Let the board finish showing the last move first.
+    if (state.patolliPlaying) { schedulePatolliAutoplay(120); return; }
     if (game.turn !== "player") {
       runPatolliAiTurn(game);
-      renderPatolli();
+      patolliPlay();
       saveRun();
       schedulePatolliAutoplay();
       return;
@@ -466,7 +485,7 @@ function schedulePatolliAutoplay(delay = 300) {
       game.message = "No legal move is available. The turn passes to Ixchel.";
       game.turn = "opponent";
       runPatolliAiTurn(game);
-      renderPatolli();
+      patolliPlay();
       render();
       saveRun();
       schedulePatolliAutoplay();
@@ -487,7 +506,10 @@ function setPatolliAutoplay(enabled) {
 }
 
 function renderPatolli() {
-  const game = state.run.patolliGame;
+  // While the board plays back what happened, it draws the moment being shown, and nothing
+  // can be pressed (patolliPlay).
+  const game = state.patolliShowing ? { ...state.run.patolliGame, ...state.patolliShowing, status: "active", legalMoves: [], selectedPiece: null, phase: "wait" }
+    : state.run.patolliGame;
   const active = game?.status === "active";
   if (!active) {
     state.patolliAutoplay = false;
@@ -510,7 +532,7 @@ function renderPatolli() {
   elements["patolli-setup"].hidden = active || tutorialOnly || state.patolliRulesOpen;
   elements["patolli-game"].hidden = !active || state.patolliRulesOpen;
   elements["patolli-roll"].hidden = !active;
-  elements["patolli-roll"].disabled = !active || state.patolliAutoplay || game.turn !== "player" || game.phase !== "roll";
+  elements["patolli-roll"].disabled = !active || state.patolliAutoplay || state.patolliPlaying || game.turn !== "player" || game.phase !== "roll";
   elements["patolli-roll"].textContent = active && game.turn === "player" && game.phase === "move"
     ? "Select a piece and destination" : "Toss five beans";
   elements["patolli-autoplay"].checked = state.patolliAutoplay && active;
@@ -541,32 +563,7 @@ function renderPatolli() {
   scoreOpponent.textContent = `● Ixchel ${game.score.opponent}`;
   elements["patolli-score"].replaceChildren(scorePlayer, scoreOpponent);
   elements["patolli-score"].setAttribute("aria-label", `Wagers won. You ${game.score.player}, Ixchel ${game.score.opponent}.`);
-  const capturesByPlayer = game.captures?.player || 0;
-  const capturesByOpponent = game.captures?.opponent || 0;
-  const liveWagers = game.stakes.filter((stake) => stake.status === "active").length;
-  const tiedGold = game.stakes.reduce((total, stake) => total + stake.playerStake + stake.opponentStake, 0);
-  const statRows = [
-    ["🏆", "Wagers", `${game.score.player} · ${game.score.opponent}`],
-    ["⚔", "Captures", `You ${capturesByPlayer} · Ixchel ${capturesByOpponent}`],
-    ["◈", "Live wagers", `${liveWagers} · ${formatCurrency(tiedGold)}`],
-    ["●", "Pot", formatCurrency(game.pot)]
-  ];
-  elements["patolli-match-stats"].replaceChildren(...statRows.map(([icon, label, value]) => {
-    const row = document.createElement("div");
-    row.className = "patolli-stat-row";
-    const symbol = document.createElement("span");
-    symbol.className = "patolli-stat-icon";
-    symbol.setAttribute("aria-hidden", "true");
-    symbol.textContent = icon;
-    const name = document.createElement("span");
-    name.className = "patolli-stat-label";
-    name.textContent = label;
-    const amount = document.createElement("strong");
-    amount.className = "patolli-stat-value";
-    amount.textContent = value;
-    row.append(symbol, name, amount);
-    return row;
-  }));
+  elements["patolli-match-stats"].replaceChildren(patolliLedger(game));
   elements["patolli-match-stats"].classList.toggle("patolli-capture-flash", Boolean(state.patolliAnimation?.capture));
   const legalTargets = new Set(game.legalMoves
     .filter((move) => move.pieceId === game.selectedPiece)
@@ -761,7 +758,9 @@ function tossPatolliBeans() {
   if (!game || game.status !== "active" || game.turn !== "player" || game.phase !== "roll") return;
   const toss = rollPatolliBeans();
   animatePatolliToss();
+  const beforeToss = patolliSnapshot(game);
   game.lastToss = { side: "player", ...toss };
+  patolliRecord({ type: "toss", side: "player", count: toss.count, before: beforeToss, after: patolliSnapshot(game) }, game);
   game.legalMoves = getPatolliLegalMoves(game, "player", toss.count);
   game.selectedPiece = null;
   if (!game.legalMoves.length) {
@@ -776,7 +775,7 @@ function tossPatolliBeans() {
       ? "You toss five marked beans, which move ten spaces. Select a legal piece and destination."
       : `You toss ${toss.count} marked bean${toss.count === 1 ? "" : "s"}. Select a legal piece and destination.`;
   }
-  renderPatolli();
+  patolliPlay();
   saveRun();
 }
 
@@ -843,7 +842,10 @@ function connectPatolliEvents() {
     if (piece) selectPatolliPiece(Number(piece.dataset.patolliPiece));
   });
   elements["patolli-close"].addEventListener("click", () => elements["patolli-dialog"].close());
+  // A tap on the board while it plays back skips to the end.
+  elements["patolli-board"].parentElement.addEventListener("pointerdown", () => { if (state.patolliPlaying) state.patolliSkip = true; });
   elements["patolli-dialog"].addEventListener("close", () => {
+    state.patolliSkip = true;
     setPatolliAutoplay(false);
     state.patolliTutorialOnly = false;
     state.patolliRulesOpen = false;
@@ -858,4 +860,276 @@ function connectPatolliEvents() {
       elements["patolli-dialog"].close();
     }
   });
+}
+
+// ---------- The wagers, beside the board ----------
+// Six matched wagers, one per piece number: what you have riding on it, what Ixchel has,
+// and who has claimed it. Then the pot. Each stake is drawn as a stack of beans, one bean
+// per unit of the stake, so a penalty visibly takes one away.
+function patolliLedger(game) {
+  const ledger = document.createElement("div");
+  ledger.className = "patolli-ledger";
+  const head = document.createElement("div");
+  head.className = "patolli-ledger-row patolli-ledger-head";
+  for (const text of [t("You"), "", "Ixchel"]) { const cell = document.createElement("span"); cell.textContent = text; head.append(cell); }
+  ledger.append(head);
+  const unit = Math.max(1, game.stakePerPiece || 1);
+  const stack = (amount, side) => {
+    const cell = document.createElement("span");
+    cell.className = `patolli-ledger-stake patolli-ledger-${side}`;
+    const beans = document.createElement("i");
+    beans.className = "patolli-ledger-beans";
+    beans.setAttribute("aria-hidden", "true");
+    for (let n = 0; n < Math.ceil(amount / unit); n += 1) beans.append(document.createElement("b"));
+    const sum = document.createElement("small");
+    sum.textContent = formatCurrency(amount);
+    cell.append(beans, sum);
+    return cell;
+  };
+  game.stakes.forEach((stake, id) => {
+    const row = document.createElement("div");
+    const owner = stake.status === "active" ? "live" : stake.winner === "player" ? "yours" : stake.winner === "opponent" ? "hers" : "void";
+    row.className = `patolli-ledger-row is-${owner}`;
+    row.dataset.wager = String(id);
+    const number = document.createElement("strong");
+    number.className = "patolli-ledger-number";
+    number.textContent = String(id + 1);
+    number.title = owner === "live" ? "Still riding" : owner === "yours" ? "You claimed this wager" : owner === "hers" ? "Ixchel claimed this wager" : "Settled";
+    row.append(stack(stake.playerStake, "player"), number, stack(stake.opponentStake, "opponent"));
+    row.setAttribute("aria-label", `Wager ${id + 1}: you ${formatCurrency(stake.playerStake)}, Ixchel ${formatCurrency(stake.opponentStake)}, ${number.title.toLowerCase()}`);
+    ledger.append(row);
+  });
+  const pot = document.createElement("div");
+  pot.className = "patolli-ledger-pot";
+  pot.dataset.pot = "";
+  const label = document.createElement("span");
+  label.textContent = t("Pot");
+  const amount = document.createElement("strong");
+  amount.textContent = formatCurrency(game.pot);
+  const captures = document.createElement("small");
+  captures.textContent = `${t("Captures")} · ${t("You")} ${game.captures?.player || 0} · Ixchel ${game.captures?.opponent || 0}`;
+  pot.append(label, amount, captures);
+  ledger.append(pot);
+  return ledger;
+}
+
+// ---------- Playing it back ----------
+// The rules resolve a whole exchange at once (your move, then all of Ixchel's turn, extra
+// turns and all). Each toss and move is recorded as it happens, with how the board looked
+// before and after, and the board then shows them one at a time: the beans fall, the piece
+// hops square by square, a capture knocks the other piece off, a penalty takes a bean from
+// the wager into the pot, an end square flashes for another turn, a piece that reaches HOME
+// settles its wager. A tap on the board skips to the end. Off screen it just draws the end.
+
+function patolliSnapshot(game) {
+  return JSON.parse(JSON.stringify({ pieces: game.pieces, stakes: game.stakes, score: game.score, captures: game.captures,
+    pot: game.pot, message: game.message, lastToss: game.lastToss, turn: game.turn }));
+}
+
+// Only what happens on the real board is shown: Ixchel's lookahead tries moves on copies.
+function patolliRecord(event, game) {
+  if (game !== state.run?.patolliGame) return;
+  (state.patolliEvents ||= []).push(event);
+}
+
+function patolliShownOnScreen() {
+  return typeof document !== "undefined" && document.visibilityState === "visible" &&
+    Boolean(elements["patolli-dialog"]?.open) && typeof Element !== "undefined" && typeof Element.prototype.animate === "function";
+}
+
+async function patolliPlay() {
+  const events = state.patolliEvents || [];
+  state.patolliEvents = [];
+  if (state.patolliPlaying) { (state.patolliEvents = [...events]); return; }
+  if (!events.length || !patolliShownOnScreen()) { renderPatolli(); return; }
+  state.patolliPlaying = true;
+  state.patolliSkip = false;
+  state.patolliAnimation = null;
+  try {
+    let queue = events;
+    while (queue.length) {
+      for (const event of queue) {
+        if (state.patolliSkip) break;
+        await patolliShow(event);
+      }
+      // (Anything that happened while it played goes next.)
+      queue = state.patolliSkip ? [] : state.patolliEvents.splice(0);
+    }
+  } catch (error) {
+    if (typeof safetyRecord === "function") safetyRecord("patolli-playback", error);
+  } finally {
+    state.patolliEvents = [];
+    state.patolliShowing = null;
+    state.patolliPlaying = false;
+    state.patolliSkip = false;
+    patolliOverlay()?.replaceChildren();
+    renderPatolli();
+  }
+}
+
+function patolliPause(ms) {
+  if (state.patolliSkip) return Promise.resolve();
+  const scale = state.patolliAutoplay ? 0.55 : 1;
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const wait = () => (state.patolliSkip || Date.now() - started >= ms * scale ? resolve() : setTimeout(wait, 30));
+    setTimeout(wait, Math.min(30, ms * scale));
+  });
+}
+
+// Waits for an animation, but never longer than it should take: a browser can leave an
+// animation's promise unsettled (a throttled frame, a removed element), and the board must
+// never stall on one.
+function patolliAwait(animation, ms) {
+  const limit = new Promise((resolve) => setTimeout(resolve, ms + 120));
+  return Promise.race([animation.finished.catch(() => {}), limit]);
+}
+
+function patolliOverlay() {
+  const wrap = elements["patolli-board"]?.parentElement;
+  if (!wrap) return null;
+  let overlay = wrap.querySelector(".patolli-fx");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.className = "patolli-fx";
+    overlay.setAttribute("aria-hidden", "true");
+    wrap.append(overlay);
+  }
+  return overlay;
+}
+
+// The centre of a square (or HOME, -1) in the overlay's coordinates.
+function patolliSpot(trackIndex) {
+  const overlay = patolliOverlay();
+  const target = trackIndex === -1 ? elements["patolli-board"].querySelector(".patolli-home")
+    : elements["patolli-board"].querySelector(`[data-track-index="${trackIndex}"]`);
+  if (!overlay || !target) return null;
+  const box = overlay.getBoundingClientRect();
+  const rect = target.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2 - box.left, y: rect.top + rect.height / 2 - box.top, size: rect.width / Math.SQRT2 };
+}
+
+function patolliMarker(side, pieceId) {
+  return [...elements["patolli-board"].querySelectorAll(`.patolli-${side === "player" ? "player" : "opponent"}-token`)]
+    .find((marker) => marker.textContent === String(pieceId + 1)) || null;
+}
+
+function patolliShowView(view) {
+  state.patolliShowing = view;
+  renderPatolli();
+}
+
+function patolliFloat(text, at, kind) {
+  const overlay = patolliOverlay();
+  if (!overlay || !at) return;
+  const label = document.createElement("span");
+  label.className = `patolli-fx-label is-${kind}`;
+  label.textContent = text;
+  label.style.left = `${at.x}px`;
+  label.style.top = `${at.y}px`;
+  overlay.append(label);
+  label.animate([{ transform: "translate(-50%, -30%) scale(0.8)", opacity: 0 }, { transform: "translate(-50%, -120%) scale(1)", opacity: 1, offset: 0.25 },
+    { transform: "translate(-50%, -190%) scale(1)", opacity: 0 }], { duration: 1100, easing: "ease-out" }).onfinish = () => label.remove();
+}
+
+function patolliBurst(at, kind) {
+  const overlay = patolliOverlay();
+  if (!overlay || !at) return;
+  const ring = document.createElement("span");
+  ring.className = `patolli-fx-ring is-${kind}`;
+  ring.style.left = `${at.x}px`;
+  ring.style.top = `${at.y}px`;
+  ring.style.width = ring.style.height = `${at.size * 1.2}px`;
+  overlay.append(ring);
+  ring.animate([{ transform: "translate(-50%, -50%) scale(0.5)", opacity: 1 }, { transform: "translate(-50%, -50%) scale(2.2)", opacity: 0 }],
+    { duration: 650, easing: "ease-out" }).onfinish = () => ring.remove();
+}
+
+function patolliFlashWager(id, kind) {
+  const row = elements["patolli-match-stats"].querySelector(`[data-wager="${id}"]`);
+  if (row) row.animate([{ backgroundColor: kind === "player" ? "var(--red)" : kind === "pot" ? "var(--gold)" : "var(--jade)", color: "var(--on-color)" }, { backgroundColor: "transparent" }], { duration: 900, easing: "ease-out" });
+}
+
+async function patolliShow(event) {
+  if (event.type === "note") { patolliShowView(event.after); await patolliPause(450); return; }
+  if (event.type === "toss") {
+    patolliShowView(event.before);
+    state.patolliTossAnimation = true;
+    patolliShowView(event.after);
+    state.patolliTossAnimation = false;
+    await patolliPause(event.side === "opponent" ? 650 : 380);
+    return;
+  }
+  // A move.
+  patolliShowView(event.before);
+  const overlay = patolliOverlay();
+  const original = patolliMarker(event.side, event.pieceId);
+  if (original) original.style.visibility = "hidden";
+  const start = event.entering ? null : (original ? patolliSpot(Number(original.closest("[data-track-index]")?.dataset.trackIndex)) : null);
+  const spots = event.path.map(patolliSpot).filter(Boolean);
+  if (!overlay || !spots.length) { patolliShowView(event.after); return; }
+  const ghost = document.createElement("span");
+  ghost.className = `patolli-fx-piece ${event.side === "player" ? "patolli-player-token" : "patolli-opponent-token"}`;
+  ghost.textContent = String(event.pieceId + 1);
+  const size = spots[0].size * 0.86;
+  ghost.style.width = ghost.style.height = `${size}px`;
+  overlay.append(ghost);
+  const place = (spot, lift = 1) => `translate(${spot.x - size / 2}px, ${spot.y - size / 2}px) scale(${lift})`;
+  const hop = Math.max(70, Math.min(150, 1300 / spots.length)) * (state.patolliAutoplay ? 0.6 : 1);
+  if (state.patolliSkip) { ghost.remove(); patolliShowView(event.after); return; }
+  if (event.entering) {
+    await patolliAwait(ghost.animate([{ transform: place(spots[0], 0.2), opacity: 0 }, { transform: place(spots[0], 1.25), opacity: 1, offset: 0.6 }, { transform: place(spots[0], 1) }],
+      { duration: 360, easing: "ease-out", fill: "forwards" }), 360);
+  } else {
+    const frames = [{ transform: place(start || spots[0], 1) }];
+    spots.forEach((spot, index) => {
+      const from = index === 0 ? (start || spot) : spots[index - 1];
+      frames.push({ transform: place({ x: (from.x + spot.x) / 2, y: (from.y + spot.y) / 2 }, 1.22) });
+      frames.push({ transform: place(spot, 1) });
+    });
+    const run = ghost.animate(frames, { duration: hop * spots.length, easing: "linear", fill: "forwards" });
+    const skipper = setInterval(() => { if (state.patolliSkip) run.finish(); }, 40);
+    await patolliAwait(run, hop * spots.length);
+    clearInterval(skipper);
+  }
+  const end = spots[spots.length - 1];
+  if (event.capture) {
+    const victim = patolliMarker(event.capture.side, event.capture.pieceId);
+    if (victim) {
+      const knock = victim.animate([{ transform: "rotate(-45deg) scale(1)", opacity: 1 }, { transform: "rotate(315deg) scale(0.2)", opacity: 0 }],
+        { duration: 520, easing: "ease-in", fill: "forwards" });
+      patolliBurst(end, "capture");
+      patolliFloat(t(event.side === "player" ? "Captured!" : "Taken!"), end, "capture");
+      await patolliAwait(knock, 520);
+    }
+  }
+  if (event.penalty) {
+    patolliBurst(end, "penalty");
+    if (event.penalty.knocked) {
+      patolliFloat(t("Spent: off the board"), end, "penalty");
+      await patolliAwait(ghost.animate([{ transform: place(end, 1), opacity: 1 }, { transform: place(end, 0.3), opacity: 0 }], { duration: 480, fill: "forwards" }), 480);
+    } else {
+      patolliFloat(t("−{0} to the pot", { 0: formatCurrency(event.penalty.payment) }), end, "penalty");
+      ghost.animate([{ transform: place(end, 1) }, { transform: place({ x: end.x - 3, y: end.y }, 1) }, { transform: place({ x: end.x + 3, y: end.y }, 1) }, { transform: place(end, 1) }], { duration: 280, iterations: 2 });
+    }
+  }
+  if (event.extra) { patolliBurst(end, "extra"); patolliFloat(t("Another turn"), end, "extra"); }
+  if (event.finish) {
+    patolliBurst(end, "home");
+    patolliFloat(t("Home!"), end, "home");
+    await patolliAwait(ghost.animate([{ transform: place(end, 1.3), opacity: 1 }, { transform: place(end, 0.6), opacity: 0 }], { duration: 520, fill: "forwards" }), 520);
+  }
+  await patolliPause(event.capture || event.penalty || event.finish ? 420 : event.extra ? 300 : 120);
+  ghost.remove();
+  state.patolliAnimation = { side: event.side, pieceId: event.pieceId, from: null, to: event.path[event.path.length - 1], capture: Boolean(event.capture) };
+  patolliShowView(event.after);
+  state.patolliAnimation = null;
+  // The wager row that changed.
+  if (event.capture?.claimed) patolliFlashWager(event.capture.pieceId, event.side);
+  if (event.finish) patolliFlashWager(event.pieceId, event.side);
+  if (event.penalty) {
+    patolliFlashWager(event.pieceId, event.penalty.knocked ? (event.side === "player" ? "opponent" : "player") : "pot");
+    elements["patolli-match-stats"].querySelector("[data-pot]")?.animate([{ transform: "scale(1.12)" }, { transform: "scale(1)" }], { duration: 360, easing: "ease-out" });
+  }
+  await patolliPause(event.capture || event.finish ? 260 : 60);
 }

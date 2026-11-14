@@ -28,7 +28,7 @@ const TOMB_SHAFT_PAIR = 15;   // the two shafts between a pair of floors
 const TOMB_ACROSS = 17;       // a floor's way up and its way down sit across the floor from each other
 
 function tombPlanRandomSpot(margin = 6) {
-  return { x: margin + randomInt(MAP_TILE_SIZE - 2 * margin) - 1, y: margin + randomInt(MAP_TILE_SIZE - 2 * margin) - 1 };
+  return { x: margin + randomInt(MAP_PLAN_SIZE - 2 * margin) - 1, y: margin + randomInt(MAP_PLAN_SIZE - 2 * margin) - 1 };
 }
 
 function tombPlanDistance(a, b) {

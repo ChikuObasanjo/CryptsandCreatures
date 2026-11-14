@@ -1113,7 +1113,7 @@ function summonsTakeTurn() {
       addLog("Your nahual fades back into you.");
       continue;
     }
-    const foes = livingCreatures().filter((enemy) => enemy.alerted && !enemy.asleep && distanceInSquares(enemy, summon) <= 8 &&
+    const foes = livingCreatures().filter((enemy) => enemy.alerted && !enemy.asleep && distanceInSquares(enemy, summon) <= gridReach(8) &&
       hasLineOfSight(summon, enemy));
     const adjacent = foes.filter((enemy) => distanceInSquares(enemy, summon) === 1)
       .sort((a, b) => a.hp - b.hp)[0];
@@ -1122,7 +1122,7 @@ function summonsTakeTurn() {
       continue;
     }
     const nearest = foes.sort((a, b) => distanceInSquares(a, summon) - distanceInSquares(b, summon))[0];
-    const goal = nearest || (distanceInSquares(summon, state.run.player) > 2 ? state.run.player : null);
+    const goal = nearest || (distanceInSquares(summon, state.run.player) > gridReach(2) ? state.run.player : null);
     if (!goal) continue;
     const step = creatureStepToward(summon, goal, { adjacent: true });
     if (step && !(step.x === state.run.player.x && step.y === state.run.player.y)) {

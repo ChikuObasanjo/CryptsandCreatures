@@ -44,7 +44,7 @@ function availableRecipes() {
 
 function cookingBlocked() {
   return state.run.location === "dungeon" && (!atCamp() || state.run.enemies.some((enemy) =>
-    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= 7));
+    creatureIsThreat(enemy) && distanceInSquares(enemy, state.run.player) <= gridReach(7)));
 }
 
 // Whether a method can be used here and now, and if not, why.
@@ -319,7 +319,10 @@ function cookDish(selection, methodId, { quiet = false, free = false } = {}) {
   }
   if (!free) {
     if (state.run.location === "dungeon") finishPlayerTurn(method.minutes);
-    else render();
+    else {
+      if (typeof townPassTime === "function") townPassTime(method.minutes);
+      render();
+    }
   }
   return id;
 }

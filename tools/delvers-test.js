@@ -65,7 +65,10 @@ const loot = JSON.parse(run(`(() => {
   const room = state.run.rooms.filter((r) => r.mapW >= 6 && !r.planned)[0];
   const spot = { x: room.anchorX, y: room.anchorY };
   const entity = delverMaterialize(delver, spot);
-  state.run.treasures.push({ id: "test-cache", x: entity.x + 1, y: entity.y, gold: 30, items: [] });
+  // (Beside the delver on open floor: some chamber forms have an altar or a column there.)
+  const beside = MOVEMENT_DIRECTIONS.map((d) => ({ x: entity.x + d.x, y: entity.y + d.y }))
+    .find((p) => isWalkable(p.x, p.y) && !tileHasCreature(p.x, p.y)) || { x: entity.x + 1, y: entity.y };
+  state.run.treasures.push({ id: "test-cache", x: beside.x, y: beside.y, gold: 30, items: [] });
   for (let i = 0; i < 4; i += 1) { state.run.steps += 1; enemiesTakeTurn(); }
   return JSON.stringify({ gold: delver.gold, left: state.run.treasures.some((t) => t.id === "test-cache") });
 })()`));

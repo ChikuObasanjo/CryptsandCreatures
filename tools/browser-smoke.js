@@ -93,7 +93,8 @@ const { createGameServer } = require("../scripts/static-server");
     problems.push(`tomb mood: ${error.message.split("\n")[0]}`);
   }
 
-  // Another delver beside you: drawn like you, and walking into them talks to them.
+  // Another delver beside you: drawn like you, talked to with the interact button, and
+  // walking into them trades places.
   try {
     const delver = await page.evaluate(() => {
       const person = delverCreate({ culture: "nahua", cls: "fighter" });
@@ -107,20 +108,24 @@ const { createGameServer } = require("../scripts/static-server");
       render();
       const figure = Boolean(document.querySelector(`.map-tile .codex-character`) && [...document.querySelectorAll(".map-tile")].some((tile) => tile.querySelector("img.codex-character")));
       const talk = (typeof ecologyInteractions === "function" ? ecologyInteractions() : []).some((option) => option.label.startsWith("Talk to"));
-      const before = document.querySelector(".rpg-message, #rpg-message, dialog[open]") ? 1 : 0;
-      movePlayer(entity.x - p.x, entity.y - p.y);
-      const after = Boolean(document.querySelector("dialog[open]"));
+      const from = { x: p.x, y: p.y };
+      const to = { x: entity.x, y: entity.y };
+      movePlayer(to.x - from.x, to.y - from.y);
+      // The delver may take its own step in the same world turn, so only ask that you got
+      // through and they moved off the square.
+      const swapped = p.x === to.x && p.y === to.y && !(entity.x === to.x && entity.y === to.y);
       document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
       const alive = entity.alive && entity.hp === entity.maxHp;
       state.run.enemies = state.run.enemies.filter((enemy) => enemy !== entity);
       person.status = "retired";
       render();
-      return { figure, talk, talked: after || before === 0, alive };
+      return { figure, talk, swapped, alive };
     });
     if (!delver.figure) problems.push("a delver isn't drawn as a figure on the map");
     else if (!delver.talk) problems.push("no Talk option beside a delver");
     else if (!delver.alive) problems.push("walking into a delver hurt them");
-    else console.log("ok  a delver: drawn like you, talks when you walk into them");
+    else if (!delver.swapped) problems.push("walking into a delver didn't trade places");
+    else console.log("ok  a delver: drawn like you, Talk on the interact button, trades places when you walk into them");
   } catch (error) {
     problems.push(`delver: ${error.message.split("\n")[0]}`);
   }

@@ -5,12 +5,17 @@ function getRoomsOfType(type) {
 }
 
 // Rooms can belong to a band of floors (minFloor/maxFloor); outside it they aren't used.
-function chooseRoom(type, index) {
+// A room written for a form (`forms`, see systems/forms.js: a ballcourt, a shaft tomb) is
+// only used in a chamber of that form, and such a chamber takes one when there is one.
+function chooseRoom(type, index, form = "") {
   const all = getRoomsOfType(type);
   if (!all.length) throw new Error(`The active pack has no ${type} room.`);
   const depth = state.run?.dungeonFloor || 1;
-  const fitting = all.filter((room) => (room.minFloor || 1) <= depth && depth <= (room.maxFloor || DUNGEON_FLOOR_COUNT));
-  const options = fitting.length ? fitting : all;
+  const inBand = all.filter((room) => (room.minFloor || 1) <= depth && depth <= (room.maxFloor || DUNGEON_FLOOR_COUNT));
+  const formed = inBand.filter((room) => room.forms?.includes(form));
+  const plain = inBand.filter((room) => !room.forms);
+  const anyForm = all.filter((room) => !room.forms);
+  const options = formed.length ? formed : plain.length ? plain : anyForm.length ? anyForm : all;
   return options[index % options.length];
 }
 
@@ -239,7 +244,7 @@ function v3IsPillar(room, x, y) {
 function generateGtflDungeonV3() {
   const depth = state.run.dungeonFloor;
   const size = MAP_TILE_SIZE;
-  const target = 13 + randomInt(4) + Math.min(2, Math.floor(depth / 5));
+  const target = 15 + randomInt(4) + Math.min(2, Math.floor(depth / 5));
   const placed = [];
   const fits = (rect) => rect.mapX >= 1 && rect.mapY >= 1 && rect.mapX + rect.mapW <= size - 1 && rect.mapY + rect.mapH <= size - 1 &&
     placed.every((other) => rect.mapX + rect.mapW + 2 <= other.mapX || other.mapX + other.mapW + 2 <= rect.mapX ||
@@ -299,32 +304,56 @@ function generateGtflDungeonV3() {
       break;
     }
   }
-  for (let attempt = 0; remaining > 0 && attempt < 400 * target; attempt += 1) {
-    // A chamber meant to have a twin is placed in the west half; its twin goes east.
-    const twinned = remaining > 1 && Math.random() < style.mirror;
-    const probe = archProbe(style, placed, size, { westHalf: twinned });
-    const env = land ? land.sample(probe.x, probe.y) : null;
-    const shape = archPickShape(styleName, env ? env.elev < 0.4 || env.moist > 0.7 : false);
-    const dims = archRoomSize(shape);
-    const rect = {
-      shape, boss: false,
-      mapW: dims.w, mapH: dims.h,
-      mapX: Math.max(1, Math.min(size - dims.w - 1, probe.x - Math.floor(dims.w / 2))),
-      mapY: Math.max(1, Math.min(size - dims.h - 1, probe.y - Math.floor(dims.h / 2))),
-      flipX: randomInt(2) === 1, flipY: randomInt(2) === 1
-    };
-    if (!fits(rect)) continue;
-    if (shape === "cave") rect.mask = archCaveMask(rect);
-    setAnchor(rect);
+  // Purpose first (systems/forms.js). Each thing the floor needs looks for the site on the
+  // land that suits it best, and takes the form this band gives a place like that: water
+  // gathers at the low wet place, a roost sits high, a den sits dry a short walk from where
+  // its prey feeds. What was planned already (the stairs, the lore chamber) counts as taken.
+  const sites = placed.map((room) => ({ x: room.anchorX, y: room.anchorY, purpose: "" }));
+  const twinnable = ["store", "trail", "nest", "garden"];
+  for (const purpose of formWanted(styleName, depth, remaining)) {
+    let best = null;
+    // The form is chosen first, by this band's habit, and then sited; if the floor has no
+    // room left for a form that size, the next one this band would use is tried.
+    for (const shape of formChoices(styleName, purpose)) {
+      // (It looks at up to a dozen sites that fit, and keeps the best.)
+      for (let attempt = 0, found = 0; attempt < 160 && found < 12; attempt += 1) {
+        // In the planned bands, a chamber that will have a twin is sited in the west half.
+        const twinned = twinnable.includes(purpose) && Math.random() < style.mirror * 0.6;
+        const probe = archProbe(style, placed, size, { westHalf: twinned });
+        const dims = archRoomSize(shape);
+        const rect = {
+          shape, purpose, boss: false,
+          // One way in: the blind forms, and any small chamber used to lie up, nest, or store.
+          leaf: formIsLeaf(shape) || (["den", "nest", "store"].includes(purpose) && ["cell", "pens"].includes(shape)),
+          mapW: dims.w, mapH: dims.h,
+          mapX: Math.max(1, Math.min(size - dims.w - 1, probe.x - Math.floor(dims.w / 2))),
+          mapY: Math.max(1, Math.min(size - dims.h - 1, probe.y - Math.floor(dims.h / 2))),
+          flipX: randomInt(2) === 1, flipY: randomInt(2) === 1
+        };
+        if (!fits(rect)) continue;
+        found += 1;
+        const centre = { x: rect.mapX + Math.floor(dims.w / 2), y: rect.mapY + Math.floor(dims.h / 2) };
+        const score = FORM_SITE[purpose](land ? land.sample(centre.x, centre.y) : { elev: 0.5, moist: 0.5, warm: 0.5, magic: 0.3 }, centre, sites) + Math.random() * 0.3;
+        if (!best || score > best.score) best = { rect, score, twinned };
+      }
+      if (best) break;
+    }
+    if (!best) continue;
+    const rect = best.rect;
+    if (formIs(rect.shape)) formBuild(rect);
+    else {
+      if (rect.shape === "cave") rect.mask = archCaveMask(rect);
+      setAnchor(rect);
+    }
     placed.push(rect);
-    remaining -= 1;
+    sites.push({ x: rect.anchorX, y: rect.anchorY, purpose });
     // Its twin across the centre line, as planned sites are laid out.
-    if (twinned && remaining > 0) {
+    if (best.twinned) {
       const twin = archMirror(rect, size);
       if (Math.abs(twin.mapX - rect.mapX) >= rect.mapW + 2 && fits(twin)) {
-        setAnchor(twin);
+        if (!formIs(twin.shape)) setAnchor(twin);
         placed.push(twin);
-        remaining -= 1;
+        sites.push({ x: twin.anchorX, y: twin.anchorY, purpose });
       }
     }
   }
@@ -408,7 +437,10 @@ function generateGtflDungeonV3() {
   const free = (index) => index !== startIndex && index !== bossIndex && !placed[index].planned;
   const deadEnds = placed.map((room, index) => index)
     .filter((index) => free(index) && adjacency[index].length === 1);
-  const treasurePool = (deadEnds.length ? deadEnds : placed.map((room, index) => index).filter(free))
+  // The floor's great store: somewhere things were put away (a shaft tomb, a sealed cell) at
+  // the end of a passage, as far from the way in as there is one.
+  const stores = deadEnds.filter((index) => placed[index].purpose === "store");
+  const treasurePool = (stores.length ? stores : deadEnds.length ? deadEnds : placed.map((room, index) => index).filter(free))
     .sort((first, second) => fromStart[second] - fromStart[first]);
   const treasureIndex = treasurePool[randomInt(Math.min(2, treasurePool.length)) - 1];
 
@@ -424,10 +456,14 @@ function generateGtflDungeonV3() {
     const loreRoom = plan?.role === "lore" ? plan.lore : null;
     const type = isStart && depth === 1 ? "entrance" : isBoss ? "boss" : isTreasure ? "treasure"
       : plan ? (loreRoom && ["quiet", "trap", "treasure"].includes(loreRoom.type) ? loreRoom.type : "quiet")
+      : room.purpose === "store" ? (randomInt(3) === 1 ? "trap" : "treasure")
+      : room.purpose === "trail" ? (randomInt(4) === 1 ? "trap" : "quiet")
+      : ["den", "roost"].includes(room.purpose) ? (randomInt(2) === 1 ? "combat" : "quiet")
+      : room.purpose ? "quiet"
       : room.shape === "pillared" ? (randomInt(2) === 1 ? "combat" : "quiet")
       : room.shape === "cell" ? (randomInt(3) === 1 ? "trap" : "quiet")
       : roomTypes[randomInt(roomTypes.length) - 1];
-    const template = chooseRoom(type, randomInt(99));
+    const template = chooseRoom(type, randomInt(99), room.shape);
     return {
       ...template,
       ...(loreRoom ? { name: loreRoom.name } : {}),
@@ -451,6 +487,8 @@ function generateGtflDungeonV3() {
       mapX: room.mapX, mapY: room.mapY, mapW: room.mapW, mapH: room.mapH,
       anchorX: room.anchorX, anchorY: room.anchorY,
       shape: room.shape,
+      ...(room.purpose ? { purpose: room.purpose } : {}),
+      ...(room.leaf ? { leaf: true } : {}),
       mapLayout: GTFL_MAP_ID,
       mainTreasure: isTreasure,
       optionalQuest: isBoss && depth === DUNGEON_FLOOR_COUNT && (!planned.length || plan?.role === "mouth"),
@@ -525,11 +563,16 @@ function generateGtflDungeonV3() {
     throw new Error("A tomb chamber is not centered on a walkable tile.");
   }
   // Where the water runs and pools, how damp and warm each chamber is, and how sheltered.
-  const courses = land ? computeRoomEnvironments(rooms, land) : { streams: [], vents: [] };
+  const courses = land ? computeRoomEnvironments(rooms, land, terrain) : { streams: [], vents: [] };
   return { rooms, terrain, mapId: GTFL_MAP_ID, floorStairs, layoutVersion: 3, courses };
 }
 
+// A new floor: planned on the coarse grid, then made fine (systems/grid.js).
 function generateDungeon() {
+  return gridUpscaleFloor(withPlanGrid(generatePlannedDungeon));
+}
+
+function generatePlannedDungeon() {
   if (state.pack.id === starterPack.id && getRoomsOfType("treasure").length) {
     for (let attempt = 0; attempt < 6; attempt += 1) {
       try {
@@ -724,9 +767,10 @@ function createGreatTempleEnemies(rooms, player) {
   const add = (template, position, roomIndex, options = {}) => {
     occupied.add(tileIndex(position.x, position.y));
     const enemy = createEnemy(template, position, roomIndex, enemies.length);
+    // A chamber's guardian is a size bigger than what lives around it.
     if (options.isBoss) {
-      enemy.hp = Math.ceil(enemy.hp * 1.5);
-      enemy.maxHp = enemy.hp;
+      enemy.bossRoom = true;
+      enemy.guardian = true;
     }
     scaleGreatTempleEnemy(enemy);
     decorateEnemy(enemy, { isBoss: Boolean(options.isBoss) });
@@ -821,6 +865,11 @@ function greatTempleEncounterIds(floor = state.run.dungeonFloor || 1) {
   if (floor >= 4) ids.push("mazacoatl");
   if (floor >= 5) ids.push("alux");
   if (floor >= 2 && !ids.includes("jungle-jaguar")) ids.push("jungle-jaguar");
+  // A kind the floor's food doesn't feed can name its own first floor (`fromFloor` in the
+  // ecology data).
+  for (const [id, species] of Object.entries(window.CryptsEcology?.species || {})) {
+    if (species.fromFloor && floor >= species.fromFloor && !ids.includes(id)) ids.push(id);
+  }
   // Creatures the tomb's food feeds are decided by the floor's energy, not by this list: a
   // floor holds whatever it can feed a breeding pair of (systems/energy.js).
   if (typeof ecoFeedableSpecies === "function") {
@@ -854,18 +903,9 @@ function rollGreatTempleEncounter(usedIds = new Set()) {
   return candidates[randomInt(candidates.length) - 1];
 }
 
+// Every creature takes its size from the floor it was born on (systems/growth.js).
 function scaleGreatTempleEnemy(enemy) {
-  // Species with a rank (the grazer and scavenger chains) already get stronger by tier.
-  if (window.CryptsEcology?.species?.[enemy.templateId]?.rank) return;
-  const floor = Math.max(1, state.run.dungeonFloor || 1);
-  const hpScale = 1 + (floor - 1) * 0.09;
-  enemy.hp = Math.ceil(enemy.hp * hpScale);
-  enemy.maxHp = enemy.hp;
-  enemy.attackBonus += Math.floor((floor - 1) / 4);
-  const damage = /^(\d+d\d+)([+-]\d+)?$/i.exec(enemy.damage);
-  if (!damage) throw new Error(`Cannot scale unsupported enemy damage "${enemy.damage}".`);
-  const damageBonus = Number(damage[2] || 0) + Math.floor((floor - 1) / 4);
-  enemy.damage = `${damage[1]}${damageBonus > 0 ? `+${damageBonus}` : damageBonus < 0 ? damageBonus : ""}`;
+  growCreature(enemy, Math.max(1, state.run.dungeonFloor || 1));
 }
 
 function randomMapFloorNear(target, occupied, minDistance, maxDistance, visibleFrom = null) {
@@ -889,8 +929,9 @@ function randomMapFloorSpread(occupied, actors, minSpacing, excludedTarget = nul
     for (let x = 0; x < MAP_TILE_SIZE; x += 1) {
       const position = { x, y };
       if (!isWalkable(x, y) || occupied.has(tileIndex(x, y)) ||
-        (excludedTarget && distanceInSquares(position, excludedTarget) <= excludedDistance) ||
-        actors.some((actor) => distanceInSquares(actor, position) < minSpacing)) continue;
+        // (Spacing is in planned squares: systems/grid.js.)
+        (excludedTarget && distanceInSquares(position, excludedTarget) <= gridReach(excludedDistance)) ||
+        actors.some((actor) => distanceInSquares(actor, position) < gridReach(minSpacing))) continue;
       options.push(position);
     }
   }
@@ -941,11 +982,17 @@ function rollTombFind(floor) {
 
 function createGreatTempleCaches(player, occupied) {
   for (const treasure of state.run.treasures) occupied.add(tileIndex(treasure.x, treasure.y));
-  for (let index = 0; index < 8; index += 1) {
-    const position = randomMapFloorSpread(occupied, state.run.treasures, 4, player, 4);
+  // Things were put away where things are put away: each of the floor's stores (a shaft
+  // tomb, a sealed cell) holds a cache, and those are the better ones. A couple more lie
+  // where someone hid them. Everything else on a floor came up out of the ground and was
+  // carried where it is (systems/riches.js).
+  const stores = shuffle(state.run.rooms.filter((room) => room.purpose === "store" && !room.mainTreasure));
+  for (let index = 0; index < Math.min(8, stores.length + 2); index += 1) {
+    const store = stores[index] || null;
+    const position = (store && randomRoomFloor(store, occupied)) || randomMapFloorSpread(occupied, state.run.treasures, 4, player, 4);
     if (!position) break;
     occupied.add(tileIndex(position.x, position.y));
-    const includesItem = randomInt(100) <= 45;
+    const includesItem = randomInt(100) <= (store ? 85 : 35);
     const itemId = includesItem ? rollTombFind(state.run.dungeonFloor) : null;
     const cacheItems = itemId ? [{ id: itemId, quantity: 1 }] : [];
     if (randomInt(100) <= cacheGearChance(state.run.dungeonFloor)) {
@@ -1009,7 +1056,7 @@ function createDungeonWells() {
   for (const room of rooms) {
     if (wells.length >= count) break;
     const position = randomRoomFloor(room, occupied);
-    if (!position || wells.some((well) => distanceInSquares(well, position) < 8)) continue;
+    if (!position || wells.some((well) => distanceInSquares(well, position) < gridReach(8))) continue;
     const well = {
       id: `dungeon-well-${wells.length + 1}`,
       ...position,
@@ -1099,7 +1146,7 @@ function revealAroundPlayer() {
   const passivePerception = 10 + skillBonus("perception");
   const noticedHazards = state.run.hazards.filter((hazard) =>
     !hazard.triggered && !hazard.revealed && hazard.dc <= passivePerception &&
-    distanceInSquares(hazard, state.run.player) <= 2 && hasLineOfSight(state.run.player, hazard)
+    distanceInSquares(hazard, state.run.player) <= gridReach(2) && hasLineOfSight(state.run.player, hazard)
   );
   for (const hazard of noticedHazards) hazard.revealed = true;
   if (noticedHazards.length) {
@@ -1189,8 +1236,11 @@ function placeTombResidents() {
       edible: Boolean(finalBoss.edible),
       inflicts: PROGRESSION.creatureConditions.tzitzimitl ? { ...PROGRESSION.creatureConditions.tzitzimitl } : undefined,
       guardian: true,
-      greatGuardian: true
+      greatGuardian: true,
+      bossRoom: true
     });
+    // She lies at the mouth's lip, where everything grows largest (systems/growth.js).
+    growCreature(boss, DUNGEON_FLOOR_COUNT);
     state.run.rooms[bossRoomIndex].optionalQuest = true;
   }
   if (state.run.ecology && typeof ecoCreature === "function") {
@@ -1262,8 +1312,11 @@ function initializeDungeonFloor({ life = true } = {}) {
       edible: Boolean(finalBoss.edible),
       inflicts: PROGRESSION.creatureConditions.tzitzimitl ? { ...PROGRESSION.creatureConditions.tzitzimitl } : undefined,
       guardian: true,
-      greatGuardian: true
+      greatGuardian: true,
+      bossRoom: true
     });
+    // She lies at the mouth's lip, where everything grows largest (systems/growth.js).
+    growCreature(boss, DUNGEON_FLOOR_COUNT);
     state.run.rooms[bossRoomIndex].optionalQuest = true;
   }
   for (const enemy of [...state.run.enemies, ...state.run.lurkers]) occupied.add(tileIndex(enemy.x, enemy.y));
@@ -1315,7 +1368,8 @@ function saveDungeonFloorState() {
     openDoors: [...state.run.openDoors],
     player: { ...state.run.player },
     currentRoom: state.run.currentRoom,
-    enemies: copyDungeonValue(state.run.enemies),
+    // (The dead are gone once their bodies are on the floor; only the guardians are remembered.)
+    enemies: copyDungeonValue(state.run.enemies.filter((enemy) => enemy.alive || enemy.guardian || enemy.questNpc)),
     lurkers: copyDungeonValue(state.run.lurkers || []),
     hazards: copyDungeonValue(state.run.hazards),
     treasures: copyDungeonValue(state.run.treasures),
@@ -1552,7 +1606,25 @@ const PASSAGE_WALKABLE = new Set(["floor", "corridor", "door"]);
 // them stay where they are; only the corridors and doors between them are remade, so the
 // tomb is the same place with different ways through it. `data` is anything with the floor's
 // fields (state.run, or a saved floor).
+// A floor on the fine grid is re-dug at plan scale, so its passages keep the width and
+// style they were planned with, and only the blocks that changed are written back.
 function regenerateFloorPassages(data) {
+  if (data.terrain.length !== MAP_PLAN_SIZE * MAP_PLAN_SIZE * MAP_SCALE * MAP_SCALE) return regeneratePlanPassages(data);
+  const before = data.terrain.slice();
+  const plan = { ...data, terrain: gridPlanTerrain(data.terrain), rooms: data.rooms.map(gridPlanRoom) };
+  const planBefore = plan.terrain.slice();
+  const remade = withPlanGrid(() => regeneratePlanPassages(plan, { settle: false }));
+  if (!remade) return false;
+  plan.terrain.forEach((type, index) => {
+    if (type === planBefore[index]) return;
+    for (const tile of gridBlock(index)) data.terrain[tile] = type;
+  });
+  data.rooms.forEach((room, index) => { room.links = plan.rooms[index].links; });
+  settleAfterPassageChange(data, before);
+  return true;
+}
+
+function regeneratePlanPassages(data, { settle = true } = {}) {
   const size = MAP_TILE_SIZE;
   const terrain = data.terrain;
   const rooms = data.rooms;
@@ -1605,7 +1677,7 @@ function regenerateFloorPassages(data) {
       if (!rooms[a].links.includes(b)) rooms[a].links.push(b);
       if (!rooms[b].links.includes(a)) rooms[b].links.push(a);
     }
-    settleAfterPassageChange(data, before);
+    if (settle) settleAfterPassageChange(data, before);
     return true;
   }
   // Could not remake them: put the old ones back.
@@ -1623,7 +1695,7 @@ function settleAfterPassageChange(data, before) {
   const taken = new Set();
   const nearest = (spot) => {
     if (walkable(spot.x, spot.y) && !taken.has(spot.y * size + spot.x)) return spot;
-    for (let radius = 1; radius <= 12; radius += 1) {
+    for (let radius = 1; radius <= gridReach(12); radius += 1) {
       for (let dy = -radius; dy <= radius; dy += 1) {
         for (let dx = -radius; dx <= radius; dx += 1) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;

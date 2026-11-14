@@ -121,14 +121,17 @@ function renderTargetFrame(frame, enemy) {
   const inflicts = enemy.inflicts ? ` ${t("Can leave you {0}.", { 0: t(PROGRESSION.conditions[enemy.inflicts.condition].name).toLowerCase() })}` : "";
   const habitNote = creatureHabitNote(enemy);
   const habitText = !habitNote ? "" : knowsCreatureHabit(enemy) ? ` ${t(habitNote)}` : ` ${t("Its habits are still a mystery to you. Defeat one to learn them.")}`;
-  elements["enemy-description"].textContent = `${t(enemy.description || "Keep your guard up.")}${inflicts}${habitText}${studied && studied.kills >= 5 ? ` ${studied.title}: ${studied.description}` : ""}`;
+  const carried = [typeof richesCarriedNote === "function" ? richesCarriedNote(enemy) : "",
+    typeof cherishNote === "function" ? cherishNote(enemy) : ""].filter(Boolean).join(" ");
+  elements["enemy-description"].textContent = `${t(enemy.description || "Keep your guard up.")}${carried ? ` ${carried}` : ""}${inflicts}${habitText}${studied && studied.kills >= 5 ? ` ${studied.title}: ${studied.description}` : ""}`;
   renderStrikeChips(elements["enemy-strikes"], enemy);
   renderTargetFrameBody(frame, enemy, distance);
 }
 
 // Health, where it is, and its picture: the same for creatures and delvers.
 function renderTargetFrameBody(frame, enemy, distance) {
-  elements["enemy-health"].textContent = `${enemy.hp} / ${enemy.maxHp} HP`;
+  const level = typeof creatureLevelLabel === "function" && !enemy.delver ? creatureLevelLabel(enemy) : "";
+  elements["enemy-health"].textContent = `${level ? `${level} · ` : ""}${enemy.hp} / ${enemy.maxHp} HP`;
   elements["enemy-health-fill"].style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
   const flanker = flankingCompanion(enemy);
   const direction = directionToward(enemy);

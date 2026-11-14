@@ -17,15 +17,16 @@
 // run or wear noisy armor). If you can see a creature, it could see you: sight lines are
 // the same in both directions.
 
+// (In planned squares; gridReach() turns them into tiles on the fine grid, systems/grid.js.)
 const SIGHT_RANGE = 7;
 const HEARING_RANGE = 9;
 
 function sightRange() {
-  return SIGHT_RANGE + (sightDeepsight() ? 2 : 0);
+  return gridReach(SIGHT_RANGE + (sightDeepsight() ? 2 : 0));
 }
 
 function lightReach() {
-  return sightDeepsight() ? 6 : 4;
+  return gridReach(sightDeepsight() ? 6 : 4);
 }
 
 function sightDeepsight() {
@@ -40,7 +41,7 @@ function playerSees(spot) {
 
 // Out of view but close enough to hear.
 function playerHears(spot) {
-  return state.run?.location === "dungeon" && !playerSees(spot) && distanceInSquares(spot, state.run.player) <= HEARING_RANGE;
+  return state.run?.location === "dungeon" && !playerSees(spot) && distanceInSquares(spot, state.run.player) <= gridReach(HEARING_RANGE);
 }
 
 // A line in the log about something happening at `spot`: the details if you can see it,
@@ -63,7 +64,7 @@ function creatureHearingRange() {
   if (stance === "disengage") range -= 1;
   if (state.run?.character?.class === "rogue") range -= 1;
   if (typeof activeBuff === "function" && activeBuff("hushed")) range -= 1;
-  return Math.max(1, range);
+  return gridReach(Math.max(1, range));
 }
 
 // Does this creature sense you: in sight within `range`, or close enough to hear?

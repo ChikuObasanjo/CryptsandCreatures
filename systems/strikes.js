@@ -138,8 +138,21 @@ function capitalizeFirst(text) {
 // Applies a creature's weak spot or toughness to a hit and returns the new damage. Call
 // logStrike() with the result after logging the hit itself.
 function applyStrike(enemy, kind, damage) {
-  const strikes = creatureStrikes(enemy);
   if (!kind || damage <= 0) return { damage, outcome: "" };
+  // Ordinary weapons only half harm the little guardians (systems/wiles.js).
+  if (typeof wilesWarded === "function" && wilesWarded(enemy, kind)) {
+    const struck = applyStrikeKind(enemy, kind, damage);
+    const lore = strikeLoreBook();
+    const first = !lore[enemy.templateId]?.ward;
+    lore[enemy.templateId] = { ...(lore[enemy.templateId] || {}), ward: true };
+    return { ...struck, damage: Math.max(1, Math.floor(struck.damage / 2)), ward: true, wardFirst: first,
+      name: enemy.title ? enemy.name.slice(enemy.title.length + 1) : enemy.name };
+  }
+  return applyStrikeKind(enemy, kind, damage);
+}
+
+function applyStrikeKind(enemy, kind, damage) {
+  const strikes = creatureStrikes(enemy);
   const name = enemy.title ? enemy.name.slice(enemy.title.length + 1) : enemy.name;
   for (const outcome of ["weak", "resist"]) {
     if (strikes[outcome] !== kind) continue;
@@ -154,6 +167,10 @@ function applyStrike(enemy, kind, damage) {
 }
 
 function logStrike(struck) {
+  if (struck?.ward) {
+    addLog("Your weapon only half harms it. A relic weapon, or sun-fire, would bite fully.");
+    if (struck.wardFirst) addLog(`Journal: ordinary weapons only half harm ${struck.name}.`);
+  }
   if (!struck?.outcome) return;
   const plural = STRIKE_KINDS[struck.kind].plural;
   if (struck.outcome === "weak") {

@@ -146,7 +146,7 @@ function useRelicRite(itemId) {
     addLog(`You press the jade pectoral to your chest. The carved lord's falling star warms against your heart and you recover ${restored} hit point${restored === 1 ? "" : "s"}.`);
   } else if (itemId === "crystal-skull") {
     for (let index = 0; index < state.run.seen.length; index += 1) state.run.seen[index] = true;
-    const traps = state.run.hazards.filter((hazard) => !hazard.triggered && !hazard.revealed && distanceInSquares(hazard, state.run.player) <= 8);
+    const traps = state.run.hazards.filter((hazard) => !hazard.triggered && !hazard.revealed && distanceInSquares(hazard, state.run.player) <= gridReach(8));
     for (const hazard of traps) hazard.revealed = true;
     sfx("search");
     addLog(`You look into the cold quartz and see the whole floor laid out inside it${traps.length ? `, and ${traps.length} hidden trap${traps.length === 1 ? "" : "s"} close by` : ""}.`);

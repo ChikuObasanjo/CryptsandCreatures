@@ -13,7 +13,8 @@ quiet(`for (let f = 2; f <= ${floor}; f += 1) travelToFloor(f, "connection-" + (
 run(`(() => {
   const snap = () => new Map([...state.run.enemies, ...(state.run.lurkers || [])].filter((e) => e.alive).map((e) => [e, { x: e.x, y: e.y }]));
   window.__jumps = [];
-  const visible = (p) => distanceInSquares(p, state.run.player) <= 8 && hasLineOfSight(state.run.player, p);
+  // What you can actually see: in your light and line of sight (systems/sight.js).
+  const visible = (p) => typeof playerSees === "function" ? playerSees(p) : distanceInSquares(p, state.run.player) <= 8 && hasLineOfSight(state.run.player, p);
   const wrap = (name) => {
     const original = globalThis[name];
     globalThis[name] = function (...args) {

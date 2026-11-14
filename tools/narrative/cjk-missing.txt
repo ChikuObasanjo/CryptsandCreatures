@@ -1,0 +1,5 @@
+Characters used by the Japanese, Korean, and Chinese text added in batch-03-xalisco.json that the Unifont subset
+(resources/fonts/unifont-cjk-400-normal.woff2) does not hold yet. Until the subset is rebuilt with pyftsubset from the
+full Unifont (README, Typefaces), these show in the device's own font:
+
+仰右吻呂呻咽嚥坛坡垦左摞曇桶汇汪汽洼浴渦珰環畦矿秃肘腻臀虏赎蹲鉱镊갚꼽꿇댈뜰옹윤킴헛
