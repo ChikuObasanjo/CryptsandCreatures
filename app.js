@@ -38,9 +38,12 @@ const STORE_KEYS = {
   mapZoom: "crypts-and-creatures.map-zoom.v1"
 };
 // Map zoom: 0 shows 7 tiles across the short side on phones and 9 on wider screens;
-// each step in (+) shows two fewer, each step out (−) two more.
+// each step in (+) shows two fewer, each step out (−) two more. The tomb, on its finer grid,
+// has its own steps (DUNGEON_ZOOM_ACROSS): 15 tiles across a phone at 0, 5 at the closest,
+// 23 at the farthest.
 const MAP_ZOOM_MIN = -3;
-const MAP_ZOOM_MAX = 2;
+const MAP_ZOOM_MAX = 3;
+const DUNGEON_ZOOM_ACROSS = { "-3": 23, "-2": 19, "-1": 17, "0": 15, "1": 11, "2": 7, "3": 5 };
 const PAD_SIZES = ["normal", "large", "xl"];
 let mapZoom = 0;
 function applyPadSize(size) {
@@ -93,7 +96,10 @@ function viewportSize(viewport) {
 // tiles across each planned square, systems/grid.js), the town on its own.
 function mapViewShape(viewport, margin = 0, scale = 1) {
   const phone = document.body.classList.contains("phone-layout");
-  const across = scale * Math.max(3, (phone || window.matchMedia("(max-width: 540px)").matches ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom) + (scale > 1 ? 1 : 0);
+  const small = phone || window.matchMedia("(max-width: 540px)").matches;
+  const across = scale > 1
+    ? DUNGEON_ZOOM_ACROSS[String(mapZoom)] + (small ? 0 : 2 * (DESKTOP_MAP_VIEW_SIZE - MOBILE_MAP_VIEW_SIZE))
+    : Math.max(3, (small ? MOBILE_MAP_VIEW_SIZE : DESKTOP_MAP_VIEW_SIZE) - 2 * mapZoom);
   const { width, height } = viewportSize(viewport);
   if (width < 60 || height < 60) return { cols: across, rows: across, tile: 0 };
   const tile = Math.floor((Math.min(width, height) - margin) / across);
@@ -276,7 +282,7 @@ const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
 // The build replaces this with a fingerprint of all the art; no need to bump it by hand.
-const SPRITE_RESOURCE_VERSION = "a8eba82eb9";
+const SPRITE_RESOURCE_VERSION = "c758653b52";
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
@@ -4181,11 +4187,9 @@ function renderTownMap() {
   const player = state.run.townPosition;
   const shape = resizeTownMap();
   const { cols, rows } = shape;
-  const centeredOrigin = (position, viewSize, mapSize) => mapSize > viewSize
-    ? Math.max(0, Math.min(position - Math.floor(viewSize / 2), mapSize - viewSize))
-    : Math.floor((mapSize - viewSize) / 2);
-  const originX = centeredOrigin(player.x, cols, TOWN_LAYOUT.columns);
-  const originY = centeredOrigin(player.y, rows, TOWN_LAYOUT.rows);
+  // The camera stays on you, even at the edge of town (beyond it is the town wall).
+  const originX = player.x - Math.floor(cols / 2);
+  const originY = player.y - Math.floor(rows / 2);
   if (state.playerMoveEffect && state.playerMoveEffect.until > Date.now() && shape.tile) {
     elements["town-map"].classList.add("map-follow-step");
     elements["town-map"].style.setProperty("--map-step-x", `${state.playerMoveEffect.dx * shape.tile}px`);
@@ -4214,7 +4218,8 @@ function renderTownMap() {
     for (let column = 0; column < cols; column += 1) {
       const x = originX + column;
       const y = originY + row;
-      const code = townMap[y]?.[x] || ".";
+      const outside = y < 0 || x < 0 || y >= TOWN_LAYOUT.rows || x >= TOWN_LAYOUT.columns;
+      const code = outside ? "#" : townMap[y]?.[x] || ".";
       const npc = townNpcAt(x, y);
       const tile = document.createElement("button");
       const building = TOWN_BUILDINGS.find((entry) => entry.code === code);
