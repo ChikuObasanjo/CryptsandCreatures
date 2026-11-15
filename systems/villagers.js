@@ -416,7 +416,7 @@ function proposeTo(id) {
   const record = villagerRecord(id);
   const village = villageState();
   if (!houseState().owned) {
-    state.villagerView.speech = "You'd want a home to share first. Tlacotl has a house for sale off the plaza.";
+    state.villagerView.speech = "You'd want a home to share first. That loud builder, Tlapank!, has a house for sale off the plaza.";
     renderVillagerDialog();
     return;
   }

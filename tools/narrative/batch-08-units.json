@@ -1,0 +1,26 @@
+[
+ {
+  "old": "Lv",
+  "en": "Lv",
+  "nah": "Tl",
+  "es": "Nv",
+  "fr": "Niv",
+  "de": "St",
+  "pt": "Nv",
+  "ja": "Lv",
+  "ko": "Lv",
+  "zh": "等级"
+ },
+ {
+  "old": "{0} marked beans",
+  "en": "{0} marked beans",
+  "nah": "{0} etl tlahcuilolli",
+  "es": "{0} frijoles marcados",
+  "fr": "{0} haricots marqués",
+  "de": "{0} markierte Bohnen",
+  "pt": "{0} feijões marcados",
+  "ja": "印のある豆{0}つ",
+  "ko": "표시된 콩 {0}개",
+  "zh": "{0}颗有记号的豆子"
+ }
+]

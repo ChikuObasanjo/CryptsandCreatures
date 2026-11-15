@@ -213,7 +213,7 @@ function buyHouse() {
   const house = houseState();
   if (house.owned) return;
   if (state.run.gold < HOUSE_PRICE) {
-    state.houseMessage = `The house costs ${formatCurrency(HOUSE_PRICE)}. Bring back a little more treasure.`;
+    state.houseMessage = `The house costs ${formatCurrency(HOUSE_PRICE)}. “A little more treasure, friend, and she's all yours!” Tlapank! says.`;
     renderHouse();
     return;
   }
@@ -221,7 +221,7 @@ function buyHouse() {
   house.owned = true;
   house.style = "calli";
   house.styles = ["calli"];
-  addLog("Tlacotl hands you the cord-knot key to a little adobe house. Chiltomatlan has a home for you now.");
+  addLog("Tlapank! hands you the cord-knot key to a little adobe house, then turns away and wipes his eyes with his forearm. “I'm not crying! It's the adobe dust! Go on, she's yours. Chiltomatlan has a home for you now!”");
   state.houseMessage = "The house is yours. Sleep here any time, and use the mirror to change your look.";
   render();
   renderHouse();
@@ -271,7 +271,7 @@ function renderHouse() {
   const dialog = elements["house-dialog"];
   dialog.dataset.style = house.owned ? house.style : "calli";
   elements["house-portrait"].src = houseArtUrl(house.owned ? house.style : "calli");
-  elements["house-eyebrow"].textContent = t(house.owned ? "Your home in Chiltomatlan" : "For sale by Tlacotl");
+  elements["house-eyebrow"].textContent = t(house.owned ? "Your home in Chiltomatlan" : "For sale by Tlapank!");
   elements["house-title"].textContent = house.owned ? t(style.name) : t("An empty adobe house");
   elements["house-tagline"].textContent = house.owned ? t(style.tradition) : "A small house off the plaza, with a door that locks and a bed of your own.";
   renderPurses();

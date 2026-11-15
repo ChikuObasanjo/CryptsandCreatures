@@ -148,8 +148,10 @@ function delverWho(delver) {
   const people = delverPeople(delver);
   const from = delver.from ||= delverPick(people.from);
   const calling = CLASSES[delver.cls]?.name || delver.cls;
-  return people.foreign ? `${delver.name}, ${from}, a level ${delver.level} ${calling.toLowerCase()}`
-    : `${delver.name}, a level ${delver.level} ${people.people} ${calling.toLowerCase()} ${from}`;
+  // (Translated in pieces: the order of name, people, calling, and home differs by language.)
+  return people.foreign
+    ? t("{0}, {1}, a level {2} {3}", { 0: delver.name, 1: t(from), 2: delver.level, 3: t(calling.toLowerCase()) })
+    : t("{0}, a level {1} {2} {3} {4}", { 0: delver.name, 1: delver.level, 2: t(people.people), 3: t(calling.toLowerCase()), 4: t(from) });
 }
 
 // A line of theirs for the moment (`kind` from the culture's lines), not repeated back to back.

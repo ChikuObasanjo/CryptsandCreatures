@@ -611,7 +611,7 @@ function buildProject(id) {
   const next = project?.levels[level];
   if (!next || state.run.location !== "city") return;
   if (state.run.gold < next.cost) {
-    elements["projects-message"].textContent = `${t(project.name)} needs ${formatCurrency(next.cost)}.`;
+    elements["projects-message"].textContent = t("Tlapank! shakes his head. “{0} needs {1}, friend! I don't build half a masterpiece!”", { 0: t(project.name), 1: formatCurrency(next.cost) });
     return;
   }
   state.run.gold = roundGold(state.run.gold - next.cost);
@@ -621,7 +621,7 @@ function buildProject(id) {
     state.run.townPosition = { ...TOWN_PLAZA };
   }
   addLog(`Chiltomatlan builds ${t(project.name)}${project.levels.length > 1 ? ` (stage ${level + 1})` : ""}: ${next.effect}`);
-  elements["projects-message"].textContent = `${t(project.name)} complete: ${next.effect}`;
+  elements["projects-message"].textContent = t("Tlapank! strikes his pose, forearms locked overhead. “{0}, finished! SUPER!” {1}", { 0: t(project.name), 1: t(next.effect) });
   showToast(`${t(project.name)} · ${next.effect}`);
   render();
   renderProjectsDialog();
@@ -795,7 +795,7 @@ function renderProgressJournal() {
     const shown = bounty.kind === "deliver" ? Math.min(bounty.count, inventoryQuantity(bounty.target)) : bounty.progress;
     status.textContent = done ? "Ready to claim in town" : `${shown} / ${bounty.count}`;
     const reward = document.createElement("small");
-    reward.textContent = `${formatCurrency(bounty.reward.gold)} · ${bounty.reward.xp} XP · ${t(FACTIONS[bounty.reward.faction].name)}`;
+    reward.textContent = `${formatCurrency(bounty.reward.gold)} · ${bounty.reward.xp} ${t("XP")} · ${t(FACTIONS[bounty.reward.faction].name)}`;
     const meter = document.createElement("span");
     meter.className = "bounty-meter";
     const fill = document.createElement("span");
@@ -852,7 +852,7 @@ function renderProgressJournal() {
     .map((id) => `${t(PROGRESSION.projects[id].name)} ${data.town[id]}/${PROGRESSION.projects[id].levels.length}`);
   elements["projects-summary"].textContent = built.length
     ? `Built: ${built.join(" · ")}. Deepest floor reached: ${data.deepestFloor}.`
-    : `No town projects yet. Speak with Tlacotl in the plaza. Deepest floor reached: ${data.deepestFloor}.`;
+    : `No town projects yet. Speak with Tlapank! in the plaza. Deepest floor reached: ${data.deepestFloor}.`;
 }
 
 function renderStatusChips() {

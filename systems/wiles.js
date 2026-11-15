@@ -21,7 +21,7 @@
 const WILES_SOUNDS = {
   turkey: "a turkey gobbling",
   jaguar: "a jaguar's cough",
-  mapachin: "chittering, and something washing in water",
+  mapachin: "chittering and something washing in water",
   dog: "a coyote yipping",
   rabbit: "the thump of a big rabbit's foot",
   baby: "a baby crying",

@@ -131,7 +131,7 @@ function renderTargetFrame(frame, enemy) {
 // Health, where it is, and its picture: the same for creatures and delvers.
 function renderTargetFrameBody(frame, enemy, distance) {
   const level = typeof creatureLevelLabel === "function" && !enemy.delver ? creatureLevelLabel(enemy) : "";
-  elements["enemy-health"].textContent = `${level ? `${level} · ` : ""}${enemy.hp} / ${enemy.maxHp} HP`;
+  elements["enemy-health"].textContent = `${level ? `${level} · ` : ""}${enemy.hp} / ${enemy.maxHp} ${t("HP")}`;
   elements["enemy-health-fill"].style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
   const flanker = flankingCompanion(enemy);
   const direction = directionToward(enemy);

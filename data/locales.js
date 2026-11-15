@@ -126,9 +126,11 @@
       source += "$";
       const literal = parts.filter((part) => part && !/^\{\w+\}$/.test(part)).join("");
       // Patterns that are almost all placeholders would match nearly anything.
-      if (literal.replace(/[\s·:;,.()+\-–—/%]/g, "").length < 3) continue;
+      // (Quoted speech, "{0}: “{1}”", is specific enough by its quotation marks.)
+      if (literal.replace(/[\s·:;,.()+\-–—/%]/g, "").length < 3 && !/“\{\w+\}”/.test(key)) continue;
       const entry = { key, regex: new RegExp(source), order, literalLength: literal.length,
-        allowsList: key.includes(" · "), allowsSentences: /[.!?]\s/.test(key) };
+        // (Speech in quotes may run to several sentences: "{0}: “{1}”".)
+        allowsList: key.includes(" · "), allowsSentences: /[.!?]\s/.test(key) || /“\{\w+\}”/.test(key) };
       const prefix = parts[0] ? parts[0].slice(0, 4) : "";
       // Bucket by the first four characters; a shorter lead ("A {0}…") can't be bucketed.
       if (prefix.length >= 4) {
@@ -223,6 +225,13 @@
     if (locale === "en" || !text || depth > 3) return null;
     const catalog = catalogs[locale] || {};
     if (Object.prototype.hasOwnProperty.call(catalog, text)) return catalog[text];
+    // A count of something ("2 × Jade bead", "Jade bead ×2"): the count stays, the thing translates.
+    const counted = /^(\d+) ?× ?(.+)$/.exec(text) || /^(.+?) ?×(\d+)$/.exec(text);
+    if (counted) {
+      const [count, thing] = /^\d/.test(counted[1]) ? [counted[1], counted[2]] : [counted[2], counted[1]];
+      const translated = translateText(thing, depth + 1);
+      if (translated !== null) return /^\d/.test(counted[1]) ? `${count} × ${translated}` : `${translated} ×${count}`;
+    }
     const compiled = matchers[locale];
     if (compiled) {
       const candidates = [...(compiled.byPrefix.get(text.slice(0, 4)) || []), ...compiled.loose];
@@ -269,6 +278,8 @@
       const translated = pieces.map((piece) => (Object.prototype.hasOwnProperty.call(catalog, piece) ? catalog[piece] : null));
       if (translated.every((piece) => piece !== null)) return translated.join(", ");
     }
+    // (tools/translation-audit.js listens here for text nothing translates.)
+    if (typeof window.cryptsLocaleMiss === "function") window.cryptsLocaleMiss(text);
     return null;
   }
 

@@ -125,8 +125,9 @@
       { id: "ixchel-bundle", minFloor: 6, text: "Fifty-two years in a bundle, then the count starts over. Unless someone keeps it from starting. Your move." }
     ],
     "master-builder": [
-      { id: "tlacotl-lid", minFloor: 1, text: "Look at the stairwell masonry: everything's laid to bear weight from below. Like a lid on a pot that wants to boil." },
-      { id: "tlacotl-layers", minFloor: 5, text: "The floors are built in layers, each one younger than the one beneath, every one pressing down. Whoever built them kept adding weight." }
+      { id: "tlacotl-lid", minFloor: 1, text: "Look at that stairwell masonry! Every block is laid to hold weight from below, like a lid on a pot that wants to boil. Whoever built it was a genius. A frightening genius! I respect it!" },
+      { id: "tlacotl-layers", minFloor: 5, text: "The floors go down in layers, each one younger than the one under it, every one pressing down. They kept piling on weight for a whole age, friend. That's no building. That's a lid! It gives even my copper-banded arms the shivers!" },
+      { id: "tlapank-cracks", minFloor: 9, text: "Heard the deep stairs are cracking from underneath. Something's pushing up, friend! If it breaks the lid, I want to see how the old lords built it first. Then I'll run. Fast!" }
     ]
   };
 

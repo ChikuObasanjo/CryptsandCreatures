@@ -43,7 +43,7 @@ const STORE_KEYS = {
 // 23 at the farthest.
 const MAP_ZOOM_MIN = -3;
 const MAP_ZOOM_MAX = 3;
-const DUNGEON_ZOOM_ACROSS = { "-3": 23, "-2": 19, "-1": 17, "0": 15, "1": 11, "2": 7, "3": 5 };
+const DUNGEON_ZOOM_ACROSS = { "-3": 17, "-2": 15, "-1": 12, "0": 10, "1": 8, "2": 5, "3": 1 };
 const PAD_SIZES = ["normal", "large", "xl"];
 let mapZoom = 0;
 function applyPadSize(size) {
@@ -265,7 +265,7 @@ const TOWN_NPCS = [
   { id: "merchant", name: "Teyac, market trader", x: 13, y: 2, glyph: "T", faction: "traders-circle" },
   { id: "temple-keeper", name: "Xochi, keeper of the sealed road", x: 10, y: 5, glyph: "X", faction: "road-wardens" },
   { id: "patolli-player", name: "Ixchel, keeper of the Patolli board", x: 2, y: 7, glyph: "P", faction: null },
-  { id: "master-builder", name: "Tlacotl, master builder", x: 14, y: 7, glyph: "B", faction: null }
+  { id: "master-builder", name: "Tlapank!, master builder", x: 14, y: 7, glyph: "B", faction: null }
 ];
 const MOBILE_MAP_VIEW_SIZE = 7;
 const DESKTOP_MAP_VIEW_SIZE = 9;
@@ -282,7 +282,7 @@ const HEALING_FOOD_THRESHOLD = 75;
 const ASI_LEVELS = new Set([4, 8, 12, 16, 19]);
 const MAX_GOLD = 1_000_000;
 // The build replaces this with a fingerprint of all the art; no need to bump it by hand.
-const SPRITE_RESOURCE_VERSION = "c758653b52";
+const SPRITE_RESOURCE_VERSION = "b815363553";
 
 const GTFL_MAP_ROWS = [
   "#####........##..#............#.........#....",
@@ -1598,9 +1598,11 @@ function formatCurrency(gold) {
   const totalTenths = Math.round(gold * 10);
   const goldPieces = Math.floor(totalTenths / 10);
   const silverPieces = totalTenths % 10;
-  if (silverPieces === 0) return `${goldPieces} gp`;
-  if (goldPieces === 0) return `${silverPieces} sp`;
-  return `${goldPieces} gp ${silverPieces} sp`;
+  const gp = typeof t === "function" ? t("gp") : "gp";
+  const sp = typeof t === "function" ? t("sp") : "sp";
+  if (silverPieces === 0) return `${goldPieces} ${gp}`;
+  if (goldPieces === 0) return `${silverPieces} ${sp}`;
+  return `${goldPieces} ${gp} ${silverPieces} ${sp}`;
 }
 
 function traderDiscountRate() {
@@ -2269,7 +2271,7 @@ function alliesTakeTurn() {
         addLog(`${target.name} falls. The party gains ${target.xp} experience.`);
         showCombatFeedback("defeat", `${target.name} defeated`, { actor: "enemy", x: target.x, y: target.y, enemyId: target.id });
       } else {
-        showCombatFeedback(die === 20 ? "critical" : "hit", `−${damage} HP`, { actor: "enemy", x: target.x, y: target.y, enemyId: target.id });
+        showCombatFeedback(die === 20 ? "critical" : "hit", `−${damage} ${t("HP")}`, { actor: "enemy", x: target.x, y: target.y, enemyId: target.id });
       }
     } else {
       addLog(`${companion.name} misses ${target.name}.`);
@@ -2595,7 +2597,7 @@ function triggerHazard(x, y) {
   }
   const damage = rollDice(hazard.damage).total;
   state.run.hp = Math.max(0, state.run.hp - damage);
-  showCombatFeedback("player-hit", `−${damage} HP`, { actor: "player", x, y });
+  showCombatFeedback("player-hit", `−${damage} ${t("HP")}`, { actor: "player", x, y });
   addLog(`${hazard.name} catches you for ${damage} damage (${hazard.ability} save ${check} vs. ${hazard.dc}).`);
   if (hazard.kind === "fungal-spore") {
     const wisdomPenalty = Math.min(4, Math.max(1, Math.floor(hazard.damagePenalty || 2)));
@@ -2683,7 +2685,7 @@ function attackEnemy(enemy, { ranged = false, disadvantage = false, cleave = fal
     if (curse?.turns > 0 && typeof creatureFallsToAbility === "function") creatureFallsToAbility(enemy);
     else resolveEnemyDefeat(enemy);
   } else if (damageDealt > 0) {
-    showCombatFeedback(die >= criticalThreshold() ? "critical" : "hit", `−${damageDealt} HP${strikeOutcome === "weak" ? ` · ${t("Weak spot!")}` : strikeOutcome === "resist" ? ` · ${t("Glances off")}` : ""}`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
+    showCombatFeedback(die >= criticalThreshold() ? "critical" : "hit", `−${damageDealt} ${t("HP")}${strikeOutcome === "weak" ? ` · ${t("Weak spot!")}` : strikeOutcome === "resist" ? ` · ${t("Glances off")}` : ""}`, { actor: "enemy", x: enemy.x, y: enemy.y, enemyId: enemy.id });
   }
   if (technique && damageDealt > 0 && typeof techniqueOnHit === "function") techniqueOnHit(technique, enemy, damageDealt);
   if (noFinish) return;
@@ -2988,6 +2990,8 @@ function enemiesTakeTurn() {
 }
 
 function showCombatFeedback(kind, message, target = {}) {
+  // (The number stays; the unit is the reader's: "−4 HP" is "−4 PG" in Spanish.)
+  if (typeof message === "string") message = message.replace(/ HP\b/g, ` ${t("HP")}`);
   // Something hurt out of your sight: no flash, no number, no sound (you'd hear about it
   // through reportAt, if it was close).
   if (state.run?.location === "dungeon" && target.actor === "enemy" && Number.isInteger(target.x) && !playerSees(target)) return;
@@ -3050,14 +3054,14 @@ function enemyAttack(enemy, opportunity = false, automaticDodge = state.run.dodg
     if (target.hero) {
       damage = heroDamageAfterAbilities(damage);
       state.run.hp = Math.max(0, state.run.hp - damage);
-      showCombatFeedback("player-hit", `−${damage} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
+      showCombatFeedback("player-hit", `−${damage} ${t("HP")}`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
       if (typeof mindDrinksFrom === "function") mindDrinksFrom(enemy, damage);
       checkDefeat();
       maybeInflictCondition(enemy);
     } else {
       target.hp = Math.max(0, target.hp - damage);
       if (target.hp === 0) addLog(`${target.name} is knocked out! They need rest to recover.`);
-      showCombatFeedback("player-hit", `−${damage} HP`, {
+      showCombatFeedback("player-hit", `−${damage} ${t("HP")}`, {
         actor: "companion", companionId: target.id, x: target.x, y: target.y
       });
     }
@@ -3077,7 +3081,7 @@ function usePotion() {
   removeInventoryItem("healing-potion");
   addLog(`You use your medicine and recover ${restored} hit point${restored === 1 ? "" : "s"}${ailing ? ", and your ailments ease" : ""}.`);
   clearConditions();
-  showCombatFeedback("heal", `+${restored} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
+  showCombatFeedback("heal", `+${restored} ${t("HP")}`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
   finishPlayerTurn();
 }
 
@@ -3172,7 +3176,7 @@ function useInventoryItem(itemId) {
     if (FOOD_ITEMS[itemId].heal && state.run.hp < state.run.maxHp) {
       const restored = Math.min(FOOD_ITEMS[itemId].heal, state.run.maxHp - state.run.hp);
       state.run.hp += restored;
-      showCombatFeedback("heal", `+${restored} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
+      showCombatFeedback("heal", `+${restored} ${t("HP")}`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
     }
     addLog(`You eat ${FOOD_ITEMS[itemId].name}. Food rises by ${FOOD_ITEMS[itemId].food}; its nutrition supports ${Object.entries(FOOD_ITEMS[itemId].nutrients)
       .filter(([, amount]) => amount >= 30).map(([nutrient]) => NUTRIENT_NAMES[nutrient].toLowerCase()).join(" and ") || "your diet"}.`);
@@ -3225,7 +3229,7 @@ function useInventoryItem(itemId) {
     const restored = Math.min(rollDice("1d4+1").total, state.run.maxHp - state.run.hp);
     state.run.hp += restored;
     progress().conditions = progress().conditions.filter((entry) => entry.id !== "bleed");
-    showCombatFeedback("heal", `+${restored} HP`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
+    showCombatFeedback("heal", `+${restored} ${t("HP")}`, { actor: "player", x: state.run.player.x, y: state.run.player.y });
     addLog(`You smear maguey salve on the wound and recover ${restored} hit point${restored === 1 ? "" : "s"}${bleeding ? "; the bleeding stops" : ""}.`);
   } else if (itemId === "picietl") {
     if (!removeInventoryItem(itemId)) return;
@@ -3648,7 +3652,7 @@ function talkToTownNpc(id) {
       }
     },
     "master-builder": {
-      copy: `Tlacotl unrolls a bark-paper plan of Chiltomatlan. “Tomb gold built nothing here yet. Fund a project and the whole town grows, and so does every delve you make.” Built so far: ${PROJECT_IDS.filter((projectId) => projectLevel(projectId)).map((projectId) => t(PROGRESSION.projects[projectId].name)).join(", ") || "nothing yet"}.`,
+      copy: `Tlapank! slaps a bark-paper plan of Chiltomatlan down on a stone, knocks back a cup of foaming cacao, and strikes his pose: forearms locked overhead, copper bands clacking. “Friend! This town has good bones and no ambition! Bring me tomb gold and I'll build it SUPER, and every delve you make gets better with it!” Built so far: ${PROJECT_IDS.filter((projectId) => projectLevel(projectId)).map((projectId) => t(PROGRESSION.projects[projectId].name)).join(", ") || "nothing yet"}.`,
       action: "Plan town projects",
       callback: openProjectsDialog
     },
@@ -5155,7 +5159,7 @@ function renderRoom() {
     status.textContent = "Fallen";
     status.classList.add("danger");
   } else if (room.visited) {
-    status.textContent = `${state.run.steps} ${state.run.steps === 1 ? "step" : "steps"}`;
+    status.textContent = t(state.run.steps === 1 ? "{0} step" : "{0} steps", { 0: state.run.steps });
     status.classList.add("good");
   } else {
     status.textContent = "Exploring";
@@ -5255,7 +5259,7 @@ function renderCharacter() {
   elements["xp-line"].textContent = state.run.level >= MAX_LEVEL
     ? `${state.run.xp} experience · Maximum level`
     : `${state.run.xp} experience · ${Math.max(0, XP_THRESHOLDS[state.run.level + 1] - state.run.xp)} to level ${state.run.level + 1}`;
-  elements["level-badge"].textContent = `LV ${state.run.level}`;
+  elements["level-badge"].textContent = `${t("LV")} ${state.run.level}`;
   renderCharacterGuide(character, stats);
   const equipment = character.equipment || {};
   elements["character-equipment"].textContent =
@@ -5538,10 +5542,10 @@ function renderPartyStatus() {
       const copy = document.createElement("div");
       copy.className = "party-member-copy";
       const name = document.createElement("strong");
-      name.textContent = `${member.name}${member.hero ? " · You" : ` · ${CLASSES[member.class].name}`} · Lv ${state.run.level}`;
+      name.textContent = `${member.name}${member.hero ? " · You" : ` · ${CLASSES[member.class].name}`} · ${t("Lv")} ${state.run.level}`;
       const health = document.createElement("span");
       health.className = "party-health";
-      health.textContent = member.hp > 0 ? `HP ${member.hp}/${member.maxHp}` : "Down";
+      health.textContent = member.hp > 0 ? `${t("HP")} ${member.hp}/${member.maxHp}` : t("Down");
       const needs = document.createElement("div");
       needs.className = "party-needs";
       const foodBadge = document.createElement("span");
