@@ -535,15 +535,21 @@ function ecologyNoticeModifier(creature) {
   if (typeof hasCondition === "function" && hasCondition("ill-omened")) modifier += 1;
   // At the hours its kind sleeps, you can come much closer before it notices (systems/laws.js).
   if (ecoDrowsing(creature)) modifier -= 3;
+  // A tense body, or one that knows your step, notices you sooner (systems/soma.js).
+  if (typeof somaNoticeModifier === "function") modifier += somaNoticeModifier(creature);
   return modifier;
 }
 
+// (Its body's part in a fight, from systems/soma.js: spent or hurting, it strikes worse;
+// tense, it twists away; asleep in the open, it is easy to hit.)
 function ecologyAttackModifier(creature) {
-  return (ecoHungerState(creature) === "starving" ? -2 : 0) + (ecoIsCrowded(creature) ? 2 : 0) + (ecoIsSick(creature) ? -1 : 0);
+  return (ecoHungerState(creature) === "starving" ? -2 : 0) + (ecoIsCrowded(creature) ? 2 : 0) + (ecoIsSick(creature) ? -1 : 0) +
+    (typeof somaAttackModifier === "function" ? somaAttackModifier(creature) : 0);
 }
 
 function ecologyAcModifier(creature) {
-  return (ecoHungerState(creature) === "starving" ? -1 : 0) + (ecoIsSick(creature) ? -1 : 0);
+  return (ecoHungerState(creature) === "starving" ? -1 : 0) + (ecoIsSick(creature) ? -1 : 0) +
+    (typeof somaAcModifier === "function" ? somaAcModifier(creature) : 0);
 }
 
 function ecologyDamageBonus(creature) {
@@ -783,6 +789,8 @@ function ecoFeed(creature, amount, ticks = 2, cap = 100) {
   creature.eco.sat = Math.min(Math.max(cap, creature.eco.sat), creature.eco.sat + amount);
   creature.eco.feeding = ticks;
   creature.eco.target = null;
+  // It remembers where it ate (systems/sleep.js).
+  if (typeof memoryNote === "function") memoryNote(creature, "food", { valence: 0.6, weight: 0.6 });
   const species = ecoSpecies(creature);
   // Big snakes and caimans sleep off a big meal.
   if (species?.sleepsAfter && creature.eco.sat >= 90 && !creature.alerted) {
@@ -858,10 +866,18 @@ function ecoHunt(creature, species, prey) {
   const roll = randomInt(20) + (creature.attackBonus || 0) + ecologyAttackModifier(creature);
   ecoWitness(prey, creature.templateId, `hunts:${prey.templateId}`);
   ecoWitness(prey, prey.templateId, `huntedBy:${creature.templateId}`);
-  if (roll < prey.ac + ecologyAcModifier(prey)) {
+  // The rush of it, for both. Prey that has run from this kind in its sleep is quicker to
+  // twist away (systems/sleep.js).
+  // (Caught asleep in the open, it is easy to take; it wakes now, whatever happens.)
+  const ac = prey.ac + ecologyAcModifier(prey) + (typeof memoryReady === "function" ? Math.round(2 * memoryReady(prey, creature.templateId)) : 0);
+  if (typeof sleepsNow === "function" && sleepsNow(prey)) sleepWake(prey, ecoSpecies(prey), "startled");
+  if (typeof somaExert === "function") somaExert(creature, 0.08);
+  if (typeof somaStartle === "function") somaStartle(prey, 0.6);
+  if (roll < ac) {
     ecoLog(prey, `${creature.name} lunges at ${prey.name} and misses.`);
     ecoCreature(prey).flee = 3;
     prey.eco.fleeFrom = creature.id;
+    if (typeof memoryNote === "function") memoryNote(prey, "hunted", { valence: -1, about: creature.templateId, weight: 0.8 });
     return;
   }
   const damage = Math.max(1, rollDice(creature.damage).total);
@@ -870,6 +886,7 @@ function ecoHunt(creature, species, prey) {
     ecoLog(prey, `${creature.name} wounds ${prey.name}, which bolts.`);
     ecoCreature(prey).flee = 4;
     prey.eco.fleeFrom = creature.id;
+    if (typeof memoryNote === "function") memoryNote(prey, "hunted", { valence: -1, about: creature.templateId, weight: 1 });
     return;
   }
   ecoLog(prey, `${creature.name} kills ${prey.name}${species.size >= 3 ? " and starts to feed" : ""}.`);
@@ -936,11 +953,12 @@ function ecologyIdle(creature, { catchUp = false } = {}) {
     eco.feeding -= 1;
     return true;
   }
-  // Prey runs from whatever is hunting it.
+  // Prey runs from whatever is hunting it (and running tires it: systems/soma.js).
   if (eco.flee > 0) {
     eco.flee -= 1;
     const from = state.run.enemies.find((enemy) => enemy.id === eco.fleeFrom && enemy.alive) || state.run.player;
     ecoStep(creature, from, { catchUp, away: true });
+    if (typeof somaExert === "function") somaExert(creature, 0.1);
     return true;
   }
   const player = state.run.player;
@@ -963,12 +981,18 @@ function ecologyIdle(creature, { catchUp = false } = {}) {
       eco.retarget = 0;
     }
     const target = eco.target;
+    // Nothing to eat in reach: it goes where it remembers eating (systems/sleep.js).
+    const remembered = !target && typeof memoryForage === "function" ? memoryForage(creature) : null;
+    if (remembered && ecoStep(creature, remembered, { catchUp })) return true;
     if (target) {
       eco.hunting = Boolean(target.creature);
       if (target.creature) {
         const prey = state.run.enemies.find((enemy) => enemy.id === target.creature);
         if (distanceInSquares(prey, creature) <= 1) ecoHunt(creature, species, prey);
-        else ecoStep(creature, prey, { catchUp });
+        else {
+          ecoStep(creature, prey, { catchUp });
+          if (typeof somaExert === "function") somaExert(creature, 0.05);
+        }
         return true;
       }
       const spot = target.feature ? ecoState().features.find((entry) => entry.id === target.feature)
@@ -992,6 +1016,8 @@ function ecologyIdle(creature, { catchUp = false } = {}) {
   }
   eco.hunting = false;
   eco.waiting = false;
+  // Tired, it goes to its bed and sleeps (systems/sleep.js).
+  if (typeof sleepIdle === "function" && sleepIdle(creature, species, eco, { catchUp })) return true;
   // Fed, a carrier sees to the things it keeps (systems/riches.js).
   if (typeof richesIdle === "function" && richesIdle(creature, species, eco, { catchUp })) return true;
   // Wanderers keep their own errands; everyone else stays near home and potters about.
@@ -1003,7 +1029,10 @@ function ecologyIdle(creature, { catchUp = false } = {}) {
     return true;
   }
   if (hunger !== "gorged" && Math.random() < (species.role === "grazer" ? 0.35 : 0.15)) {
-    const step = creatureRandomStep(creature);
+    // At its ease, it moves the way its body leans: toward warmth or cool, the wet or the
+    // dry, a wall at its back, its own kind (systems/soma.js).
+    const step = typeof somaDrift === "function" && typeof somaApplies === "function" && somaApplies(creature, species)
+      ? somaDrift(creature, species) : creatureRandomStep(creature);
     if (step && roomIndexAt(step.x, step.y) === roomIndexAt(creature.x, creature.y) &&
       !(catchUp && distanceInSquares(step, player) <= gridReach(4))) moveCreature(creature, step);
   }
@@ -1033,6 +1062,7 @@ function ecoDispute(creature, eco, catchUp) {
     return true;
   }
   const roll = randomInt(20) + (creature.attackBonus || 0);
+  if (typeof somaExert === "function") { somaExert(creature, 0.08); somaExert(rival, 0.08); }
   if (roll >= rival.ac) {
     const damage = Math.max(1, Math.floor(rollDice(creature.damage).total / 2));
     rival.hp = Math.max(1, rival.hp - damage);
@@ -1041,6 +1071,12 @@ function ecoDispute(creature, eco, catchUp) {
   if (rival.hp <= rival.maxHp * 0.6 || creature.hp <= creature.maxHp * 0.6) {
     const loser = rival.hp / rival.maxHp <= creature.hp / creature.maxHp ? rival : creature;
     const winner = loser === rival ? creature : rival;
+    // Each keeps what it learned: the loser where it isn't welcome, the winner that the den
+    // is its own (systems/sleep.js).
+    if (typeof memoryNote === "function") {
+      memoryNote(loser, "rival", { valence: -0.8, about: loser.templateId, room: ecoCreature(loser).home, weight: 1 });
+      memoryNote(winner, "rival", { valence: 0.4, about: winner.templateId, room: ecoCreature(winner).home, weight: 0.8 });
+    }
     const newHome = ecoNearbyHome(loser, ecoCreature(loser).home);
     loser.eco.home = newHome ?? loser.eco.home;
     loser.eco.flee = 4;
@@ -1059,8 +1095,10 @@ function ecoNearbyHome(creature, fromIndex) {
   const hops = typeof roomHops === "function" && rooms[fromIndex] ? roomHops(rooms, fromIndex) : rooms.map(() => 1);
   const options = rooms.map((room, index) => ({ room, index }))
     .filter(({ index }) => index !== fromIndex && index !== 0 && hops[index] <= 3)
-    // (What is hunted keeps away from a hunter's musk and from the smell of fear: mindAir.)
-    .map(({ room, index }) => ({ index, score: (ecoResidents(ecoHabitat(room))[creature.templateId] ? 3 : 0) - hops[index] + Math.random() - ecoAirAvoided(creature, index) }))
+    // (What is hunted keeps away from a hunter's musk and from the smell of fear: mindAir.
+    // And each goes where it remembers being well, not where it was hurt: systems/sleep.js.)
+    .map(({ room, index }) => ({ index, score: (ecoResidents(ecoHabitat(room))[creature.templateId] ? 3 : 0) - hops[index] + Math.random() - ecoAirAvoided(creature, index) +
+      (typeof memoryPlace === "function" ? 2 * memoryPlace(creature, index) : 0) }))
     .sort((a, b) => b.score - a.score);
   return options[0]?.index ?? null;
 }
@@ -1136,7 +1174,10 @@ function ecologyWorldTick() {
     if (!species) continue;
     const data = ecoCreature(creature);
     const asleep = creature.asleep && data.sleeping;
-    data.sat = Math.max(0, data.sat - ecoBurn(species) * (asleep ? 0.3 : 1));
+    // (Sleeping off a big meal burns little. An ordinary night's sleep is already part of
+    // what a creature eats in a day.)
+    const sleepingOff = asleep && creature.asleep < 900;
+    data.sat = Math.max(0, data.sat - ecoBurn(species) * (sleepingOff ? 0.3 : 1));
     data.hungerTicks = data.sat <= 0 ? (data.hungerTicks || 0) + 1 : 0;
     if (asleep && creature.asleep > 0 && creature.asleep < 900) {
       creature.asleep -= 1;
@@ -1145,6 +1186,9 @@ function ecologyWorldTick() {
         data.sleeping = false;
       }
     }
+    // Its body's own clock, and its sleep (systems/soma.js, systems/sleep.js).
+    if (typeof somaTick === "function") somaTick(creature, species, 1);
+    if (typeof sleepTick === "function") sleepTick(creature, species, 1);
   }
   const context = ecoGrowthContext();
   for (const feature of eco.features) {
@@ -1553,6 +1597,9 @@ function ecologySettle(ticks) {
       const species = ecoSpecies(creature);
       if (!species) continue;
       const data = ecoCreature(creature);
+      // An hour of its body's clock and its sleep (systems/soma.js, systems/sleep.js).
+      if (typeof somaTick === "function") somaTick(creature, species, ECO_CENSUS_EVERY);
+      if (typeof sleepTick === "function") sleepTick(creature, species, ECO_CENSUS_EVERY);
       if (["spirit", "guardian", "raider"].includes(species.role)) {
         data.sat = Math.max(30, data.sat - species.appetite * ECO_CENSUS_EVERY);
         continue;
@@ -1565,8 +1612,10 @@ function ecologySettle(ticks) {
       // The smell of death carries, off screen as on: scavengers and the dead find a body from
       // much farther off than anything finds a garden.
       const scent = species.role === "scavenger" || species.role === "spirit" ? gridReach(22) : gridReach(ECO_SEARCH_RADIUS);
+      // (And it knows the chambers it has fed in before: systems/sleep.js.)
+      const fedThere = (room) => (creature.mind?.food?.[room] || 0) >= 0.2;
       const meal = needsMeal ? eco.features.find((feature) => ecoFeatureFeeds(feature, species) &&
-        (feature.room === data.home || distanceInSquares(feature, creature) <= (feature.kind === "carcass" ? scent : gridReach(ECO_SEARCH_RADIUS)))) : null;
+        (feature.room === data.home || fedThere(feature.room) || distanceInSquares(feature, creature) <= (feature.kind === "carcass" ? scent : gridReach(ECO_SEARCH_RADIUS)))) : null;
       // Off screen an hour is long enough for a hunter to range over much of the floor.
       const range = gridReach(species.role === "predator" ? ECO_SEARCH_RADIUS * 2.5 : ECO_SEARCH_RADIUS);
       const prey = needsMeal && !meal && (species.role === "predator" || species.role === "scavenger") ? shuffle(state.run.enemies.filter((other) => other.alive && other !== creature &&
@@ -1590,7 +1639,10 @@ function ecologySettle(ticks) {
         }
         data.sat = Math.min(90, data.sat - burned + ecoMealSatiety(species, units));
         data.hungerTicks = 0;
-      } else if (prey && Math.random() < (species.role === "predator" ? (window.CryptsEcoTuning?.huntChance ?? 0.22) * ecoHuntOdds() : 0.03)) {
+        if (typeof memoryNote === "function") memoryNote(creature, "food", { valence: 0.6, room: meal.room, weight: 0.5 });
+      } else if (prey && Math.random() < (species.role === "predator" ? (window.CryptsEcoTuning?.huntChance ?? 0.22) * ecoHuntOdds() : 0.03) *
+        // (Prey that has run from this kind in its sleep is harder to take: systems/sleep.js.)
+        (1 - 0.3 * (typeof memoryReady === "function" ? memoryReady(prey, creature.templateId) : 0))) {
         // A hunt off-screen: sometimes it works.
         ecologyCreatureDied(prey, { eaten: true, killer: creature });
         ecoEvent(roomIndexAt(prey.x, prey.y), `A ${creature.name} killed a ${prey.name} here.`, "kill");
@@ -1599,6 +1651,10 @@ function ecologySettle(ticks) {
       } else {
         data.sat = Math.max(0, data.sat - burned);
         data.hungerTicks = data.sat <= 0 ? (data.hungerTicks || 0) + ECO_CENSUS_EVERY : 0;
+        // The prey it went after got away, and remembers.
+        if (prey && species.role === "predator" && typeof memoryNote === "function" && Math.random() < 0.5) {
+          memoryNote(prey, "hunted", { valence: -1, about: creature.templateId, weight: 0.6 });
+        }
       }
       data.target = null;
       data.feeding = 0;
@@ -2222,7 +2278,7 @@ function ecologyDietSummary(templateId) {
 function ecologyMoodLabel(creature) {
   const eco = creature?.eco;
   if (!eco || !ecoSpecies(creature)) return "";
-  if (creature.asleep && eco.sleeping) return "sleeping off a meal";
+  if (creature.asleep && eco.sleeping) return creature.asleep < 900 ? "sleeping off a meal" : "asleep";
   if (eco.sick > 0) return "sick";
   if (eco.rival) return "disputing territory";
   if (eco.waiting) return "waiting its turn";

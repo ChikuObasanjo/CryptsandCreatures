@@ -1383,6 +1383,8 @@ function saveDungeonFloorState() {
     floorStairs: copyDungeonValue(state.run.floorStairs || []),
     ecology: copyDungeonValue(state.run.ecology || null)
   };
+  // (Only the slow part of each creature's body is kept: systems/soma.js.)
+  if (typeof somaPack === "function") for (const creature of state.run.dungeonFloors[String(floor)].enemies) somaPack(creature);
 }
 
 function restoreDungeonFloorState(snapshot, entryId) {

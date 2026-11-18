@@ -3,7 +3,7 @@
 // Written by scripts/convert-character-textures.js (part of `npm run build`): the painted
 // textures in art/character/ the game should use. Don't edit by hand.
 window.CryptsCharacterTextures = {
-  "stamp": "7e7454b65c",
+  "stamp": "368b4f2459",
   "size": 512,
   "parts": {
     "adornment": {

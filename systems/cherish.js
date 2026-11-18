@@ -164,6 +164,8 @@ function mindRobbed(enemy, cache) {
   mind.robbed = Math.min(1, (mind.robbed || 0) + (loved ? 0.8 : 0.45));
   mind.robbedAt = (typeof ecoState === "function" && ecoState()?.ticks) || 0;
   mind.stress = mindClamp(mind.stress + 0.3);
+  // It keeps it, and where (systems/sleep.js).
+  if (typeof memoryNote === "function") memoryNote(enemy, "harm", { valence: -0.8, about: "you", weight: loved ? 1 : 0.7 });
   mind.gifted = 0;
   if (loved || mindNature(enemy, ecoSpecies(enemy)) !== MIND_NATURES.animal) provokeCreature(enemy);
 }

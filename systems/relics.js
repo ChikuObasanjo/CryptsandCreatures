@@ -178,7 +178,9 @@ function enemySleeps(enemy) {
   if (!enemy.asleep) return false;
   if (enemy.hp < (enemy.sleepHp ?? enemy.hp)) {
     enemy.asleep = 0;
-    addLog(`${enemy.name} wakes with a snarl.`);
+    // (Only if you can see it: creatures sleep all over the tomb now.)
+    if (typeof reportAt === "function") reportAt(enemy, `${enemy.name} wakes with a snarl.`);
+    else addLog(`${enemy.name} wakes with a snarl.`);
     return false;
   }
   enemy.asleep -= 1;

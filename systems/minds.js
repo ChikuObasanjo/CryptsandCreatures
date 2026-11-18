@@ -37,6 +37,13 @@
 // theory), held until something clearly stronger breaks in, and its intention follows from
 // the focus.
 //
+// Under all of it is a body (systems/soma.js): a heart that pounds and settles, muscles that
+// tense and let go, fatigue, pain, the slow strain of hard days, and the feel of the place it
+// is in. The body sets how hard the mind feels what it feels, and has the last word on what
+// it can do. And every creature with a body sleeps (systems/sleep.js): what it lived through
+// in the day it goes over in its sleep, and keeps what mattered: where food is, what hunts
+// it, what you are, who it sleeps beside. The rest it lets go.
+//
 // The mind only decides: fight, flee, watch, follow, go back to its post, or leave you be.
 // The creature's habits carry it out (systems/behaviors.js: how it attacks, guards, steals).
 // And one more thing, for the dead only: a spirit fed and loosened by your offerings, no
@@ -186,12 +193,19 @@ function mindBody(enemy, species, mind) {
   //   teyolia  what its heart keeps (mindSelf)
   //   ihiyotl  what it gives off, that others smell and feel (mindAir)
   const wound = 1 - enemy.hp / Math.max(1, enemy.maxHp);
+  // What its body is doing under all this: heart, tension, fatigue, pain, strain, the need
+  // for sleep, and how its place feels (systems/soma.js). The dead have none of it.
+  const soma = typeof somaRead === "function" ? somaRead(enemy) : { heart: 1 / 3, tension: 0, fatigue: 0, pain: null, strain: 0, tired: 0, comfort: 1, touch: 0, gain: 1, body: false };
   return {
     hunger,
     hungerState: shares ? mindHungerState(hunger) : ownState,
     wound,
+    // (Pain is what gets through; without a body to feel it, the wound is the pain.)
+    pain: soma.pain ?? 0.55 * wound,
+    soma,
     stress: mind.stress,
-    tonalli: mindClamp((1 - mind.stress) * (1 - 0.6 * wound) * (ecoIsSick(enemy) ? 0.6 : 1)),
+    // (Fatigue and sleeplessness cool it too.)
+    tonalli: mindClamp((1 - mind.stress) * (1 - 0.6 * wound) * (ecoIsSick(enemy) ? 0.6 : 1) * (1 - 0.3 * soma.fatigue) * (1 - 0.3 * soma.tired)),
     // How awake it is at this hour (systems/laws.js): grazers by day, hunters at dusk, the
     // dead by night.
     wake: typeof lawWake === "function" && !enemy.guardian ? lawWake(species) : 1,
@@ -284,7 +298,9 @@ function mindSelf(enemy, species, mind, nature, distance, body) {
 // How much its own kind are part of it, and what those near it add to its strength.
 function mindKin(enemy, species, nature, settled) {
   const base = nature === MIND_NATURES.animal ? (species.packs ? 0.8 : species.territorial ? 0.15 : 0.4) : nature.kin || 0;
-  const kin = { hold: Math.min(1, base * settled), strength: 0, count: 0, hurt: false };
+  // (Nights slept pressed together bind them closer: the bond, systems/sleep.js.)
+  const bond = base >= 0.4 ? 0.3 * (enemy.mind?.bond || 0) : 0;
+  const kin = { hold: Math.min(1, base * settled + bond), strength: 0, count: 0, hurt: false };
   if (kin.hold <= 0) return kin;
   for (const other of state.run.enemies) {
     if (other === enemy || !other.alive || other.templateId !== enemy.templateId || other.friendly) continue;
@@ -334,9 +350,13 @@ function mindDrives(enemy, species, mind, distance) {
   // dead always think so; a herd does when there are enough of them.
   const stands = hot || danger < 1;
   const forKin = self.kinHurt ? self.kin : 0;
-  const fear = mindClamp(temper.fear * nature.body * ((timid * 0.6 + Math.min(1, danger / 4) * 0.25) * (1 - proven) + body.wound * 0.8 +
+  // Fear and anger are felt in the body (systems/soma.js): a pounding heart makes the same
+  // push hit harder (`gain`), and what makes a hurt creature shy is the pain that gets
+  // through, more than the wound. The bodies of its own kind against it steady it.
+  const soma = body.soma;
+  const fear = mindClamp(temper.fear * nature.body * soma.gain * ((timid * 0.6 + Math.min(1, danger / 4) * 0.25) * (1 - proven) + body.wound * 0.45 + body.pain * 0.6 +
     harm * (hot ? 0.3 : 0.7) + (mind.startle ? 0.15 : 0) + body.stress * 0.25 + (stands ? 0 : forKin * 0.5) + (body.sick ? 0.1 : 0)) -
-    courage - kind * 0.7 - (body.hungerState === "starving" ? 0.3 : 0));
+    courage - kind * 0.7 - (body.hungerState === "starving" ? 0.3 : 0) - 0.1 * soma.touch);
   // A robbed alux is angry; a chaneque's revenge is fright instead (systems/ecology.js).
   const offended = enemy.eco?.offended && species.offended !== "susto" ? 0.8 : 0;
   // Big raiders (the sea giants) came to take by force.
@@ -344,20 +364,24 @@ function mindDrives(enemy, species, mind, distance) {
   const crowded = typeof ecoIsCrowded === "function" && ecoIsCrowded(enemy) && species.role === "grazer" ? 0.55 : 0;
   // A theft it saw stings for a day or two (systems/cherish.js).
   const grudge = typeof cherishGrudge === "function" ? cherishGrudge(enemy) : 0;
-  const anger = mindClamp(temper.anger * ((enemy.provoked ? 0.7 : 0) + self.anger + offended + bold + crowded + (stands ? forKin * 0.7 : 0) +
-    harm * (hot ? 0.75 : 0.15) + body.stress * 0.15 + grudge * 0.8) - kind * 0.6);
+  // (A body that hasn't slept, or has been strained for days, is short-tempered.)
+  const anger = mindClamp(temper.anger * soma.gain * ((enemy.provoked ? 0.7 : 0) + self.anger + offended + bold + crowded + (stands ? forKin * 0.7 : 0) +
+    harm * (hot ? 0.75 : 0.15) + body.stress * 0.15 + grudge * 0.8 + 0.15 * soma.tired + 0.15 * soma.strain) - kind * 0.6);
   const curiosity = mindClamp(temper.curious * nature.curious * 0.4 * Math.pow(1 - mind.known, 2) * (wary ? 0.6 : 1) * (0.5 + 0.5 * body.wake) *
-    // (It takes heat to wonder: a shaken, hurt, or sick creature has little to spare.)
-    (0.55 + 0.45 * body.tonalli));
+    // (It takes heat to wonder: a shaken, hurt, sick, spent, or sleepless creature has little
+    // to spare, and one in pain has less.)
+    (0.55 + 0.45 * body.tonalli) * (soma.body ? 1 - 0.5 * body.pain : 1));
   // Greed grows with need: a hungry raider wants your pack badly.
   const greed = mindClamp(nature.craves * (body.hunger >= 0.65 ? 1 : 0.6) - kind * 0.5);
   // Something you carry is the sort of thing it loves.
   const longing = typeof cherishLonging === "function" ? mindClamp(cherishLonging(enemy) * (1 - 0.5 * fear) - harm * 0.3) : 0;
   // Peace: nothing lacking, nothing hurting, nothing threatened. Then the quiet wins.
   // At the hours its kind sleeps, the quiet pulls harder.
-  const content = (1 - body.hunger) * (1 - body.wound) * (1 - body.stress) * (1 - self.threat);
+  // (A place that feels right adds to it.)
+  const content = (1 - body.hunger) * (1 - body.wound) * (1 - body.stress) * (1 - self.threat) * (0.6 + 0.4 * soma.comfort);
+  // Tired, spent, or nursing a wound, the quiet pulls harder still.
   const rest = Math.max(body.hungerState === "gorged" ? 0.7 : enemy.asleep ? 0.9 : 0, 0.1 + content * 0.3) + body.tombRest * 0.2 +
-    (1 - body.wake) * 0.45;
+    (1 - body.wake) * 0.45 + 0.3 * soma.tired + 0.2 * soma.fatigue + (soma.body ? 0.15 * body.pain : 0);
   return {
     hunger: body.hunger, greed, longing, fondness: kind, fear, anger, keep: self.held, curiosity, rest, stands,
     hungerState: body.hungerState, danger, distance, nature, self, body, harm, kept: self.kept,
@@ -433,7 +457,9 @@ function mindSenses(enemy, species, drives) {
 function mindAttend(drives, tokens) {
   const scores = tokens.map((token) => MIND_DRIVES.reduce((sum, drive) => sum + drives[drive] * (token.key[drive] || 0), 0) * token.intensity);
   const top = Math.max(...scores);
-  const weights = scores.map((score) => Math.exp((score - top) / MIND_TEMPERATURE));
+  // A pounding heart narrows attention onto what set it going; a calm one takes in more.
+  const temperature = MIND_TEMPERATURE * (1.15 - 0.45 * (drives.body?.soma?.heart ?? 1 / 3));
+  const weights = scores.map((score) => Math.exp((score - top) / temperature));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   return tokens.map((token, index) => ({ ...token, score: scores[index], attention: weights[index] / total }));
 }
@@ -460,32 +486,45 @@ function mindThink(enemy, distance) {
   const nature = mindNature(enemy, species);
   const mind = mindFor(enemy);
   mind.step = state.run.steps || 0;
+  // Its body first (systems/soma.js): did something hurt it since it last looked?
+  const body = typeof somaApplies === "function" && somaApplies(enemy, species);
+  if (body) somaCheckHurt(enemy);
   // What happened since its last thought: were you the one who hurt it?
-  if (enemy.hp < (mind.lastHp ?? enemy.hp) && enemy.provoked) mindHurt(mind);
+  if (enemy.hp < (mind.lastHp ?? enemy.hp) && enemy.provoked) mindHurt(mind, enemy);
   mind.lastHp = enemy.hp;
   // Stress settles, a little each turn, toward what the tomb's mood, the day, the air of
-  // the place, and its own grief set.
+  // the place, its own grief, and its body (strain, pain, discomfort, want of sleep) set.
+  // Its own kind against it settles it faster; a body wound tight, slower.
   const day = typeof lawCount === "function" ? lawCount() : null;
   const baseline = 0.3 * (typeof tombHunger === "function" ? tombHunger() : 0) +
     (day?.quarter === "south" ? 0.1 : 0) + (day?.movement ? 0.25 : 0) +
-    mindAirFelt(enemy, species) + 0.3 * mindGrief(mind);
-  mind.stress = mindClamp(mind.stress + (Math.min(0.8, baseline) - mind.stress) * 0.15 * mindTemper(mind).settles);
+    mindAirFelt(enemy, species) + 0.3 * mindGrief(mind) + (body ? somaUnease(enemy) : 0);
+  const settles = 0.15 * mindTemper(mind).settles * (body ? (1 + (enemy.soma.touch || 0)) * (1 - 0.4 * enemy.soma.tension) : 1);
+  mind.stress = mindClamp(mind.stress + (Math.min(0.8, baseline) - mind.stress) * settles);
   const range = (typeof creatureNoticeRange === "function" ? creatureNoticeRange(enemy) : 5) + 1;
   const senses = creatureSensesPlayer(enemy, range);
   // Prediction: it expects you where it last sensed you. You appearing close, out of
-  // nowhere, startles it.
-  mind.startle = senses && !mind.seen && distance <= gridReach(3);
-  if (mind.startle) mind.stress = mindClamp(mind.stress + 0.2);
+  // nowhere, startles it (from farther off, if its body is wound tight). If it has gone
+  // over you in its sleep (systems/sleep.js), it was expecting you, and doesn't startle.
+  const tension = body ? enemy.soma.tension : 0;
+  const expected = typeof memoryReady === "function" && memoryReady(enemy, "you") >= 0.3;
+  mind.startle = senses && !mind.seen && distance <= gridReach(3) + Math.round(gridReach(2) * tension) && !expected;
+  if (mind.startle) {
+    mind.stress = mindClamp(mind.stress + 0.2);
+    if (body) somaStartle(enemy, 0.35 + 0.25 * tension);
+  }
   if (senses && !mind.seen) {
     mind.met = Math.min(20, mind.met + 1);
     mind.encounterHp = enemy.hp;
     mind.known = mindClamp(mind.known + 0.15 * (1 - mind.known));
   }
   if (!senses && mind.seen && enemy.hp >= (mind.encounterHp ?? enemy.hp) && !enemy.provoked) {
-    // You left without hurting it: one more meeting where nothing happened. (On edge, it
-    // learns that more slowly.)
+    // You left without hurting it: one more meeting where nothing happened. (On edge, or
+    // short of sleep, it learns that more slowly.) The fright it had of you eases a little.
     mind.calm = Math.min(12, mind.calm + 1);
-    mindLearn(mind, 0, MIND_LEARN.calm * (1 - mind.stress));
+    mindLearn(mind, 0, MIND_LEARN.calm * (1 - mind.stress) * mindRested(enemy));
+    if (mind.dread) mind.dread = Math.round(mind.dread * 85) / 100;
+    if (typeof memoryNote === "function") memoryNote(enemy, "met", { valence: 0.15, about: "you", weight: 0.4 });
   }
   mind.seen = senses;
   // Far off and not in a fight, you aren't on its mind at all: skip the thinking (unless
@@ -560,16 +599,38 @@ function mindThink(enemy, distance) {
   if (intent === "flee" && species.feigns && distance <= gridReach(2)) intent = "feign";
   // Cornered, anything else fights.
   if (intent === "flee" && distance <= 1 && typeof creatureStepAway === "function" && !creatureStepAway(enemy)) intent = "fight";
+  // The body has the last word on what it can do. Spent, it can't run any more: close to
+  // you, it turns at bay. A spent hunter, with nothing of its own to defend, lets you go.
+  // (Farther off, it stands where it is and gets its breath, watching you.)
+  if (body && enemy.soma.fatigue >= 0.8) {
+    if (intent === "flee") {
+      if (distance <= gridReach(2)) {
+        intent = "fight";
+        drives.spent = true;
+      } else intent = "watch";
+    } else if (intent === "fight" && distance > 1 && !["keep", "kin"].includes(cause) && drives.kept !== "nest") {
+      intent = "watch";
+      drives.winded = true;
+    }
+  }
+  // (At bay, it stands its ground instead of following its habit: systems/behaviors.js.)
+  mind.atBay = Boolean(drives.spent) || (mind.atBay && intent === "fight" && body && enemy.soma.fatigue >= 0.6);
   if (intent !== mind.intent && senses) mindSpread(enemy, mind, intent, cause);
   // What it feels, it gives off: fear hangs in the air where it broke and ran.
   if (intent === "flee" && mind.intent !== "flee") mindAirLeave(enemy, "fear", 0.5);
   drives.cause = cause;
+  // It went over you in its sleep and knows your step: it keeps its distance, calmly.
+  drives.knowsStep = typeof memoryReady === "function" && memoryReady(enemy, "you") >= 0.4;
   mindSay(enemy, mind, intent, drives);
   mind.intent = intent;
   mind.cause = cause;
+  // And the body answers the decision: its heart goes up with what it feels, and running
+  // or fighting spends it.
+  if (body) somaRespond(enemy, drives, intent, senses);
 
   if (intent === "fight") {
     enemy.alerted = true;
+    if (mind.atBay) enemy.fleeTurns = 0;
     return false;
   }
   if (intent === "flee") {
@@ -588,7 +649,9 @@ function mindThink(enemy, distance) {
     // a post holds its ground instead.
     enemy.alerted = false;
     if (drives.postCling >= 0.5) return true;
-    const step = distance < gridReach(2) ? creatureStepAway(enemy) : distance > gridReach(4) ? creatureStepToward(enemy, state.run.player, { adjacent: true }) : null;
+    // (One that knows your step keeps a square farther off.)
+    const keep = gridReach(drives.knowsStep ? 3 : 2);
+    const step = distance < keep ? creatureStepAway(enemy) : distance > gridReach(4) ? creatureStepToward(enemy, state.run.player, { adjacent: true }) : null;
     if (step) moveCreature(enemy, step);
     return true;
   }
@@ -646,11 +709,24 @@ function mindGoOn(enemy, species) {
 
 // ---------- Memory ----------
 
+// How well it learns right now: a creature short of sleep takes in less (systems/sleep.js).
+function mindRested(enemy) {
+  return enemy?.soma ? 1 - 0.4 * mindClamp((enemy.soma.pressure - 0.6) / 0.35) : 1;
+}
+
+// The fright something left in it: the sight of you will set its heart going (somaRespond)
+// until sleep takes the charge off (sleepDream), or calm meetings wear it down.
+function mindDreads(mind, amount) {
+  mind.dread = Math.round(mindClamp((mind.dread || 0) + amount * (1 - (mind.dread || 0))) * 100) / 100;
+}
+
 // You hurt it.
-function mindHurt(mind) {
+function mindHurt(mind, enemy = null) {
   mind.harmed = Math.min(6, mind.harmed + 1);
   mind.stress = mindClamp(mind.stress + 0.4);
-  mindLearn(mind, -1, MIND_LEARN.harm);
+  mindLearn(mind, -1, MIND_LEARN.harm * mindRested(enemy));
+  mindDreads(mind, 0.45);
+  if (enemy && typeof memoryNote === "function") memoryNote(enemy, "harm", { valence: -1, about: "you", weight: 1 });
 }
 
 // What one creature does about you, the others of its kind that see it learn from: alarm
@@ -682,7 +758,10 @@ function mindWitnessDeath(victim) {
     const mind = mindFor(other);
     mind.witnessed = Math.min(6, mind.witnessed + 1);
     mind.stress = mindClamp(mind.stress + 0.35);
-    mindLearn(mind, -1, MIND_LEARN.saw);
+    if (typeof somaStartle === "function") somaStartle(other, 0.4);
+    mindLearn(mind, -1, MIND_LEARN.saw * mindRested(other));
+    mindDreads(mind, 0.3);
+    if (typeof memoryNote === "function") memoryNote(other, "loss", { valence: -1, about: "you", weight: 0.9 });
   }
 }
 
@@ -707,6 +786,10 @@ function mindKinDied(victim, killer) {
     mind.grief = mindClamp(mindGrief(mind) + hold * 0.6);
     mind.griefAt = (typeof ecoState === "function" && ecoState()?.ticks) || 0;
     mind.stress = mindClamp(mind.stress + hold * 0.3);
+    // It keeps where it happened, and what did it if it was a hunter (in its sleep it learns
+    // to watch for that kind: systems/sleep.js).
+    const by = killer && killer.templateId && killer.templateId !== other.templateId && ecoSpecies(killer) ? killer.templateId : null;
+    if (typeof memoryNote === "function") memoryNote(other, "loss", { valence: -0.8, about: by, room: roomIndexAt(victim.x, victim.y), weight: hold });
   }
 }
 
@@ -806,6 +889,8 @@ function mindInherit(young, parent) {
   mind.home = young.eco.home;
   mind.since = (typeof ecoState === "function" && ecoState()?.ticks) || 0;
   const elder = parent?.mind;
+  // (And some of where its parent eats and where it won't go: systems/sleep.js.)
+  if (typeof memoryInherit === "function") memoryInherit(young, parent);
   if (!elder || !Number.isFinite(elder.value)) return;
   mind.value = elder.value * 0.6;
   mind.known = (elder.known || 0) * 0.3;
@@ -832,7 +917,11 @@ function mindFedBy(creature, { offering = 0 } = {}) {
   mind.fed = Math.min(5, mind.fed + 1);
   mind.harmed = Math.max(0, mind.harmed - 1);
   mind.stress *= 0.5;
-  mindLearn(mind, 1, MIND_LEARN.fed);
+  mindLearn(mind, 1, MIND_LEARN.fed * mindRested(creature));
+  // Food soothes the body, and takes some of the fright of you with it.
+  if (mind.dread) mind.dread = Math.round(mind.dread * 60) / 100;
+  if (typeof somaSoothe === "function") somaSoothe(creature, 0.4);
+  if (typeof memoryNote === "function") memoryNote(creature, "fed", { valence: 1, about: "you", weight: 0.8 });
   const nature = mindNature(creature, ecoSpecies(creature));
   if (offering && nature === MIND_NATURES.spirit) mind.cling = Math.max(0, mindCling(mind, nature) - 0.04 * offering);
 }
@@ -854,6 +943,17 @@ function mindSay(enemy, mind, intent, drives) {
     addLog(intent === "fight" ? `${name} wants something you carry, and means to have it.`
       : intent === "follow" ? `${name} can't take its eyes off something you carry. It comes closer.`
       : `${name} watches what you carry from a safe distance.`);
+    mind.said = intent;
+    return;
+  }
+  // What its body would or wouldn't let it do (systems/soma.js), and what its sleep taught
+  // it (systems/sleep.js).
+  const bodyLine = drives.spent ? `${name} is too spent to run. It turns and faces you.`
+    : drives.winded ? `${name} is out of breath and gives up the chase.`
+    : intent === "watch" && drives.knowsStep && kind === "animal" && mind.intent !== "watch" ? `${name} knows your step by now. It moves off before you come close.`
+    : null;
+  if (bodyLine) {
+    addLog(bodyLine);
     mind.said = intent;
     return;
   }
@@ -914,7 +1014,10 @@ function mindDescription(enemy) {
   const kind = mindNatureName(enemy, species);
   const nature = MIND_NATURES[kind];
   const parts = [];
-  if (mind.intent === "watch") {
+  // Asleep, all you can read is how it sleeps, and what it seems to dream (systems/sleep.js).
+  const sleeping = Boolean(enemy.asleep && enemy.eco?.sleeping);
+  if (sleeping && typeof sleepManner === "function") parts.push(...sleepManner(enemy));
+  else if (mind.intent === "watch") {
     parts.push(kind === "raider" ? "It's watching your pack."
       : kind !== "animal" ? "It's watching you, and holding its ground."
       : mind.cause === "keep" && mindAtKill(enemy) ? "It's watching you over its kill."
@@ -939,15 +1042,21 @@ function mindDescription(enemy) {
     : mind.harmed || mind.witnessed ? "It remembers what you did to its kind."
     : mind.inherited && !mind.met ? "Its parents feared you, and so does it." : "Its kind have taught it to fear you.");
   else if ((mind.known || 0) >= 0.5 && Math.abs(value) < 0.2) parts.push("It's used to you by now.");
+  // What it went over in its sleep.
+  if (!sleeping && typeof memoryReady === "function" && memoryReady(enemy, "you") >= 0.4 && value < 0) parts.push("It knows your step.");
   // What it has lost, and what ails it.
   if (mindGrief(mind) >= 0.25) parts.push("It has lost one of its own.");
   if (ecoIsSick(enemy)) parts.push("It is sick.");
+  // How its body is (systems/soma.js).
+  const manner = typeof somaManner === "function" ? somaManner(enemy) : [];
+  parts.push(...manner);
   // How it holds on.
   if (kind === "spirit" && species.passesOn && mindCling(mind, nature) <= 0.25) parts.push("Its hold on this place is loosening.");
   else if (kind === "spirit" && typeof tombHunger === "function" && tombHunger() >= 0.5) parts.push("The tomb's hunger is in it.");
   else if (kind === "animal" && species.territorial && (mind.home === enemy.eco?.home) && mindSettled(enemy, mind) >= 0.6 &&
     roomIndexAt(state.run.player.x, state.run.player.y) === enemy.eco.home) parts.push("You're in its den.");
-  if ((mind.stress || 0) >= 0.5 && mind.intent !== "flee") parts.push("It's on edge.");
+  if ((mind.stress || 0) >= 0.5 && mind.intent !== "flee" && !sleeping &&
+    !manner.some((line) => line === "Its sides are heaving." || line === "It's jumpy.")) parts.push("It's on edge.");
   if (typeof cherishGrudge === "function" && cherishGrudge(enemy) >= 0.3) parts.push("It hasn't forgiven you for what you took.");
   if (typeof cherishNote === "function") {
     const note = cherishNote(enemy);

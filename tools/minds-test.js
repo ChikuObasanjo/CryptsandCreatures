@@ -188,9 +188,144 @@ scene("Duende, hungry, your pouch is full", "duende", { sat: 30, gap: 3, gold: 9
 scene("Duende, fed, empty pouch and pack", "duende", { sat: 95, gap: 3, gold: 0, food: false, expect: { not: /fight/ } });
 scene("Duende, badly hurt", "duende", { sat: 30, gap: 2, gold: 90, hp: 0.2, provoke: true, expect: { has: /flee/ } });
 scene("Sea giant, hungry, you carry food", "caxtiltecatl", { sat: 30, gap: 3, expect: { has: /fight/ } });
+print("\n-- the body (systems/soma.js) --");
+const body = (fields) => `Object.assign(somaFor(creature), ${JSON.stringify(fields)});`;
+scene("jaguar, starving but spent from a chase, you keep away", "jungle-jaguar", { sat: 5, gap: 4,
+  before: body({ fatigue: 0.95, heart: 0.6 }), expect: { has: /watch/, not: /fight/ } });
+scene("jaguar, starving, rested", "jungle-jaguar", { sat: 5, gap: 4, expect: { has: /fight/ } });
+scene("cave turkey, spent, you close in", "cave-turkey", { gap: 2, before: body({ fatigue: 0.95 }), expect: { has: /fight/, not: /flee/ } });
+scene("cave turkey used to you, calm, you pass at 4", "cave-turkey", { gap: 4, mind: { calm: 6, met: 6 }, expect: { not: /flee/ } });
+scene("cave turkey used to you, still jumpy from a fright", "cave-turkey", { gap: 4, mind: { calm: 6, met: 6 },
+  before: body({ tension: 0.9, heart: 0.45 }), expect: { has: /flee/ } });
+scene("cave turkey used to you, hurt, the wound stinging", "cave-turkey", { gap: 4, hp: 0.75, mind: { calm: 6, met: 6 },
+  before: body({ pain: 1, heart: 0.1 }), expect: { has: /flee/ } });
+scene("cave turkey used to you, hurt, an old wound", "cave-turkey", { gap: 4, hp: 0.75, mind: { calm: 6, met: 6 },
+  before: body({ pain: 0.12, heart: 0.1 }), expect: { not: /flee/ } });
+
 print("\n-- keepers --");
 scene("Camazotz at the inner seal, you close", "camazotz", { gap: 2, guardian: true, expect: { has: /fight/ } });
 scene("Camazotz, nearly dead, you close", "camazotz", { gap: 2, guardian: true, hp: 0.15, provoke: true, expect: { has: /fight/, not: /flee/ } });
+
+// Sleep and what it does with the day (systems/sleep.js). Each check builds its creatures in
+// a clear room far from you and returns { ok, note }.
+const check = (label, code) => {
+  if (only && !label.includes(only)) return;
+  let r;
+  try { r = JSON.parse(run(code)); } catch (error) { r = { ok: false, note: `ERR ${error.message.split("\n")[0]}` }; }
+  if (!r.ok) failures += 1;
+  (r.ok ? print : console.log)(`${r.ok ? "ok  " : "FAIL"} ${label.padEnd(62)} ${r.note || ""}`);
+};
+run(`var sleepScene = (id, count = 1, { hour = 9, sat = 80 } = {}) => {
+  // (Nothing else on the floor: the scenes above leave their keepers behind, and a keeper hunts.)
+  state.run.enemies = [];
+  state.run.lurkers = [];
+  state.run.gameMinutes = 40 * 1440 + hour * 60;
+  state.run.lost = false; state.run.hp = state.run.maxHp;
+  const eco = ensureEcology(); eco.minute = state.run.gameMinutes; eco.air = {};
+  const rooms = state.run.rooms.map((room, index) => ({ room, index })).filter(({ room }) => room.mapW >= 6 && room.mapH >= 5 && !room.planned && room.env?.water !== "basin");
+  const centre = (room) => ({ x: room.anchorX ?? room.mapX, y: room.anchorY ?? room.mapY });
+  rooms.sort((a, b) => distanceInSquares(centre(b.room), state.run.player) - distanceInSquares(centre(a.room), state.run.player));
+  const home = rooms[0];
+  const taken = ecoOccupiedTiles();
+  const creatures = [];
+  for (let k = 0; k < count; k += 1) {
+    const spot = ecoFreeTile(home.room, taken);
+    taken.add(tileIndex(spot.x, spot.y));
+    const creature = ecoNewCreature(id, spot, home.index);
+    creature.eco.sat = sat; creature.asleep = 0; mindFor(creature).sign = -1;
+    state.run.enemies.push(creature); creatures.push(creature);
+  }
+  return { creatures, roomIndex: home.index };
+}; var sleepAdvance = (turns) => { for (let i = 0; i < turns; i += 1) { state.run.steps += 1; state.run.gameMinutes += 10; enemiesTakeTurn(); ecologyAdvance(); } };`);
+
+print("\n-- sleep and dreams (systems/sleep.js) --");
+check("a day grazer sleeps the night through in its den, and is up by morning", `(() => {
+  const { creatures: [turkey], roomIndex } = sleepScene("cave-turkey", 1, { hour: 17, sat: 95 });
+  somaFor(turkey).pressure = 0.55;
+  const seen = [];
+  for (const hours of [6, 4, 7]) { sleepAdvance(hours * 6); seen.push((turkey.asleep && turkey.eco.sleeping ? "asleep" : "awake") + "@" + Math.floor((state.run.gameMinutes / 60) % 24)); }
+  const ok = turkey.alive && seen[0].startsWith("asleep") && seen[1].startsWith("asleep") && seen[2].startsWith("awake") && turkey.mind.bed?.r === roomIndex;
+  return JSON.stringify({ ok, note: seen.join(" ") + " bed in its den: " + (turkey.mind.bed?.r === roomIndex) });
+})()`);
+check("a flock beds down together", `(() => {
+  const { creatures } = sleepScene("cave-turkey", 4, { hour: 18, sat: 95 });
+  for (const turkey of creatures) somaFor(turkey).pressure = 0.6;
+  sleepAdvance(8 * 6);
+  const beds = creatures.filter((c) => c.alive && c.mind.bed).map((c) => c.mind.bed);
+  let spread = 0;
+  for (const a of beds) for (const b of beds) spread = Math.max(spread, distanceInSquares(a, b));
+  const huddled = creatures.filter((c) => c.alive && (c.soma?.touch || 0) >= 0.5).length;
+  return JSON.stringify({ ok: beds.length >= 3 && spread <= 6, note: beds.length + " beds, at most " + spread + " tiles apart; " + huddled + " pressed together" });
+})()`);
+check("a night's sleep: it still knows you hurt it, but the charge is off", `(() => {
+  const { creatures: [turkey], roomIndex } = sleepScene("cave-turkey");
+  somaFor(turkey).heart = 0.9;
+  const mind = mindFor(turkey);
+  mindHurt(mind, turkey);
+  const before = { value: mind.value, dread: mind.dread, known: mind.known };
+  sleepDream(turkey, ecoSpecies(turkey), 1);
+  const ok = mind.value === before.value && mind.dread < before.dread * 0.6 && mind.known > before.known &&
+    memoryReady(turkey, "you") >= 0.3 && (mind.places[roomIndex] || 0) < 0 && mind.day.length === 0;
+  return JSON.stringify({ ok, note: "dread " + before.dread + " -> " + mind.dread + ", ready for you " + memoryReady(turkey, "you") + ", this chamber " + mind.places[roomIndex] });
+})()`);
+check("what it went over it keeps; the day's small things are let go", `(() => {
+  const { creatures: [turkey], roomIndex } = sleepScene("cave-turkey");
+  somaFor(turkey).heart = 0.1;
+  for (let room = 0; room < 8; room += 1) memoryNote(turkey, "met", { valence: 0.15, about: "you", room, weight: 0.3 });
+  somaFor(turkey).heart = 0.9;
+  memoryNote(turkey, "hunted", { valence: -1, about: "jungle-jaguar", weight: 1 });
+  sleepDream(turkey, ecoSpecies(turkey), 0.5);
+  const places = Object.keys(turkey.mind.places);
+  const ok = places.length <= 2 && turkey.mind.places[roomIndex] < 0 && memoryReady(turkey, "jungle-jaguar") > 0.2;
+  return JSON.stringify({ ok, note: places.length + " chamber(s) kept; ready for the jaguar " + memoryReady(turkey, "jungle-jaguar") });
+})()`);
+check("kept awake, it is short-tempered", `(() => {
+  const { creatures: [rested, sleepless] } = sleepScene("jungle-jaguar", 2);
+  Object.assign(somaFor(rested), { pressure: 0.2, strain: 0 });
+  Object.assign(somaFor(sleepless), { pressure: 0.98, strain: 0.6 });
+  const anger = (c) => mindDrives(c, ecoSpecies(c), mindFor(c), 8).anger;
+  const a = anger(rested), b = anger(sleepless);
+  return JSON.stringify({ ok: b > a + 0.1, note: "anger rested " + a.toFixed(2) + ", sleepless " + b.toFixed(2) });
+})()`);
+check("woken in its bed by a blow, it won't lie down there again", `(() => {
+  const { creatures: [turkey], roomIndex } = sleepScene("cave-turkey", 1, { hour: 1 });
+  const mind = mindFor(turkey);
+  mind.bed = { x: turkey.x, y: turkey.y, r: roomIndex };
+  sleepBegin(turkey, ecoSpecies(turkey), { quiet: true });
+  turkey.hp -= 2;
+  sleepTick(turkey, ecoSpecies(turkey), 1);
+  const ok = !turkey.asleep && !mind.bed && mind.badBed && mind.day.some((m) => m.k === "harm");
+  return JSON.stringify({ ok, note: "awake " + !turkey.asleep + ", bed given up " + !mind.bed });
+})()`);
+check("a light sleeper you blunder into wakes with a start", `(() => {
+  const { creatures: [turkey] } = sleepScene("cave-turkey", 1, { hour: 1 });
+  sleepBegin(turkey, ecoSpecies(turkey), { quiet: true });
+  turkey.mind.sleep.depth = 0.3;
+  const spot = freeTileNear(turkey, ecoOccupiedTiles(), 1);
+  state.run.player = { ...state.run.player, x: spot.x, y: spot.y };
+  const random = Math.random; Math.random = () => 0.01;
+  try { sleepStir(); } finally { Math.random = random; }
+  const woke = !turkey.asleep;
+  state.run.steps += 1; enemiesTakeTurn();
+  return JSON.stringify({ ok: woke && ["flee", "fight"].includes(turkey.mind.intent), note: "woke " + woke + ", then " + turkey.mind.intent });
+})()`);
+check("hungry, with nothing in reach, it goes where it remembers eating", `(() => {
+  const { creatures: [turkey], roomIndex } = sleepScene("cave-turkey");
+  const other = state.run.rooms.findIndex((room, index) => index !== roomIndex && room.mapW >= 4);
+  turkey.mind.food = { [other]: 0.8, [roomIndex]: 0.5 };
+  const spot = memoryForage(turkey);
+  const ok = spot && roomIndexAt(spot.x, spot.y) === other && (turkey.mind.food[roomIndex] || 0) < 0.5;
+  return JSON.stringify({ ok, note: "heads for chamber " + (spot ? roomIndexAt(spot.x, spot.y) : "none") + "; finding nothing here, it now expects " + (turkey.mind.food[roomIndex] || 0) + " here" });
+})()`);
+check("the dead don't sleep, and nothing settles overnight", `(() => {
+  const { creatures: [dead] } = sleepScene("mictlaneca", 1, { hour: 9 });
+  const mind = mindFor(dead);
+  mindHurt(mind, dead);
+  const dread = mind.dread;
+  sleepAdvance(24 * 6);
+  const ok = dead.alive && mind.dread === dread && !mind.sleep && !dead.soma;
+  return JSON.stringify({ ok, note: "dread " + dread + " after a day: " + mind.dread });
+})()`);
 
 // The tomb's mood as you take and give (systems/tomb-body.js).
 if (!only || "tomb".includes(only)) {

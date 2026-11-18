@@ -658,6 +658,12 @@ function creatureAct(enemy, distance) {
       return true;
     }
   }
+  // Too spent to run, it has turned at bay (systems/minds.js): it stands, and strikes at
+  // whatever comes close.
+  if (enemy.mind?.atBay && enemy.mind.step === (state.run.steps || 0)) {
+    if (distance === 1) enemyAttack(enemy);
+    return true;
+  }
   // Animals don't fight to the death: badly hurt, they break off and run.
   if (!enemy.fleeTurns && typeof ecologyShouldFlee === "function" && ecologyShouldFlee(enemy)) {
     enemy.fleeTurns = 5;
@@ -794,6 +800,8 @@ function creatureIdle(enemy) {
 function beginCreaturePhase() {
   stirLurkers();
   checkSleepers();
+  // Creatures sleeping on their own may wake as you come near (systems/sleep.js).
+  if (typeof sleepStir === "function") sleepStir();
   // Sounds from out of sight, and the owl-man's tricks (systems/wiles.js).
   if (typeof wilesTurn === "function") wilesTurn();
 }
@@ -828,6 +836,8 @@ function provokeCreature(enemy) {
   enemy.alerted = true;
   enemy.provoked = true;
   enemy.sated = 0;
+  // Attacked: its heart jumps (systems/soma.js).
+  if (typeof somaStartle === "function") somaStartle(enemy, 0.45);
   if (enemy.deepSleep && enemy.asleep) {
     enemy.asleep = 0;
     enemy.deepSleep = false;

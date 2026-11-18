@@ -377,8 +377,9 @@ function ecoBreed(eco, cap) {
     const layer = ecoLayer(species);
     const count = counts[id];
     if (count < 2 && ecoMinimumPopulation(species) >= 2) continue;
+    // (A body worn by days of fright and too little sleep doesn't breed: systems/soma.js.)
     const parents = state.run.enemies.filter((enemy) => enemy.alive && enemy.templateId === id && !enemy.alerted &&
-      !enemy.guardian && ecoCreature(enemy).sat >= 55 && !ecoIsSick(enemy));
+      !enemy.guardian && ecoCreature(enemy).sat >= 55 && !ecoIsSick(enemy) && !(typeof somaStrained === "function" && somaStrained(enemy)));
     if (!parents.length) continue;
     let chance = Math.min(0.9, parents.length * ECO_CENSUS_EVERY / species.breeds.every);
     // A herd breeds more slowly as it nears what the plants can feed (a little past the
